@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 17% 97%;
+    --foreground: 220 26% 23%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 26% 23%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 26% 23%;
+    --primary: 168 60% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 17% 95%;
+    --secondary-foreground: 220 26% 23%;
+    --muted: 210 17% 95%;
+    --muted-foreground: 215 14% 47%;
+    --accent: 168 60% 95%;
+    --accent-foreground: 168 60% 30%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 20% 91%;
+    --input: 214 20% 91%;
+    --ring: 168 60% 53%;
+    --radius: 24px;
+  }
+  * { @apply border-border; }
+  html, body { @apply bg-bgsoft text-ink font-sans antialiased; }
+  body { font-family: 'Nunito', system-ui, sans-serif; }
+}
+
+/* Custom scrollbars */
+.scrollbar-thin::-webkit-scrollbar { height: 6px; width: 6px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #CBD5E0; border-radius: 999px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Topbar wave */
+.tk-wave {
+  background: linear-gradient(135deg, #3ECDB5 0%, #1E9E8A 50%, #3ECDB5 100%);
+  background-size: 200% 200%;
+  animation: wave-shift 8s ease-in-out infinite;
+}
+.tk-wave-bottom {
+  position: absolute; left: 0; right: 0; bottom: -1px; height: 28px;
+  background: #F5F7F9;
+  -webkit-mask: radial-gradient(28px 28px at 50% 0, transparent 98%, #000 100%) 50% 0 / 56px 100% repeat-x;
+          mask: radial-gradient(28px 28px at 50% 0, transparent 98%, #000 100%) 50% 0 / 56px 100% repeat-x;
+}
+
+/* Pill button */
+.btn-pill { @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-pill font-bold text-sm transition-all duration-200 active:scale-95; }
+
+/* Truncate */
+.truncate-1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Activity card */
+.activity-card { @apply relative bg-white rounded-lg p-4 shadow-softer hover:shadow-soft hover:-translate-y-0.5 transition-all duration-200 cursor-pointer; }
+.activity-card.done { @apply ring-2 ring-teal/30; }
+
+/* Typing dots */
+.typing-dot { @apply inline-block w-2 h-2 rounded-full bg-teal mx-0.5; animation: bounce-dot 1.4s infinite ease-in-out both; }
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+/* Container — no horizontal overflow */
+.tk-main { overflow-x: hidden; }
+
+/* 2-col on mobile, 3-col on desktop activity grid */
+.activity-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 768px) { .activity-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; } }
