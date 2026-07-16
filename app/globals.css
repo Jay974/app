@@ -43,14 +43,10 @@
 /* Topbar clean gradient */
 .tk-wave {
   background: linear-gradient(135deg, #3ECDB5 0%, #2FB89F 100%);
+  border-bottom-left-radius: 28px;
+  border-bottom-right-radius: 28px;
 }
-.tk-wave-bottom {
-  position: absolute; left: 0; right: 0; bottom: -20px; height: 32px;
-  background: #F5F7F9;
-  border-top-left-radius: 32px;
-  border-top-right-radius: 32px;
-  pointer-events: none;
-}
+.tk-wave-bottom { display: none; }
 
 /* Pill button */
 .btn-pill { @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-pill font-bold text-sm transition-all duration-200 active:scale-95; }

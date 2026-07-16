@@ -1777,7 +1777,7 @@ function ThreadedMessagerie({ user }) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-softer h-[75vh] flex overflow-hidden animate-fade-up">
+    <div className="bg-white rounded-lg shadow-softer h-[calc(100vh-150px)] max-h-[720px] flex overflow-hidden animate-fade-up">
       <div className={`${active?'hidden md:flex':'flex'} w-full md:w-80 border-r border-bgsoft flex-col`}>
         <div className="px-4 py-3 border-b border-bgsoft flex items-center justify-between">
           <div className="font-extrabold">Conversations</div>
@@ -2060,12 +2060,12 @@ function ParentLive({ user }) {
         </div>
       )}
       {child && <ChildHeaderCard enfant={child} />}
+      <ParentQuickAlerts enfant={child} />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <StatRow icon={Moon} label="Sieste" color="#42A5F5" bg="#E3F2FD" items={[{value:counts.sieste,label:"Aujourd'hui"}]} />
         <StatRow icon={Coffee} label="Biberon" color="#FF6B6B" bg="#FFE9E9" items={[{value:counts.biberon,label:"Aujourd'hui"}]} />
         <StatRow icon={Flower} label="Changes" color="#66BB6A" bg="#E8F5E9" items={[{value:counts.change,label:"Aujourd'hui"}]} />
       </div>
-      <ParentQuickAlerts enfant={child} />
       <div className="bg-white rounded-lg p-5 shadow-softer">
         <div className="flex items-center justify-between mb-3">
           <div><div className="font-extrabold text-lg">Journée de {child?.prenom}</div><div className="text-xs text-ink-muted">En direct 🌺</div></div>
