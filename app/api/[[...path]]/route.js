@@ -941,6 +941,149 @@ async function handle(request, params) {
     return json({ ok: true });
   }
 
+  // ---- USER PROFILE + PASSWORD ----
+  if (route === 'me' && method === 'PUT') {
+    const b = await request.json();
+    const allowed = ['prenom','nom','tel','poste','avatar_url','pseudo'];
+    const upd = {};
+    for (const k of allowed) if (b[k] !== undefined) upd[k] = b[k];
+    if (b.password && b.password.length >= 6) upd.password = await bcrypt.hash(b.password, 8);
+    await db.collection('users').updateOne({ id: user.id }, { $set: upd });
+    const fresh = await db.collection('users').findOne({ id: user.id });
+    return json({ user: one(fresh) });
+  }
+
+  // Super admin ou admin peut modifier des users (leurs pros/parents/clients)
+  if (route.startsWith('users/') && path.length === 2 && method === 'PUT') {
+    const targetId = path[1];
+    const target = await db.collection('users').findOne({ id: targetId });
+    if (!target) return err('Introuvable', 404);
+    if (user.role === 'admin') {
+      // Admin peut modifier uniquement pros/parents de ses crèches
+      if (target.role === 'super_admin') return err('Accès refusé', 403);
+      if (target.creche_id && !(user.creche_ids||[]).includes(target.creche_id)) return err('Accès refusé', 403);
+    } else if (user.role !== 'super_admin') return err('Accès refusé', 403);
+    const b = await request.json();
+    const allowed = ['prenom','nom','email','tel','poste','role','subscription','avatar_url','creche_id','creche_ids','plan_prix','notes_admin'];
+    const upd = {};
+    for (const k of allowed) if (b[k] !== undefined) upd[k] = b[k];
+    if (b.password && b.password.length >= 6) upd.password = await bcrypt.hash(b.password, 8);
+    await db.collection('users').updateOne({ id: targetId }, { $set: upd });
+    const fresh = await db.collection('users').findOne({ id: targetId });
+    return json({ user: one(fresh) });
+  }
+
+  // ---- FICHES DE PAIE ----
+  if (route === 'fiches-paie' && method === 'GET') {
+    let q = {};
+    if (user.role === 'pro') q.employe_id = user.id;
+    else if (user.role === 'admin') q.creche_id = { $in: activeCId?[activeCId]:(user.creche_ids||[]) };
+    else if (user.role !== 'super_admin') return err('Accès refusé', 403);
+    const list = await db.collection('fiches_paie').find(q).sort({ periode: -1 }).toArray();
+    return json({ fiches: clean(list) });
+  }
+  if (route === 'fiches-paie' && method === 'POST' && user.role === 'admin') {
+    const b = await request.json();
+    const f = { id: uuidv4(), creche_id: b.creche_id||activeCId, employe_id: b.employe_id,
+      employe_nom: b.employe_nom||'', periode: b.periode, url: b.url||null,
+      montant_brut: b.montant_brut||0, montant_net: b.montant_net||0,
+      created_at: new Date() };
+    await db.collection('fiches_paie').insertOne(f);
+    return json({ fiche: f });
+  }
+
+  // ---- PRE-INSCRIPTIONS ENFANTS (côté admin) ----
+  if (route === 'preinscriptions' && method === 'GET' && (user.role === 'admin' || user.role === 'pro')) {
+    const q = { creche_id: user.role==='admin' ? { $in: activeCId?[activeCId]:(user.creche_ids||[]) } : user.creche_id };
+    const list = await db.collection('preinscriptions').find(q).sort({ created_at: -1 }).toArray();
+    return json({ preinscriptions: clean(list) });
+  }
+  if (route === 'preinscriptions' && method === 'POST') {
+    const b = await request.json();
+    const p = { id: uuidv4(), creche_id: b.creche_id||activeCId||user.creche_id,
+      enfant_prenom: b.enfant_prenom, enfant_nom: b.enfant_nom||'', date_naissance: b.date_naissance,
+      parent_nom: b.parent_nom, parent_email: b.parent_email, parent_tel: b.parent_tel,
+      date_souhaitee: b.date_souhaitee, contrat_heures: b.contrat_heures||35,
+      notes: b.notes||'', statut: 'nouveau', created_at: new Date() };
+    await db.collection('preinscriptions').insertOne(p);
+    return json({ preinscription: p });
+  }
+  if (route.startsWith('preinscriptions/') && path.length === 2 && method === 'PUT' && user.role === 'admin') {
+    const b = await request.json();
+    delete b._id; delete b.id;
+    await db.collection('preinscriptions').updateOne({ id: path[1] }, { $set: b });
+    return json({ ok: true });
+  }
+
+  // ---- SUPER ADMIN: prospects crèches ----
+  if (route === 'super/prospects' && method === 'GET' && user.role === 'super_admin') {
+    const list = await db.collection('prospects').find({}).sort({ created_at: -1 }).toArray();
+    return json({ prospects: clean(list) });
+  }
+  if (route === 'super/prospects' && method === 'POST' && user.role === 'super_admin') {
+    const b = await request.json();
+    const p = { id: uuidv4(), nom: b.nom, contact: b.contact||'', email: b.email||'', tel: b.tel||'', ville: b.ville||'', notes: b.notes||'', statut: b.statut||'prospect', created_at: new Date() };
+    await db.collection('prospects').insertOne(p);
+    return json({ prospect: p });
+  }
+
+  // ---- NOTIFICATIONS BROADCAST ----
+  if (route === 'notifications' && method === 'GET') {
+    let q = {};
+    if (user.role === 'admin') q.creche_id = { $in: activeCId?[activeCId]:(user.creche_ids||[]) };
+    else if (user.role !== 'super_admin') {
+      q.creche_id = user.creche_id;
+      q.cible = { $in: [user.role, 'tous'] };
+    }
+    const list = await db.collection('notifications').find(q).sort({ created_at: -1 }).limit(50).toArray();
+    return json({ notifications: clean(list) });
+  }
+  if (route === 'notifications' && method === 'POST' && user.role === 'admin') {
+    const b = await request.json();
+    const n = { id: uuidv4(), creche_id: b.creche_id||activeCId, titre: b.titre, contenu: b.contenu, cible: b.cible||'tous', from_id: user.id, from_nom: `${user.prenom} ${user.nom}`, created_at: new Date() };
+    await db.collection('notifications').insertOne(n);
+    return json({ notification: n });
+  }
+
+  // ---- STATISTIQUES ----
+  if (route === 'statistiques' && method === 'GET' && user.role === 'admin') {
+    const cids = activeCId ? [activeCId] : (user.creche_ids||[]);
+    const enfants = await db.collection('enfants').find({ creche_id: { $in: cids } }).toArray();
+    const employes = await db.collection('users').find({ role: 'pro', creche_id: { $in: cids } }).toArray();
+    const factures = await db.collection('factures').find({ creche_id: { $in: cids } }).toArray();
+    const trans = await db.collection('transmissions').find({ creche_id: { $in: cids } }).toArray();
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const facturesMois = factures.filter(f => new Date(f.date).toISOString() >= monthStart);
+    return json({ stats: {
+      enfants: enfants.length,
+      enfants_par_groupe: enfants.reduce((a,e)=>{a[e.groupe]=(a[e.groupe]||0)+1;return a;},{}),
+      employes: employes.length,
+      ca_mois: facturesMois.filter(f=>f.statut==='payee').reduce((s,f)=>s+f.montant,0),
+      ca_attendu_mois: facturesMois.reduce((s,f)=>s+f.montant,0),
+      factures_impayees: factures.filter(f=>f.statut==='en_attente').length,
+      transmissions_total: trans.length,
+      transmissions_par_type: trans.reduce((a,t)=>{a[t.type]=(a[t.type]||0)+1;return a;},{}),
+    }});
+  }
+
+  // ---- STATS SUPER ADMIN par client ----
+  if (route.startsWith('super/clients/') && path.length === 3 && path[2] === 'invoice' && method === 'POST' && user.role === 'super_admin') {
+    // Facture manuelle pour un client (arrangement/ajustement)
+    const b = await request.json();
+    const clientId = path[1];
+    const f = { id: uuidv4(), super_admin_invoice: true, client_id: clientId,
+      description: b.description||'Abonnement TiMétis',
+      montant: b.montant, mois: b.mois||new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'}),
+      statut: 'en_attente', date: new Date(), created_at: new Date() };
+    await db.collection('factures_saas').insertOne(f);
+    return json({ facture: f });
+  }
+  if (route === 'super/factures' && method === 'GET' && user.role === 'super_admin') {
+    const list = await db.collection('factures_saas').find({}).sort({ created_at: -1 }).toArray();
+    return json({ factures: clean(list) });
+  }
+
   // ---- MEDIA UPLOAD (Cloudinary signed) ----
   if (route === 'media/sign' && method === 'POST') {
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;

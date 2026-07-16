@@ -210,6 +210,8 @@ function Sidebar({ user, view, setView, open, setOpen }) {
     super_admin: [
       { key: 'super/dashboard', label: 'Cockpit', icon: BarChart3 },
       { key: 'super/clients', label: 'Mes clients', icon: Users },
+      { key: 'super/prospects', label: 'Pré-inscriptions crèches', icon: UserCheck },
+      { key: 'super/factures', label: 'Devis & factures', icon: FileText },
       { key: 'super/feedbacks', label: 'Avis & suggestions', icon: MessageSquare },
       { key: 'super/settings', label: 'Paramètres', icon: Settings },
     ],
@@ -229,8 +231,14 @@ function Sidebar({ user, view, setView, open, setOpen }) {
       { key: 'admin/factures', label: 'Factures', icon: FileText },
       { key: 'admin/finances', label: 'Finances · CA', icon: TrendingUp },
       { key: 'admin/charges', label: 'Charges & Salaires', icon: PiggyBank },
+      { key: 'admin/preinscriptions', label: 'Pré-inscriptions', icon: UserCheck },
       { key: 'admin/employes', label: 'Équipe', icon: Briefcase },
       { key: 'admin/planning-employes', label: 'Horaires équipe', icon: Calendar },
+      { key: 'admin/fiches-paie', label: 'Fiches de paie', icon: Wallet },
+      { key: 'admin/notifications', label: 'Notifications', icon: Bell },
+      { key: 'admin/statistiques', label: 'Statistiques', icon: BarChart3 },
+      { key: 'admin/administration', label: 'Administration', icon: Settings },
+      { key: 'admin/rgpd', label: 'RGPD & conditions', icon: ShieldCheck },
       { key: 'admin/messagerie', label: 'Discussions', icon: MessageCircle },
       { key: 'admin/alarme', label: 'Sécurité incendie', icon: AlertTriangle },
       { key: 'admin/abonnement', label: 'Abonnement', icon: CreditCard },
@@ -240,6 +248,7 @@ function Sidebar({ user, view, setView, open, setOpen }) {
       { key: 'pro/profil', label: 'Mon profil', icon: User },
       { key: 'pro/pointage', label: 'Pointage', icon: Clock },
       { key: 'pro/mes-horaires', label: 'Mes horaires', icon: Calendar },
+      { key: 'pro/fiches-paie', label: 'Mes fiches de paie', icon: Wallet },
       { key: 'pro/activites', label: 'Activités enfants', icon: Sparkles },
       { key: 'pro/enfants', label: 'Enfants', icon: Baby },
       { key: 'pro/nourriture', label: 'Restauration', icon: UtensilsCrossed },
@@ -1901,8 +1910,8 @@ function ThreadedMessagerie({ user }) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-softer h-[calc(100vh-150px)] max-h-[720px] flex overflow-hidden animate-fade-up">
-      <div className={`${active?'hidden md:flex':'flex'} w-full md:w-80 border-r border-bgsoft flex-col`}>
+    <div className="bg-white rounded-lg shadow-softer h-[calc(100vh-140px)] max-h-[720px] flex flex-col md:flex-row overflow-hidden animate-fade-up">
+      <div className={`${active?'hidden md:flex':'flex'} w-full md:w-72 border-b md:border-b-0 md:border-r border-bgsoft flex-col flex-shrink-0`}>
         <div className="px-4 py-3 border-b border-bgsoft flex items-center justify-between">
           <div className="font-extrabold">Conversations</div>
           {(user.role==='pro'||user.role==='admin') && <button onClick={()=>setShowNew(true)} className="w-8 h-8 rounded-full bg-teal text-white flex items-center justify-center"><Plus className="w-4 h-4" /></button>}
@@ -2498,6 +2507,288 @@ function AlarmeEvacuation({ activeCId }) {
 }
 
 // ===== MAIN APP =====
+// ===== V8 New views =====
+function ProfileEditor({ user, onSaved }) {
+  const [f, setF] = useState({ prenom: user.prenom||'', nom: user.nom||'', tel: user.tel||'', password: '' });
+  const save = async () => {
+    try { const b = { ...f }; if (!b.password) delete b.password;
+      await api('me', { method: 'PUT', body: JSON.stringify(b) });
+      toast.success('Profil mis à jour'); onSaved?.();
+    } catch(e){ toast.error(e.message); }
+  };
+  return (
+    <div className="bg-white rounded-lg p-6 shadow-softer max-w-md animate-fade-up">
+      <div className="flex items-center gap-4 mb-4"><Avatar user={user} size={72} /><div><div className="font-extrabold text-xl">{user.prenom} {user.nom}</div><div className="text-sm text-ink-muted capitalize">{user.role?.replace('_',' ')}</div><div className="text-xs text-ink-muted">{user.email}</div></div></div>
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Prénom</label><input value={f.prenom} onChange={e=>setF({...f,prenom:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Nom</label><input value={f.nom} onChange={e=>setF({...f,nom:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+        </div>
+        <div><label className="text-xs font-extrabold uppercase text-ink-muted">Téléphone</label><input value={f.tel} onChange={e=>setF({...f,tel:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+        <div><label className="text-xs font-extrabold uppercase text-ink-muted">Nouveau mot de passe (optionnel)</label><input type="password" value={f.password} onChange={e=>setF({...f,password:e.target.value})} placeholder="Laisser vide pour ne pas changer" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+        <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
+      </div>
+    </div>
+  );
+}
+
+function PreinscriptionsView({ activeCId, canEdit }) {
+  const [items, setItems] = useState([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const load = async () => { try{const d=await api('preinscriptions'); setItems(d.preinscriptions||[]);}catch(e){} };
+  useEffect(() => { load(); }, [activeCId]);
+  return (
+    <div className="space-y-4 animate-fade-up">
+      <div className="flex justify-end"><button onClick={()=>setShowAdd(true)} className="btn-pill bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Nouvelle pré-inscription</button></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {items.length===0 && <PlaceholderView title="Aucune pré-inscription" icon={UserCheck} />}
+        {items.map(p => (
+          <div key={p.id} className="bg-white rounded-lg p-5 shadow-softer">
+            <div className="flex items-center justify-between mb-2"><div className="font-extrabold">{p.enfant_prenom} {p.enfant_nom}</div>
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${p.statut==='accepte'?'bg-teal-light text-teal-dark':p.statut==='refuse'?'bg-coral/20 text-coral':'bg-amber/20 text-amber'}`}>{p.statut}</span></div>
+            <div className="text-xs text-ink-muted">Né(e) le {fmtDate(p.date_naissance)}</div>
+            <div className="text-xs text-ink-muted">Souhaite entrer le {fmtDate(p.date_souhaitee)}</div>
+            <div className="mt-3 pt-3 border-t border-bgsoft text-xs">
+              <div className="font-bold">{p.parent_nom}</div>
+              <div className="text-ink-muted">{p.parent_email} · {p.parent_tel}</div>
+            </div>
+            {p.notes && <div className="mt-2 text-xs italic text-ink-muted">{p.notes}</div>}
+            {canEdit && (
+              <div className="mt-3 flex gap-2">
+                <button onClick={async()=>{await api(`preinscriptions/${p.id}`,{method:'PUT',body:JSON.stringify({statut:'accepte'})}); load();}} className="btn-pill bg-teal text-white text-xs flex-1">Accepter</button>
+                <button onClick={async()=>{await api(`preinscriptions/${p.id}`,{method:'PUT',body:JSON.stringify({statut:'refuse'})}); load();}} className="btn-pill bg-coral/10 text-coral text-xs flex-1">Refuser</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {showAdd && <SimpleAddModal title="Nouvelle pré-inscription" fields={[
+        {k:'enfant_prenom',l:'Prénom enfant'},{k:'enfant_nom',l:'Nom enfant'},
+        {k:'date_naissance',l:'Date de naissance',type:'date'},
+        {k:'parent_nom',l:'Nom parent'},{k:'parent_email',l:'Email parent'},{k:'parent_tel',l:'Téléphone'},
+        {k:'date_souhaitee',l:'Date entrée souhaitée',type:'date'},
+        {k:'contrat_heures',l:'Heures/semaine',type:'number',default:35},
+        {k:'notes',l:'Notes'}
+      ]} onSubmit={async(d)=>{await api('preinscriptions',{method:'POST',body:JSON.stringify({...d,creche_id:activeCId})});}} onClose={()=>{setShowAdd(false);load();}} />}
+    </div>
+  );
+}
+
+function FichesPaieView({ user, activeCId }) {
+  const [items, setItems] = useState([]);
+  const [employes, setEmployes] = useState([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const load = async () => {
+    try {
+      const d = await api('fiches-paie'); setItems(d.fiches||[]);
+      if (user.role === 'admin') { const e = await api('employes'+(activeCId?`?creche_id=${activeCId}`:'')); setEmployes(e.employes); }
+    } catch(e){}
+  };
+  useEffect(() => { load(); }, [activeCId]);
+  const onUpload = async (media) => {
+    const emp = employes.find(e => e.id === document.getElementById('fp_employe')?.value);
+    const periode = document.getElementById('fp_periode')?.value;
+    if (!emp || !periode) return toast.error('Sélectionne un employé et une période');
+    try { await api('fiches-paie', { method: 'POST', body: JSON.stringify({
+      employe_id: emp.id, employe_nom: `${emp.prenom} ${emp.nom}`, periode, url: media.url,
+      creche_id: activeCId }) }); toast.success('Fiche déposée'); setShowAdd(false); load();
+    } catch(e){ toast.error(e.message); }
+  };
+  return (
+    <div className="space-y-4 animate-fade-up">
+      {user.role === 'admin' && <div className="flex justify-end"><button onClick={()=>setShowAdd(true)} className="btn-pill bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Déposer une fiche</button></div>}
+      <div className="space-y-2">
+        {items.length===0 && <PlaceholderView title={user.role==='pro'?"Aucune fiche disponible":"Aucune fiche déposée"} icon={Wallet} />}
+        {items.map(f => (
+          <div key={f.id} className="bg-white rounded-lg p-4 shadow-softer flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-teal-light flex items-center justify-center"><Wallet className="w-5 h-5 text-teal" /></div>
+            <div className="flex-1 min-w-0"><div className="font-bold truncate-1">{f.employe_nom} · {f.periode}</div><div className="text-xs text-ink-muted">Déposée le {fmtDate(f.created_at)}</div></div>
+            {f.url && <a href={f.url} target="_blank" rel="noopener noreferrer" className="btn-pill bg-teal text-white text-xs">Télécharger</a>}
+          </div>
+        ))}
+      </div>
+      {showAdd && (
+        <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4">
+          <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">Déposer une fiche de paie</div><button onClick={()=>setShowAdd(false)}><X className="w-5 h-5" /></button></div>
+            <div className="space-y-3">
+              <select id="fp_employe" className="w-full px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold"><option value="">— Employé —</option>{employes.map(e=><option key={e.id} value={e.id}>{e.prenom} {e.nom}</option>)}</select>
+              <input id="fp_periode" placeholder="Période (ex: Juin 2026)" className="w-full px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" />
+              <MediaUploader folder="fiches-paie" onUpload={onUpload} />
+              <div className="text-xs text-ink-muted">Formats acceptés : PDF, image. Nécessite Cloudinary configuré.</div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatistiquesView({ activeCId }) {
+  const [s, setS] = useState(null);
+  useEffect(() => { (async()=>{try{const d=await api('statistiques'+(activeCId?`?creche_id=${activeCId}`:'')); setS(d.stats);}catch(e){}})(); }, [activeCId]);
+  if (!s) return <Loading />;
+  return (
+    <div className="space-y-4 animate-fade-up">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-lg p-4 shadow-softer"><div className="text-[11px] font-extrabold uppercase text-teal">Enfants</div><div className="text-3xl font-extrabold mt-1">{s.enfants}</div></div>
+        <div className="bg-white rounded-lg p-4 shadow-softer"><div className="text-[11px] font-extrabold uppercase text-violet">Employés</div><div className="text-3xl font-extrabold mt-1">{s.employes}</div></div>
+        <div className="bg-gradient-to-br from-teal to-teal-dark text-white rounded-lg p-4 shadow-soft"><div className="text-[11px] font-extrabold uppercase opacity-80">CA mois</div><div className="text-3xl font-extrabold mt-1">{fmtEur(s.ca_mois)}</div></div>
+        <div className="bg-white rounded-lg p-4 shadow-softer"><div className="text-[11px] font-extrabold uppercase text-coral">Impayés</div><div className="text-3xl font-extrabold mt-1">{s.factures_impayees}</div></div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-lg p-5 shadow-softer"><div className="font-extrabold text-lg mb-3">Répartition par section</div>
+          <div className="space-y-2">{Object.entries(s.enfants_par_groupe).map(([g,c]) => <div key={g} className="flex items-center justify-between p-2 rounded-2xl bg-bgsoft"><span className="font-bold text-sm">{g}</span><span className="font-extrabold text-teal-dark">{c}</span></div>)}</div>
+        </div>
+        <div className="bg-white rounded-lg p-5 shadow-softer"><div className="font-extrabold text-lg mb-3">Activités enregistrées</div>
+          <div className="space-y-2">{Object.entries(s.transmissions_par_type).slice(0,6).map(([t,c]) => { const meta = TYPE_META[t]||TYPE_META.note; return <div key={t} className="flex items-center justify-between p-2 rounded-2xl bg-bgsoft"><span className="font-bold text-sm capitalize">{meta.label}</span><span className="font-extrabold" style={{color:meta.color}}>{c}</span></div>; })}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NotificationsView({ activeCId, canSend }) {
+  const [items, setItems] = useState([]);
+  const [titre, setTitre] = useState('');
+  const [contenu, setContenu] = useState('');
+  const [cible, setCible] = useState('tous');
+  const load = async () => { try{const d=await api('notifications'); setItems(d.notifications||[]);}catch(e){} };
+  useEffect(() => { load(); }, [activeCId]);
+  const send = async () => {
+    if (!titre.trim() || !contenu.trim()) return toast.error('Titre + contenu requis');
+    try { await api('notifications', { method: 'POST', body: JSON.stringify({ titre, contenu, cible, creche_id: activeCId }) });
+      toast.success('Notification envoyée'); setTitre(''); setContenu(''); load(); }
+    catch(e){ toast.error(e.message); }
+  };
+  return (
+    <div className="space-y-4 animate-fade-up">
+      {canSend && (
+        <div className="bg-white rounded-lg p-5 shadow-softer">
+          <div className="font-extrabold text-lg mb-3">Envoyer une notification</div>
+          <div className="space-y-3">
+            <input value={titre} onChange={e=>setTitre(e.target.value)} placeholder="Titre" className="w-full px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" />
+            <textarea value={contenu} onChange={e=>setContenu(e.target.value)} placeholder="Contenu..." rows={3} className="w-full px-4 py-2.5 rounded-2xl bg-bgsoft outline-none text-sm font-semibold resize-none" />
+            <div className="flex gap-2 items-center">
+              <select value={cible} onChange={e=>setCible(e.target.value)} className="flex-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold">
+                <option value="tous">Tout le monde</option><option value="parent">Parents uniquement</option><option value="pro">Employés uniquement</option>
+              </select>
+              <button onClick={send} className="btn-pill bg-teal text-white shadow-soft"><Send className="w-4 h-4" /> Envoyer</button>
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="space-y-2">
+        {items.length===0 && <PlaceholderView title="Aucune notification" icon={Bell} />}
+        {items.map(n => (
+          <div key={n.id} className="bg-white rounded-lg p-4 shadow-softer">
+            <div className="flex items-center gap-2 mb-1"><Bell className="w-4 h-4 text-teal" /><div className="font-bold">{n.titre}</div><span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-bgsoft ml-auto capitalize">{n.cible}</span></div>
+            <div className="text-sm text-ink-muted">{n.contenu}</div>
+            <div className="text-xs text-ink-muted mt-1">Par {n.from_nom} · {fmtDate(n.created_at)}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AdministrationHub({ setView }) {
+  const modules = [
+    { key: 'admin/enfants', label: 'Enfants', icon: Baby, desc: 'Profils, photos, fiches santé, étiquettes' },
+    { key: 'admin/familles', label: 'Foyers', icon: Users, desc: 'Coordonnées, nombre d\'enfants' },
+    { key: 'admin/employes', label: 'Équipe', icon: Briefcase, desc: 'Comptes, mots de passe, poste' },
+    { key: 'admin/planning-employes', label: 'Contrats & horaires', icon: Calendar, desc: 'Contrats hebdo, prorata, taux' },
+    { key: 'admin/fiches-paie', label: 'Fiches de paie', icon: Wallet, desc: 'Dépôt et historique' },
+    { key: 'admin/devis', label: 'Devis & factures', icon: FileText, desc: 'Création, envoi, suivi' },
+    { key: 'admin/notifications', label: 'Notifications', icon: Bell, desc: 'Envoi groupé parents/employés' },
+    { key: 'admin/statistiques', label: 'Statistiques', icon: BarChart3, desc: 'CA, effectifs, activités' },
+    { key: 'admin/rgpd', label: 'RGPD & conditions', icon: ShieldCheck, desc: 'Clauses, conditions d\'utilisation' },
+    { key: 'admin/abonnement', label: 'Abonnement', icon: CreditCard, desc: 'Plan, factures, arrangements' },
+  ];
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-up">
+      {modules.map(m => { const Icon = m.icon; return (
+        <button key={m.key} onClick={()=>setView(m.key)} className="bg-white rounded-lg p-5 shadow-softer hover:shadow-soft hover:-translate-y-1 transition-all text-left">
+          <div className="w-12 h-12 rounded-2xl bg-teal-light flex items-center justify-center mb-3"><Icon className="w-6 h-6 text-teal-dark" /></div>
+          <div className="font-extrabold text-lg">{m.label}</div>
+          <div className="text-xs text-ink-muted mt-1">{m.desc}</div>
+        </button>
+      ); })}
+    </div>
+  );
+}
+
+function RGPDView() {
+  return (
+    <div className="space-y-4 animate-fade-up max-w-3xl">
+      <div className="bg-white rounded-lg p-6 shadow-softer">
+        <div className="flex items-center gap-3 mb-4"><ShieldCheck className="w-8 h-8 text-teal" /><div><div className="font-extrabold text-xl">RGPD & conditions</div><div className="text-xs text-ink-muted">Vos clauses, mentions légales et politique de confidentialité</div></div></div>
+        <div className="space-y-3 text-sm text-ink-muted">
+          <div className="p-4 rounded-2xl bg-bgsoft"><div className="font-extrabold text-ink mb-1">📋 Conditions d'utilisation</div><p>Éditez ici vos conditions générales d'utilisation applicables à vos parents et employés.</p></div>
+          <div className="p-4 rounded-2xl bg-bgsoft"><div className="font-extrabold text-ink mb-1">🔒 Politique de confidentialité</div><p>Traitement des données personnelles, durée de conservation, droits des utilisateurs (accès, rectification, suppression).</p></div>
+          <div className="p-4 rounded-2xl bg-bgsoft"><div className="font-extrabold text-ink mb-1">🍪 Cookies & traceurs</div><p>Aucun cookie tiers de tracking. Uniquement session sécurisée.</p></div>
+          <div className="p-4 rounded-2xl bg-teal-light text-teal-dark"><div className="font-extrabold mb-1">📞 Contact DPO</div><p className="text-ink-muted">Pour toute question : rgpd@timetis.re</p></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SuperClientEditor({ client, onClose }) {
+  const [sub, setSub] = useState(client.subscription || { status: 'trialing', plan: 'timetis-79', prix_perso: 79 });
+  const [prixCreche, setPrixCreche] = useState(client.plan_prix?.creche_supp || 40);
+  const [notes, setNotes] = useState(client.notes_admin || '');
+  const save = async () => {
+    try { await api(`users/${client.id}`, { method: 'PUT', body: JSON.stringify({ subscription: sub, plan_prix: { base: sub.prix_perso, creche_supp: +prixCreche }, notes_admin: notes }) });
+      toast.success('Client mis à jour'); onClose(); }
+    catch(e){ toast.error(e.message); }
+  };
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-lg my-6">
+        <div className="flex items-center justify-between mb-4"><div><div className="font-extrabold text-lg">{client.prenom} {client.nom}</div><div className="text-xs text-ink-muted">{client.email} · {(client.creches||[]).length} crèche(s)</div></div><button onClick={onClose}><X className="w-5 h-5" /></button></div>
+        <div className="space-y-3">
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Statut abonnement</label>
+            <select value={sub.status} onChange={e=>setSub({...sub,status:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold">
+              <option value="trialing">Essai</option><option value="active">Actif</option><option value="past_due">Impayé</option><option value="canceled">Annulé</option><option value="paused">En pause</option>
+            </select></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Prix personnalisé (€/mois)</label><input type="number" value={sub.prix_perso||79} onChange={e=>setSub({...sub,prix_perso:+e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Prix crèche supp (€)</label><input type="number" value={prixCreche} onChange={e=>setPrixCreche(e.target.value)} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          </div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Notes admin (interne)</label>
+            <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Arrangement, remarques..." rows={3} className="w-full mt-1 px-4 py-2.5 rounded-2xl bg-bgsoft outline-none text-sm font-semibold resize-none" /></div>
+          <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function SuperProspects() {
+  const [items, setItems] = useState([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const load = async () => { try{const d=await api('super/prospects'); setItems(d.prospects||[]);}catch(e){} };
+  useEffect(() => { load(); }, []);
+  return (
+    <div className="space-y-4 animate-fade-up">
+      <div className="flex justify-end"><button onClick={()=>setShowAdd(true)} className="btn-pill bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Nouveau prospect</button></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {items.length===0 && <PlaceholderView title="Aucun prospect" icon={UserCheck} />}
+        {items.map(p => (
+          <div key={p.id} className="bg-white rounded-lg p-5 shadow-softer">
+            <div className="flex items-center justify-between"><div className="font-extrabold text-lg">{p.nom}</div><span className={`text-[10px] font-bold px-2 py-1 rounded-full ${p.statut==='converti'?'bg-teal-light text-teal-dark':'bg-amber/20 text-amber'}`}>{p.statut}</span></div>
+            <div className="text-xs text-ink-muted mt-1">{p.contact} · {p.ville}</div>
+            <div className="text-xs text-ink-muted">{p.email} · {p.tel}</div>
+            {p.notes && <div className="text-xs italic text-ink-muted mt-2">{p.notes}</div>}
+          </div>
+        ))}
+      </div>
+      {showAdd && <SimpleAddModal title="Nouveau prospect crèche" fields={[{k:'nom',l:'Nom crèche'},{k:'contact',l:'Contact'},{k:'email',l:'Email'},{k:'tel',l:'Téléphone'},{k:'ville',l:'Ville'},{k:'notes',l:'Notes'}]} onSubmit={async(d)=>{await api('super/prospects',{method:'POST',body:JSON.stringify(d)});}} onClose={()=>{setShowAdd(false);load();}} />}
+    </div>
+  );
+}
+
 function App() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState(null);
@@ -2565,9 +2856,17 @@ function App() {
     switch (view) {
       case 'super/dashboard': return <SuperDashboard />;
       case 'super/clients': return <SuperClients />;
+      case 'super/prospects': return <SuperProspects />;
+      case 'super/factures': return <PlaceholderView title="Devis & factures SaaS" icon={FileText} subtitle="Facturation clients (79€ + 40€/crèche supp)" />;
       case 'super/feedbacks': return <SuperFeedbacks />;
-      case 'super/settings': return <PlaceholderView title="Paramètres" icon={Settings} />;
+      case 'super/settings': return <ProfileEditor user={user} />;
       case 'admin/dashboard': return <AdminDashboard user={user} activeCId={activeCId} />;
+      case 'admin/preinscriptions': return <PreinscriptionsView activeCId={activeCId} canEdit />;
+      case 'admin/fiches-paie': return <FichesPaieView user={user} activeCId={activeCId} />;
+      case 'admin/notifications': return <NotificationsView activeCId={activeCId} canSend />;
+      case 'admin/statistiques': return <StatistiquesView activeCId={activeCId} />;
+      case 'admin/administration': return <AdministrationHub setView={setView} />;
+      case 'admin/rgpd': return <RGPDView />;
       case 'admin/enfants': return <AdminEnfants activeCId={activeCId} />;
       case 'admin/familles': return <AdminFamilles activeCId={activeCId} />;
       case 'admin/groupes': return <AdminGroupes activeCId={activeCId} />;
@@ -2588,9 +2887,10 @@ function App() {
       case 'admin/alarme': return <AlarmeEvacuation activeCId={activeCId} />;
       case 'admin/abonnement': return <AbonnementView user={user} />;
       case 'admin/feedback': return <FeedbackForm user={user} />;
-      case 'pro/profil': return <ProProfil user={user} />;
+      case 'pro/profil': return <ProfileEditor user={user} />;
       case 'pro/pointage': return <ProPointage user={user} />;
       case 'pro/mes-horaires': return <ProMesHoraires user={user} />;
+      case 'pro/fiches-paie': return <FichesPaieView user={user} activeCId={user.creche_id} />;
       case 'pro/activites': return <ProActivites user={user} />;
       case 'pro/enfants': return <AdminEnfants activeCId={user.creche_id} />;
       case 'pro/nourriture': return <NourritureView activeCId={user.creche_id} canEdit />;
