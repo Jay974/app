@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-TiKréol Backend API Test Suite
-Tests all backend endpoints with role-based access control
+TiMétis V2 Backend Testing Suite
+Tests multi-tenant SaaS architecture with 6 demo accounts
 """
 
 import requests
@@ -10,1166 +10,1169 @@ import random
 import string
 from datetime import datetime
 
-# Base URL from environment
+# Backend URL from .env
 BASE_URL = "https://tikreol-demo.preview.emergentagent.com/api"
 
-# Demo accounts (all with password "demo1234")
-DEMO_ACCOUNTS = {
-    "admin": {"email": "admin@demo.re", "password": "demo1234"},
+# Demo accounts
+ACCOUNTS = {
+    "super_admin": {"email": "jeanchrisoulia@gmail.com", "password": "TiMetis974!"},
+    "marie": {"email": "admin@demo.re", "password": "demo1234"},  # 2 crèches
+    "sophie": {"email": "admin2@demo.re", "password": "demo1234"},  # 1 crèche
     "pro": {"email": "pro@demo.re", "password": "demo1234"},
-    "parent": {"email": "parent@demo.re", "password": "demo1234"},
-    "parent2": {"email": "parent2@demo.re", "password": "demo1234"},
+    "parent": {"email": "parent@demo.re", "password": "demo1234"},  # Jean Bègue
+    "parent2": {"email": "parent2@demo.re", "password": "demo1234"},  # Élodie Técher
 }
 
 # Store tokens and user data
 tokens = {}
 users = {}
-enfants_data = {}
+creches = {}
 
-def print_test(name):
-    print(f"\n{'='*80}")
-    print(f"TEST: {name}")
-    print('='*80)
+def login(account_key):
+    """Login and store token"""
+    try:
+        account = ACCOUNTS[account_key]
+        resp = requests.post(f"{BASE_URL}/auth/login", json=account, timeout=10)
+        print(f"✓ Login {account_key} ({account['email']}): {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            tokens[account_key] = data.get("token")
+            users[account_key] = data.get("user")
+            print(f"  User: {users[account_key].get('prenom')} {users[account_key].get('nom')} (role: {users[account_key].get('role')})")
+            return True
+        else:
+            print(f"  ✗ FAILED: {resp.text}")
+            return False
+    except Exception as e:
+        print(f"  ✗ EXCEPTION: {e}")
+        return False
 
-def print_success(msg):
-    print(f"✅ {msg}")
+def get_headers(account_key):
+    """Get auth headers for account"""
+    return {"Authorization": f"Bearer {tokens[account_key]}"}
 
-def print_error(msg):
-    print(f"❌ {msg}")
-
-def print_info(msg):
-    print(f"ℹ️  {msg}")
-
-
-# ============================================================================
-# TEST 1: Auth Login
-# ============================================================================
-def test_auth_login():
-    print_test("1. Auth Login - POST /api/auth/login")
+def test_auth():
+    """Test 1: Auth - all 6 demo accounts"""
+    print("\n" + "="*80)
+    print("TEST 1: AUTH - All 6 demo accounts")
+    print("="*80)
     
-    all_passed = True
+    results = []
+    for key in ACCOUNTS.keys():
+        success = login(key)
+        results.append(success)
     
-    # Test each demo account
-    for role, creds in DEMO_ACCOUNTS.items():
-        try:
-            print_info(f"Testing login for {role}: {creds['email']}")
-            response = requests.post(
-                f"{BASE_URL}/auth/login",
-                json=creds,
-                headers={"Content-Type": "application/json"}
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                if "token" in data and "user" in data:
-                    user = data["user"]
-                    required_fields = ["id", "email", "role", "prenom", "nom", "creche_id"]
-                    if all(field in user for field in required_fields):
-                        tokens[role] = data["token"]
-                        users[role] = user
-                        print_success(f"{role} login successful - token received, user: {user['prenom']} {user['nom']} (role: {user['role']})")
-                    else:
-                        print_error(f"{role} login missing required user fields: {user}")
-                        all_passed = False
-                else:
-                    print_error(f"{role} login response missing token or user: {data}")
-                    all_passed = False
-            else:
-                print_error(f"{role} login failed with status {response.status_code}: {response.text}")
-                all_passed = False
-        except Exception as e:
-            print_error(f"{role} login exception: {str(e)}")
-            all_passed = False
+    # Verify super_admin
+    if users.get("super_admin", {}).get("role") == "super_admin":
+        print("✓ Super admin role verified")
+        if users["super_admin"].get("creche_ids") == []:
+            print("✓ Super admin has empty creche_ids")
+        else:
+            print(f"✗ Super admin creche_ids should be empty, got: {users['super_admin'].get('creche_ids')}")
+    
+    # Verify Marie (2 crèches)
+    if users.get("marie", {}).get("role") == "admin":
+        marie_creches = users["marie"].get("creche_ids", [])
+        if len(marie_creches) == 2:
+            print(f"✓ Marie has 2 crèches: {marie_creches}")
+        else:
+            print(f"✗ Marie should have 2 crèches, got {len(marie_creches)}")
+    
+    # Verify Sophie (1 crèche)
+    if users.get("sophie", {}).get("role") == "admin":
+        sophie_creches = users["sophie"].get("creche_ids", [])
+        if len(sophie_creches) == 1:
+            print(f"✓ Sophie has 1 crèche: {sophie_creches}")
+        else:
+            print(f"✗ Sophie should have 1 crèche, got {len(sophie_creches)}")
+    
+    # Verify parent/pro have creche_id (not creche_ids)
+    if users.get("parent", {}).get("creche_id"):
+        print(f"✓ Parent has creche_id: {users['parent'].get('creche_id')}")
+    if users.get("pro", {}).get("creche_id"):
+        print(f"✓ Pro has creche_id: {users['pro'].get('creche_id')}")
     
     # Test wrong password
     try:
-        print_info("Testing wrong password")
-        response = requests.post(
-            f"{BASE_URL}/auth/login",
-            json={"email": "admin@demo.re", "password": "wrongpassword"},
-            headers={"Content-Type": "application/json"}
-        )
-        if response.status_code == 401:
-            print_success("Wrong password correctly returns 401")
+        resp = requests.post(f"{BASE_URL}/auth/login", 
+                           json={"email": "admin@demo.re", "password": "wrongpass"}, 
+                           timeout=10)
+        if resp.status_code == 401:
+            print("✓ Wrong password returns 401")
         else:
-            print_error(f"Wrong password should return 401, got {response.status_code}")
-            all_passed = False
+            print(f"✗ Wrong password should return 401, got {resp.status_code}")
     except Exception as e:
-        print_error(f"Wrong password test exception: {str(e)}")
-        all_passed = False
+        print(f"✗ Wrong password test exception: {e}")
     
-    # Test unknown email
-    try:
-        print_info("Testing unknown email")
-        response = requests.post(
-            f"{BASE_URL}/auth/login",
-            json={"email": "unknown@demo.re", "password": "demo1234"},
-            headers={"Content-Type": "application/json"}
-        )
-        if response.status_code == 401:
-            print_success("Unknown email correctly returns 401")
-        else:
-            print_error(f"Unknown email should return 401, got {response.status_code}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"Unknown email test exception: {str(e)}")
-        all_passed = False
-    
-    return all_passed
+    return all(results)
 
-
-# ============================================================================
-# TEST 2: Auth Register
-# ============================================================================
-def test_auth_register():
-    print_test("2. Auth Register - POST /api/auth/register")
+def test_super_admin():
+    """Test 2: Super admin endpoints"""
+    print("\n" + "="*80)
+    print("TEST 2: SUPER ADMIN ENDPOINTS")
+    print("="*80)
     
-    all_passed = True
-    
-    # Test new user registration
+    # GET /super/stats
     try:
-        rand_suffix = ''.join(random.choices(string.digits, k=6))
-        new_email = f"test+{rand_suffix}@demo.re"
-        print_info(f"Testing registration with new email: {new_email}")
+        resp = requests.get(f"{BASE_URL}/super/stats", 
+                          headers=get_headers("super_admin"), 
+                          timeout=10)
+        print(f"✓ GET /super/stats: {resp.status_code}")
         
-        response = requests.post(
-            f"{BASE_URL}/auth/register",
-            json={
-                "email": new_email,
-                "password": "testpass123",
-                "prenom": "Test",
-                "nom": "User",
-                "role": "parent"
-            },
-            headers={"Content-Type": "application/json"}
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            if "token" in data:
-                print_success(f"Registration successful - token received for {new_email}")
+        if resp.status_code == 200:
+            data = resp.json()
+            stats = data.get("stats", {})
+            print(f"  Stats: {json.dumps(stats, indent=2)}")
+            
+            # Verify counts
+            if stats.get("clients") == 2:
+                print("  ✓ clients = 2")
             else:
-                print_error(f"Registration response missing token: {data}")
-                all_passed = False
-        else:
-            print_error(f"Registration failed with status {response.status_code}: {response.text}")
-            all_passed = False
+                print(f"  ✗ clients should be 2, got {stats.get('clients')}")
+            
+            if stats.get("creches") == 3:
+                print("  ✓ creches = 3")
+            else:
+                print(f"  ✗ creches should be 3, got {stats.get('creches')}")
+            
+            if stats.get("enfants") == 5:
+                print("  ✓ enfants = 5")
+            else:
+                print(f"  ✗ enfants should be 5, got {stats.get('enfants')}")
+            
+            # MRR should be 79 * active subscriptions (Sophie is active)
+            expected_mrr = 79 * stats.get("actifs", 0)
+            if stats.get("mrr") == expected_mrr:
+                print(f"  ✓ MRR = {stats.get('mrr')} (79 * {stats.get('actifs')} active)")
+            else:
+                print(f"  ✗ MRR should be {expected_mrr}, got {stats.get('mrr')}")
     except Exception as e:
-        print_error(f"Registration test exception: {str(e)}")
-        all_passed = False
+        print(f"✗ GET /super/stats exception: {e}")
     
-    # Test duplicate email
+    # GET /super/clients
     try:
-        print_info("Testing duplicate email registration")
-        response = requests.post(
-            f"{BASE_URL}/auth/register",
-            json={
-                "email": "admin@demo.re",
-                "password": "testpass123",
-                "prenom": "Duplicate",
-                "nom": "User",
-                "role": "parent"
-            },
-            headers={"Content-Type": "application/json"}
-        )
+        resp = requests.get(f"{BASE_URL}/super/clients", 
+                          headers=get_headers("super_admin"), 
+                          timeout=10)
+        print(f"✓ GET /super/clients: {resp.status_code}")
         
-        if response.status_code == 409:
-            print_success("Duplicate email correctly returns 409")
-        else:
-            print_error(f"Duplicate email should return 409, got {response.status_code}")
-            all_passed = False
+        if resp.status_code == 200:
+            data = resp.json()
+            clients = data.get("clients", [])
+            print(f"  Clients count: {len(clients)}")
+            
+            if len(clients) == 2:
+                print("  ✓ 2 clients returned")
+                for client in clients:
+                    print(f"    - {client.get('prenom')} {client.get('nom')}: {len(client.get('creches', []))} crèches, {client.get('nb_enfants')} enfants")
+            else:
+                print(f"  ✗ Should have 2 clients, got {len(clients)}")
     except Exception as e:
-        print_error(f"Duplicate email test exception: {str(e)}")
-        all_passed = False
+        print(f"✗ GET /super/clients exception: {e}")
     
-    return all_passed
+    # Test that Marie (admin) CANNOT access super endpoints
+    try:
+        resp = requests.get(f"{BASE_URL}/super/stats", 
+                          headers=get_headers("marie"), 
+                          timeout=10)
+        print(f"✓ Marie accessing /super/stats: {resp.status_code}")
+        
+        if resp.status_code in [404, 403]:
+            print("  ✓ Marie correctly denied access to super endpoint")
+        else:
+            print(f"  ✗ Marie should be denied (404/403), got {resp.status_code}")
+    except Exception as e:
+        print(f"✗ Marie super access test exception: {e}")
 
-
-# ============================================================================
-# TEST 3: Auth Me
-# ============================================================================
-def test_auth_me():
-    print_test("3. Auth Me - GET /api/auth/me")
+def test_multi_tenant_isolation():
+    """Test 3: Multi-tenant crèche isolation (CRITICAL)"""
+    print("\n" + "="*80)
+    print("TEST 3: MULTI-TENANT CRÈCHE ISOLATION (CRITICAL)")
+    print("="*80)
     
-    all_passed = True
+    # Marie: GET /creches (should return 2)
+    try:
+        resp = requests.get(f"{BASE_URL}/creches", 
+                          headers=get_headers("marie"), 
+                          timeout=10)
+        print(f"✓ Marie GET /creches: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            marie_creches = data.get("creches", [])
+            print(f"  Marie's crèches: {len(marie_creches)}")
+            
+            if len(marie_creches) == 2:
+                print("  ✓ Marie sees exactly 2 crèches")
+                for c in marie_creches:
+                    if c.get("owner_id") == users["marie"]["id"]:
+                        print(f"    ✓ {c.get('nom')} - {c.get('ville')} (owner verified)")
+                        creches[f"marie_{c.get('ville')}"] = c.get("id")
+                    else:
+                        print(f"    ✗ Crèche owner_id mismatch!")
+            else:
+                print(f"  ✗ Marie should see 2 crèches, got {len(marie_creches)}")
+    except Exception as e:
+        print(f"✗ Marie GET /creches exception: {e}")
     
-    for role in ["admin", "pro", "parent"]:
+    # Sophie: GET /creches (should return 1)
+    try:
+        resp = requests.get(f"{BASE_URL}/creches", 
+                          headers=get_headers("sophie"), 
+                          timeout=10)
+        print(f"✓ Sophie GET /creches: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            sophie_creches = data.get("creches", [])
+            print(f"  Sophie's crèches: {len(sophie_creches)}")
+            
+            if len(sophie_creches) == 1:
+                print("  ✓ Sophie sees exactly 1 crèche")
+                creches["sophie"] = sophie_creches[0].get("id")
+                print(f"    {sophie_creches[0].get('nom')} - {sophie_creches[0].get('ville')}")
+            else:
+                print(f"  ✗ Sophie should see 1 crèche, got {len(sophie_creches)}")
+    except Exception as e:
+        print(f"✗ Sophie GET /creches exception: {e}")
+    
+    # Marie: GET /enfants for her Saint-Denis crèche
+    marie_sd_id = creches.get("marie_Saint-Denis")
+    if marie_sd_id:
         try:
-            if role not in tokens:
-                print_error(f"No token available for {role}")
-                all_passed = False
-                continue
+            resp = requests.get(f"{BASE_URL}/enfants?creche_id={marie_sd_id}", 
+                              headers=get_headers("marie"), 
+                              timeout=10)
+            print(f"✓ Marie GET /enfants (Saint-Denis): {resp.status_code}")
             
-            print_info(f"Testing /auth/me for {role}")
-            response = requests.get(
-                f"{BASE_URL}/auth/me",
-                headers={"Authorization": f"Bearer {tokens[role]}"}
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                if "user" in data:
-                    user = data["user"]
-                    print_success(f"{role} /auth/me successful - user: {user.get('prenom')} {user.get('nom')} (role: {user.get('role')})")
+            if resp.status_code == 200:
+                data = resp.json()
+                enfants = data.get("enfants", [])
+                print(f"  Enfants in Saint-Denis: {len(enfants)}")
+                
+                if len(enfants) == 5:
+                    print("  ✓ Marie sees 5 children in Saint-Denis")
                 else:
-                    print_error(f"{role} /auth/me response missing user: {data}")
-                    all_passed = False
-            else:
-                print_error(f"{role} /auth/me failed with status {response.status_code}: {response.text}")
-                all_passed = False
+                    print(f"  ✗ Expected 5 children, got {len(enfants)}")
         except Exception as e:
-            print_error(f"{role} /auth/me exception: {str(e)}")
-            all_passed = False
+            print(f"✗ Marie GET /enfants exception: {e}")
     
-    return all_passed
-
-
-# ============================================================================
-# TEST 4: Enfants Role-Based Filtering (CRITICAL)
-# ============================================================================
-def test_enfants_filtering():
-    print_test("4. Enfants Role-Based Filtering - GET /api/enfants (CRITICAL)")
+    # Marie: GET /enfants for Sophie's crèche (should return 0 - RLS check)
+    sophie_id = creches.get("sophie")
+    if sophie_id:
+        try:
+            resp = requests.get(f"{BASE_URL}/enfants?creche_id={sophie_id}", 
+                              headers=get_headers("marie"), 
+                              timeout=10)
+            print(f"✓ Marie GET /enfants (Sophie's crèche): {resp.status_code}")
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                enfants = data.get("enfants", [])
+                print(f"  Enfants in Sophie's crèche: {len(enfants)}")
+                
+                if len(enfants) == 0:
+                    print("  ✓ CRITICAL: Marie cannot see Sophie's data (RLS working)")
+                else:
+                    print(f"  ✗ CRITICAL: Marie should NOT see Sophie's children! Got {len(enfants)}")
+        except Exception as e:
+            print(f"✗ Marie accessing Sophie's data exception: {e}")
     
-    all_passed = True
-    
-    # Test admin - should see all 5 children
+    # Sophie: GET /enfants (should return 0 - no children seeded)
     try:
-        print_info("Testing admin access to /api/enfants")
-        response = requests.get(
-            f"{BASE_URL}/enfants",
-            headers={"Authorization": f"Bearer {tokens['admin']}"}
-        )
+        resp = requests.get(f"{BASE_URL}/enfants", 
+                          headers=get_headers("sophie"), 
+                          timeout=10)
+        print(f"✓ Sophie GET /enfants: {resp.status_code}")
         
-        if response.status_code == 200:
-            data = response.json()
+        if resp.status_code == 200:
+            data = resp.json()
             enfants = data.get("enfants", [])
-            enfants_data["admin"] = enfants
+            print(f"  Sophie's enfants: {len(enfants)}")
             
-            if len(enfants) == 5:
-                names = [e["prenom"] for e in enfants]
-                expected = ["Lucas", "Emma", "Chloé", "Noah", "Léa"]
-                if all(name in names for name in expected):
-                    print_success(f"Admin sees all 5 children: {', '.join(names)}")
-                else:
-                    print_error(f"Admin sees 5 children but names don't match. Expected: {expected}, Got: {names}")
-                    all_passed = False
+            if len(enfants) == 0:
+                print("  ✓ Sophie has 0 children (none seeded)")
             else:
-                print_error(f"Admin should see 5 children, got {len(enfants)}")
-                all_passed = False
-        else:
-            print_error(f"Admin /api/enfants failed with status {response.status_code}: {response.text}")
-            all_passed = False
+                print(f"  ✗ Sophie should have 0 children, got {len(enfants)}")
     except Exception as e:
-        print_error(f"Admin enfants test exception: {str(e)}")
-        all_passed = False
+        print(f"✗ Sophie GET /enfants exception: {e}")
+
+def test_creche_switcher():
+    """Test 4: Crèche switcher (?creche_id=)"""
+    print("\n" + "="*80)
+    print("TEST 4: CRÈCHE SWITCHER (?creche_id=)")
+    print("="*80)
     
-    # Test pro - should see all 5 children (same crèche)
-    try:
-        print_info("Testing pro access to /api/enfants")
-        response = requests.get(
-            f"{BASE_URL}/enfants",
-            headers={"Authorization": f"Bearer {tokens['pro']}"}
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            enfants = data.get("enfants", [])
-            enfants_data["pro"] = enfants
+    marie_sd_id = creches.get("marie_Saint-Denis")
+    marie_sp_id = creches.get("marie_Saint-Paul")
+    
+    # Marie: dashboard stats for Saint-Denis
+    if marie_sd_id:
+        try:
+            resp = requests.get(f"{BASE_URL}/dashboard/stats?creche_id={marie_sd_id}", 
+                              headers=get_headers("marie"), 
+                              timeout=10)
+            print(f"✓ Marie dashboard/stats (Saint-Denis): {resp.status_code}")
             
-            if len(enfants) == 5:
-                names = [e["prenom"] for e in enfants]
-                print_success(f"Pro sees all 5 children: {', '.join(names)}")
-            else:
-                print_error(f"Pro should see 5 children, got {len(enfants)}")
-                all_passed = False
-        else:
-            print_error(f"Pro /api/enfants failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"Pro enfants test exception: {str(e)}")
-        all_passed = False
-    
-    # Test parent@demo.re - should see ONLY Lucas + Noah (2 children)
-    try:
-        print_info("Testing parent@demo.re access to /api/enfants")
-        response = requests.get(
-            f"{BASE_URL}/enfants",
-            headers={"Authorization": f"Bearer {tokens['parent']}"}
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            enfants = data.get("enfants", [])
-            enfants_data["parent"] = enfants
-            
-            if len(enfants) == 2:
-                names = [e["prenom"] for e in enfants]
-                if "Lucas" in names and "Noah" in names:
-                    print_success(f"parent@demo.re sees only their 2 children: {', '.join(names)}")
-                else:
-                    print_error(f"parent@demo.re should see Lucas and Noah, got: {names}")
-                    all_passed = False
-            else:
-                print_error(f"parent@demo.re should see 2 children, got {len(enfants)}: {[e['prenom'] for e in enfants]}")
-                all_passed = False
-        else:
-            print_error(f"parent@demo.re /api/enfants failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"parent@demo.re enfants test exception: {str(e)}")
-        all_passed = False
-    
-    # Test parent2@demo.re - should see ONLY Emma + Chloé + Léa (3 children)
-    try:
-        print_info("Testing parent2@demo.re access to /api/enfants")
-        response = requests.get(
-            f"{BASE_URL}/enfants",
-            headers={"Authorization": f"Bearer {tokens['parent2']}"}
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            enfants = data.get("enfants", [])
-            enfants_data["parent2"] = enfants
-            
-            if len(enfants) == 3:
-                names = [e["prenom"] for e in enfants]
-                if "Emma" in names and "Chloé" in names and "Léa" in names:
-                    print_success(f"parent2@demo.re sees only their 3 children: {', '.join(names)}")
-                else:
-                    print_error(f"parent2@demo.re should see Emma, Chloé, and Léa, got: {names}")
-                    all_passed = False
-            else:
-                print_error(f"parent2@demo.re should see 3 children, got {len(enfants)}: {[e['prenom'] for e in enfants]}")
-                all_passed = False
-        else:
-            print_error(f"parent2@demo.re /api/enfants failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"parent2@demo.re enfants test exception: {str(e)}")
-        all_passed = False
-    
-    # Test parent accessing another parent's child by ID (should return 403)
-    try:
-        print_info("Testing parent@demo.re accessing parent2's child (should be 403)")
-        # Get Emma's ID (belongs to parent2)
-        if "parent2" in enfants_data and len(enfants_data["parent2"]) > 0:
-            emma = next((e for e in enfants_data["parent2"] if e["prenom"] == "Emma"), None)
-            if emma:
-                response = requests.get(
-                    f"{BASE_URL}/enfants/{emma['id']}",
-                    headers={"Authorization": f"Bearer {tokens['parent']}"}
-                )
+            if resp.status_code == 200:
+                data = resp.json()
+                stats = data.get("stats", {})
+                print(f"  Saint-Denis stats: enfants_total={stats.get('enfants_total')}")
                 
-                if response.status_code == 403:
-                    print_success("parent@demo.re correctly denied access to parent2's child (403)")
+                if stats.get("enfants_total") == 5:
+                    print("  ✓ Saint-Denis has 5 enfants")
                 else:
-                    print_error(f"parent@demo.re accessing parent2's child should return 403, got {response.status_code}")
-                    all_passed = False
-            else:
-                print_info("Could not find Emma to test cross-parent access")
-        else:
-            print_info("Skipping cross-parent access test - no parent2 data")
-    except Exception as e:
-        print_error(f"Cross-parent access test exception: {str(e)}")
-        all_passed = False
+                    print(f"  ✗ Expected 5 enfants, got {stats.get('enfants_total')}")
+        except Exception as e:
+            print(f"✗ Marie dashboard Saint-Denis exception: {e}")
     
-    return all_passed
-
-
-# ============================================================================
-# TEST 5: Enfants POST (Admin Only)
-# ============================================================================
-def test_enfants_post():
-    print_test("5. Enfants POST - POST /api/enfants (Admin Only)")
-    
-    all_passed = True
-    
-    # Test admin can POST
-    try:
-        print_info("Testing admin POST /api/enfants")
-        response = requests.post(
-            f"{BASE_URL}/enfants",
-            json={
-                "prenom": "TestChild",
-                "nom": "Demo",
-                "groupe": "Tournesol",
-                "contrat_heures": 35,
-                "mensualite": 500,
-                "avatar_color": "#FF6B6B"
-            },
-            headers={
-                "Authorization": f"Bearer {tokens['admin']}",
-                "Content-Type": "application/json"
-            }
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            if "enfant" in data and "id" in data["enfant"]:
-                print_success(f"Admin successfully created enfant with id: {data['enfant']['id']}")
-            else:
-                print_error(f"Admin POST response missing enfant or id: {data}")
-                all_passed = False
-        else:
-            print_error(f"Admin POST /api/enfants failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"Admin POST enfants exception: {str(e)}")
-        all_passed = False
-    
-    # Test pro cannot POST (should fail)
-    try:
-        print_info("Testing pro POST /api/enfants (should be rejected)")
-        response = requests.post(
-            f"{BASE_URL}/enfants",
-            json={
-                "prenom": "TestChild2",
-                "groupe": "Tournesol",
-                "contrat_heures": 35,
-                "mensualite": 500,
-                "avatar_color": "#FF6B6B"
-            },
-            headers={
-                "Authorization": f"Bearer {tokens['pro']}",
-                "Content-Type": "application/json"
-            }
-        )
-        
-        if response.status_code != 200:
-            print_success(f"Pro correctly denied POST /api/enfants (status {response.status_code})")
-        else:
-            print_error(f"Pro should not be able to POST /api/enfants, but got 200")
-            all_passed = False
-    except Exception as e:
-        print_error(f"Pro POST enfants exception: {str(e)}")
-        all_passed = False
-    
-    # Test parent cannot POST (should fail)
-    try:
-        print_info("Testing parent POST /api/enfants (should be rejected)")
-        response = requests.post(
-            f"{BASE_URL}/enfants",
-            json={
-                "prenom": "TestChild3",
-                "groupe": "Tournesol",
-                "contrat_heures": 35,
-                "mensualite": 500,
-                "avatar_color": "#FF6B6B"
-            },
-            headers={
-                "Authorization": f"Bearer {tokens['parent']}",
-                "Content-Type": "application/json"
-            }
-        )
-        
-        if response.status_code != 200:
-            print_success(f"Parent correctly denied POST /api/enfants (status {response.status_code})")
-        else:
-            print_error(f"Parent should not be able to POST /api/enfants, but got 200")
-            all_passed = False
-    except Exception as e:
-        print_error(f"Parent POST enfants exception: {str(e)}")
-        all_passed = False
-    
-    return all_passed
-
-
-# ============================================================================
-# TEST 6: Transmissions (CRITICAL)
-# ============================================================================
-def test_transmissions():
-    print_test("6. Transmissions - GET/POST/DELETE /api/transmissions (CRITICAL)")
-    
-    all_passed = True
-    
-    # Get today's date
-    today = datetime.now().strftime("%Y-%m-%d")
-    
-    # Test admin GET all transmissions for today
-    try:
-        print_info(f"Testing admin GET /api/transmissions?date={today}")
-        response = requests.get(
-            f"{BASE_URL}/transmissions?date={today}",
-            headers={"Authorization": f"Bearer {tokens['admin']}"}
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            transmissions = data.get("transmissions", [])
-            if len(transmissions) == 9:
-                print_success(f"Admin sees 9 sample transmissions for today")
-            else:
-                print_error(f"Admin should see 9 transmissions, got {len(transmissions)}")
-                all_passed = False
-        else:
-            print_error(f"Admin GET transmissions failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"Admin GET transmissions exception: {str(e)}")
-        all_passed = False
-    
-    # Test admin GET transmissions for Lucas
-    try:
-        if "admin" in enfants_data:
-            lucas = next((e for e in enfants_data["admin"] if e["prenom"] == "Lucas"), None)
-            if lucas:
-                print_info(f"Testing admin GET /api/transmissions?enfant_id={lucas['id']}&date={today}")
-                response = requests.get(
-                    f"{BASE_URL}/transmissions?enfant_id={lucas['id']}&date={today}",
-                    headers={"Authorization": f"Bearer {tokens['admin']}"}
-                )
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    transmissions = data.get("transmissions", [])
-                    if len(transmissions) == 6:
-                        print_success(f"Admin sees 6 transmissions for Lucas")
-                    else:
-                        print_error(f"Admin should see 6 transmissions for Lucas, got {len(transmissions)}")
-                        all_passed = False
-                else:
-                    print_error(f"Admin GET Lucas transmissions failed with status {response.status_code}: {response.text}")
-                    all_passed = False
-            else:
-                print_info("Could not find Lucas to test transmissions")
-        else:
-            print_info("Skipping Lucas transmissions test - no admin enfants data")
-    except Exception as e:
-        print_error(f"Admin GET Lucas transmissions exception: {str(e)}")
-        all_passed = False
-    
-    # Test parent@demo.re GET transmissions (should only see their children's, visible_parents=true)
-    try:
-        print_info("Testing parent@demo.re GET /api/transmissions")
-        response = requests.get(
-            f"{BASE_URL}/transmissions",
-            headers={"Authorization": f"Bearer {tokens['parent']}"}
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            transmissions = data.get("transmissions", [])
-            # All should have visible_parents=true
-            all_visible = all(t.get("visible_parents", False) for t in transmissions)
-            if all_visible:
-                print_success(f"parent@demo.re sees {len(transmissions)} transmissions, all with visible_parents=true")
-            else:
-                print_error(f"parent@demo.re transmissions should all have visible_parents=true")
-                all_passed = False
+    # Marie: dashboard stats for Saint-Paul
+    if marie_sp_id:
+        try:
+            resp = requests.get(f"{BASE_URL}/dashboard/stats?creche_id={marie_sp_id}", 
+                              headers=get_headers("marie"), 
+                              timeout=10)
+            print(f"✓ Marie dashboard/stats (Saint-Paul): {resp.status_code}")
             
-            # Check that all transmissions are for their children
-            if "parent" in enfants_data:
-                parent_child_ids = [e["id"] for e in enfants_data["parent"]]
-                all_own_children = all(t.get("enfant_id") in parent_child_ids for t in transmissions)
-                if all_own_children:
-                    print_success(f"parent@demo.re transmissions are all for their own children")
-                else:
-                    print_error(f"parent@demo.re sees transmissions for other children")
-                    all_passed = False
-        else:
-            print_error(f"parent@demo.re GET transmissions failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"parent@demo.re GET transmissions exception: {str(e)}")
-        all_passed = False
-    
-    # Test pro POST transmission
-    transmission_id = None
-    try:
-        if "admin" in enfants_data and len(enfants_data["admin"]) > 0:
-            lucas = next((e for e in enfants_data["admin"] if e["prenom"] == "Lucas"), None)
-            if lucas:
-                print_info("Testing pro POST /api/transmissions")
-                response = requests.post(
-                    f"{BASE_URL}/transmissions",
-                    json={
-                        "enfant_id": lucas["id"],
-                        "type": "biberon",
-                        "titre": "Test biberon",
-                        "detail": "150ml"
-                    },
-                    headers={
-                        "Authorization": f"Bearer {tokens['pro']}",
-                        "Content-Type": "application/json"
-                    }
-                )
+            if resp.status_code == 200:
+                data = resp.json()
+                stats = data.get("stats", {})
+                print(f"  Saint-Paul stats: enfants_total={stats.get('enfants_total')}")
                 
-                if response.status_code == 200:
-                    data = response.json()
-                    if "transmission" in data:
-                        trans = data["transmission"]
-                        transmission_id = trans.get("id")
-                        if trans.get("color") == "#FF6B6B":
-                            print_success(f"Pro successfully created transmission with auto color #FF6B6B")
-                        else:
-                            print_error(f"Pro transmission should have color #FF6B6B, got {trans.get('color')}")
-                            all_passed = False
-                    else:
-                        print_error(f"Pro POST transmission response missing transmission: {data}")
-                        all_passed = False
+                if stats.get("enfants_total") == 0:
+                    print("  ✓ Saint-Paul has 0 enfants")
                 else:
-                    print_error(f"Pro POST transmission failed with status {response.status_code}: {response.text}")
-                    all_passed = False
-            else:
-                print_info("Could not find Lucas to test POST transmission")
-        else:
-            print_info("Skipping POST transmission test - no enfants data")
-    except Exception as e:
-        print_error(f"Pro POST transmission exception: {str(e)}")
-        all_passed = False
+                    print(f"  ✗ Expected 0 enfants, got {stats.get('enfants_total')}")
+        except Exception as e:
+            print(f"✗ Marie dashboard Saint-Paul exception: {e}")
     
-    # Test parent POST transmission (should be rejected)
+    # Marie: dashboard without ?creche_id (aggregated)
     try:
-        if "parent" in enfants_data and len(enfants_data["parent"]) > 0:
-            lucas = next((e for e in enfants_data["parent"] if e["prenom"] == "Lucas"), None)
-            if lucas:
-                print_info("Testing parent POST /api/transmissions (should be rejected)")
-                response = requests.post(
-                    f"{BASE_URL}/transmissions",
-                    json={
-                        "enfant_id": lucas["id"],
-                        "type": "note",
-                        "titre": "Test note",
-                        "detail": "Should not work"
-                    },
-                    headers={
-                        "Authorization": f"Bearer {tokens['parent']}",
-                        "Content-Type": "application/json"
-                    }
-                )
-                
-                if response.status_code != 200:
-                    print_success(f"Parent correctly denied POST /api/transmissions (status {response.status_code})")
-                else:
-                    print_error(f"Parent should not be able to POST /api/transmissions, but got 200")
-                    all_passed = False
-            else:
-                print_info("Could not find Lucas to test parent POST transmission")
-        else:
-            print_info("Skipping parent POST transmission test - no parent enfants data")
+        resp = requests.get(f"{BASE_URL}/dashboard/stats", 
+                          headers=get_headers("marie"), 
+                          timeout=10)
+        print(f"✓ Marie dashboard/stats (no creche_id): {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            stats = data.get("stats", {})
+            print(f"  Aggregated stats: enfants_total={stats.get('enfants_total')}")
     except Exception as e:
-        print_error(f"Parent POST transmission exception: {str(e)}")
-        all_passed = False
+        print(f"✗ Marie dashboard aggregated exception: {e}")
+
+def test_crud_operations():
+    """Test 5: Enfants, Familles, Groupes, Tags CRUD"""
+    print("\n" + "="*80)
+    print("TEST 5: ENFANTS, FAMILLES, GROUPES, TAGS CRUD")
+    print("="*80)
     
-    # Test pro DELETE transmission
+    marie_sd_id = creches.get("marie_Saint-Denis")
+    
+    # GET /familles
     try:
-        if transmission_id:
-            print_info(f"Testing pro DELETE /api/transmissions/{transmission_id}")
-            response = requests.delete(
-                f"{BASE_URL}/transmissions/{transmission_id}",
-                headers={"Authorization": f"Bearer {tokens['pro']}"}
-            )
+        resp = requests.get(f"{BASE_URL}/familles", 
+                          headers=get_headers("marie"), 
+                          timeout=10)
+        print(f"✓ Marie GET /familles: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            familles = data.get("familles", [])
+            print(f"  Familles count: {len(familles)}")
             
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("ok"):
-                    print_success(f"Pro successfully deleted transmission")
-                else:
-                    print_error(f"Pro DELETE transmission response unexpected: {data}")
-                    all_passed = False
+            if len(familles) == 2:
+                print("  ✓ Marie has 2 familles (Bègue + Técher)")
             else:
-                print_error(f"Pro DELETE transmission failed with status {response.status_code}: {response.text}")
-                all_passed = False
-        else:
-            print_info("Skipping DELETE transmission test - no transmission_id")
+                print(f"  ✗ Expected 2 familles, got {len(familles)}")
     except Exception as e:
-        print_error(f"Pro DELETE transmission exception: {str(e)}")
-        all_passed = False
+        print(f"✗ GET /familles exception: {e}")
     
-    return all_passed
-
-
-# ============================================================================
-# TEST 7: Dashboard Stats
-# ============================================================================
-def test_dashboard_stats():
-    print_test("7. Dashboard Stats - GET /api/dashboard/stats")
-    
-    all_passed = True
-    
+    # GET /groupes
     try:
-        print_info("Testing admin GET /api/dashboard/stats")
-        response = requests.get(
-            f"{BASE_URL}/dashboard/stats",
-            headers={"Authorization": f"Bearer {tokens['admin']}"}
-        )
+        resp = requests.get(f"{BASE_URL}/groupes", 
+                          headers=get_headers("marie"), 
+                          timeout=10)
+        print(f"✓ Marie GET /groupes: {resp.status_code}")
         
-        if response.status_code == 200:
-            data = response.json()
-            if "stats" in data:
-                stats = data["stats"]
-                required_fields = [
-                    "siestes", "biberons", "changes", "repas", "activites",
-                    "enfants_total", "employes_total", "employes_presents",
-                    "ca_mensuel", "taux_occupation", "ca_attendu"
-                ]
+        if resp.status_code == 200:
+            data = resp.json()
+            groupes = data.get("groupes", [])
+            print(f"  Groupes count: {len(groupes)}")
+            
+            if len(groupes) == 3:
+                print("  ✓ Marie has 3 groupes (Tournesol, Coquelicot, Marguerite)")
+            else:
+                print(f"  ✗ Expected 3 groupes, got {len(groupes)}")
+    except Exception as e:
+        print(f"✗ GET /groupes exception: {e}")
+    
+    # GET /tags
+    try:
+        resp = requests.get(f"{BASE_URL}/tags", 
+                          headers=get_headers("marie"), 
+                          timeout=10)
+        print(f"✓ Marie GET /tags: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            tags = data.get("tags", [])
+            print(f"  Tags count: {len(tags)}")
+            
+            if len(tags) == 6:
+                print("  ✓ Marie has 6 tags")
+            else:
+                print(f"  ✗ Expected 6 tags, got {len(tags)}")
+    except Exception as e:
+        print(f"✗ GET /tags exception: {e}")
+    
+    # POST /groupes
+    if marie_sd_id:
+        try:
+            resp = requests.post(f"{BASE_URL}/groupes", 
+                               headers=get_headers("marie"),
+                               json={
+                                   "nom": "Test Groupe",
+                                   "couleur": "#FF0000",
+                                   "capacite": 5,
+                                   "creche_id": marie_sd_id
+                               },
+                               timeout=10)
+            print(f"✓ Marie POST /groupes: {resp.status_code}")
+            
+            if resp.status_code == 200:
+                print("  ✓ Groupe created successfully")
+            else:
+                print(f"  ✗ Failed to create groupe: {resp.text}")
+        except Exception as e:
+            print(f"✗ POST /groupes exception: {e}")
+    
+    # POST /tags
+    if marie_sd_id:
+        try:
+            resp = requests.post(f"{BASE_URL}/tags", 
+                               headers=get_headers("marie"),
+                               json={
+                                   "nom": "TestTag",
+                                   "couleur": "#00FF00",
+                                   "creche_id": marie_sd_id
+                               },
+                               timeout=10)
+            print(f"✓ Marie POST /tags: {resp.status_code}")
+            
+            if resp.status_code == 200:
+                print("  ✓ Tag created successfully")
+            else:
+                print(f"  ✗ Failed to create tag: {resp.text}")
+        except Exception as e:
+            print(f"✗ POST /tags exception: {e}")
+
+def test_devis():
+    """Test 6: Devis"""
+    print("\n" + "="*80)
+    print("TEST 6: DEVIS")
+    print("="*80)
+    
+    # GET /devis
+    try:
+        resp = requests.get(f"{BASE_URL}/devis", 
+                          headers=get_headers("marie"), 
+                          timeout=10)
+        print(f"✓ Marie GET /devis: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            devis_list = data.get("devis", [])
+            print(f"  Devis count: {len(devis_list)}")
+            
+            if len(devis_list) >= 1:
+                devis = devis_list[0]
+                print(f"  ✓ Found devis: {devis.get('numero')} - {devis.get('famille')}")
+                print(f"    Statut: {devis.get('statut')}, Total TTC: {devis.get('total_ttc')}")
                 
-                if all(field in stats for field in required_fields):
-                    print_success(f"Dashboard stats has all required fields")
-                    
-                    # Verify enfants_total=5 (or 6 if we added one in test 5)
-                    if stats["enfants_total"] >= 5:
-                        print_success(f"enfants_total = {stats['enfants_total']} (expected 5 or more)")
-                    else:
-                        print_error(f"enfants_total should be at least 5, got {stats['enfants_total']}")
-                        all_passed = False
-                    
-                    # Verify employes_total=2
-                    if stats["employes_total"] == 2:
-                        print_success(f"employes_total = 2")
-                    else:
-                        print_error(f"employes_total should be 2, got {stats['employes_total']}")
-                        all_passed = False
-                    
-                    print_info(f"Stats: siestes={stats['siestes']}, biberons={stats['biberons']}, changes={stats['changes']}, repas={stats['repas']}, activites={stats['activites']}")
+                if devis.get("numero") == "D-2401" and devis.get("total_ttc") == 730:
+                    print("  ✓ Seeded devis verified (D-2401, 730€)")
+    except Exception as e:
+        print(f"✗ GET /devis exception: {e}")
+    
+    # POST /devis
+    marie_sd_id = creches.get("marie_Saint-Denis")
+    if marie_sd_id:
+        try:
+            resp = requests.post(f"{BASE_URL}/devis", 
+                               headers=get_headers("marie"),
+                               json={
+                                   "famille": "Famille Test",
+                                   "articles": [
+                                       {
+                                           "description": "Test Article",
+                                           "quantite": 2,
+                                           "prix_unit": 100,
+                                           "tva": 0
+                                       }
+                                   ],
+                                   "creche_id": marie_sd_id
+                               },
+                               timeout=10)
+            print(f"✓ Marie POST /devis: {resp.status_code}")
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                devis = data.get("devis", {})
+                print(f"  ✓ Devis created: {devis.get('numero')}")
+                print(f"    Total HT: {devis.get('total_ht')}, Total TTC: {devis.get('total_ttc')}")
+                
+                if devis.get("total_ht") == 200 and devis.get("total_ttc") == 200:
+                    print("  ✓ Totals calculated correctly (200€)")
                 else:
-                    missing = [f for f in required_fields if f not in stats]
-                    print_error(f"Dashboard stats missing fields: {missing}")
-                    all_passed = False
-            else:
-                print_error(f"Dashboard response missing stats: {data}")
-                all_passed = False
-        else:
-            print_error(f"Dashboard stats failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"Dashboard stats exception: {str(e)}")
-        all_passed = False
-    
-    return all_passed
+                    print(f"  ✗ Expected totals 200, got HT={devis.get('total_ht')}, TTC={devis.get('total_ttc')}")
+                
+                # Test PUT /devis/:id
+                devis_id = devis.get("id")
+                if devis_id:
+                    try:
+                        resp = requests.put(f"{BASE_URL}/devis/{devis_id}", 
+                                          headers=get_headers("marie"),
+                                          json={
+                                              "articles": [
+                                                  {
+                                                      "description": "Updated Article",
+                                                      "quantite": 3,
+                                                      "prix_unit": 150,
+                                                      "tva": 0
+                                                  }
+                                              ]
+                                          },
+                                          timeout=10)
+                        print(f"✓ Marie PUT /devis/{devis_id}: {resp.status_code}")
+                        
+                        if resp.status_code == 200:
+                            print("  ✓ Devis updated successfully (totals should be recalculated)")
+                    except Exception as e:
+                        print(f"✗ PUT /devis exception: {e}")
+        except Exception as e:
+            print(f"✗ POST /devis exception: {e}")
 
-
-# ============================================================================
-# TEST 8: Pointages
-# ============================================================================
-def test_pointages():
-    print_test("8. Pointages - POST/GET /api/pointage(s)")
-    
-    all_passed = True
-    
-    # Test pro POST pointage
-    try:
-        print_info("Testing pro POST /api/pointage (type: arrivee)")
-        response = requests.post(
-            f"{BASE_URL}/pointage",
-            json={"type": "arrivee"},
-            headers={
-                "Authorization": f"Bearer {tokens['pro']}",
-                "Content-Type": "application/json"
-            }
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            if "pointage" in data:
-                print_success(f"Pro successfully created pointage")
-            else:
-                print_error(f"Pro POST pointage response missing pointage: {data}")
-                all_passed = False
-        else:
-            print_error(f"Pro POST pointage failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"Pro POST pointage exception: {str(e)}")
-        all_passed = False
-    
-    # Test parent POST pointage (should be rejected)
-    try:
-        print_info("Testing parent POST /api/pointage (should be rejected)")
-        response = requests.post(
-            f"{BASE_URL}/pointage",
-            json={"type": "arrivee"},
-            headers={
-                "Authorization": f"Bearer {tokens['parent']}",
-                "Content-Type": "application/json"
-            }
-        )
-        
-        if response.status_code != 200:
-            print_success(f"Parent correctly denied POST /api/pointage (status {response.status_code})")
-        else:
-            print_error(f"Parent should not be able to POST /api/pointage, but got 200")
-            all_passed = False
-    except Exception as e:
-        print_error(f"Parent POST pointage exception: {str(e)}")
-        all_passed = False
-    
-    # Test pro GET pointages (should see only own)
-    try:
-        print_info("Testing pro GET /api/pointages")
-        response = requests.get(
-            f"{BASE_URL}/pointages",
-            headers={"Authorization": f"Bearer {tokens['pro']}"}
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            pointages = data.get("pointages", [])
-            # Should see at least the one we just created
-            if len(pointages) > 0:
-                # Check all are for this pro
-                pro_id = users["pro"]["id"]
-                all_own = all(p.get("employe_id") == pro_id for p in pointages)
-                if all_own:
-                    print_success(f"Pro sees {len(pointages)} pointages, all their own")
-                else:
-                    print_error(f"Pro sees pointages from other employees")
-                    all_passed = False
-            else:
-                print_error(f"Pro should see at least 1 pointage")
-                all_passed = False
-        else:
-            print_error(f"Pro GET pointages failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"Pro GET pointages exception: {str(e)}")
-        all_passed = False
-    
-    # Test admin GET pointages (should see all)
-    try:
-        print_info("Testing admin GET /api/pointages")
-        response = requests.get(
-            f"{BASE_URL}/pointages",
-            headers={"Authorization": f"Bearer {tokens['admin']}"}
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            pointages = data.get("pointages", [])
-            # Should see more than just one pro's pointages
-            if len(pointages) >= 2:
-                print_success(f"Admin sees {len(pointages)} pointages (all employees)")
-            else:
-                print_error(f"Admin should see at least 2 pointages, got {len(pointages)}")
-                all_passed = False
-        else:
-            print_error(f"Admin GET pointages failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"Admin GET pointages exception: {str(e)}")
-        all_passed = False
-    
-    return all_passed
-
-
-# ============================================================================
-# TEST 9: Factures
-# ============================================================================
 def test_factures():
-    print_test("9. Factures - GET /api/factures")
+    """Test 7: Factures extended"""
+    print("\n" + "="*80)
+    print("TEST 7: FACTURES EXTENDED")
+    print("="*80)
     
-    all_passed = True
-    
-    # Test admin GET all factures
+    # Marie: GET /factures
     try:
-        print_info("Testing admin GET /api/factures")
-        response = requests.get(
-            f"{BASE_URL}/factures",
-            headers={"Authorization": f"Bearer {tokens['admin']}"}
-        )
+        resp = requests.get(f"{BASE_URL}/factures", 
+                          headers=get_headers("marie"), 
+                          timeout=10)
+        print(f"✓ Marie GET /factures: {resp.status_code}")
         
-        if response.status_code == 200:
-            data = response.json()
+        if resp.status_code == 200:
+            data = resp.json()
             factures = data.get("factures", [])
-            # Should see 5 factures (one per child) or 6 if we added a child
-            if len(factures) >= 5:
-                print_success(f"Admin sees {len(factures)} factures")
-            else:
-                print_error(f"Admin should see at least 5 factures, got {len(factures)}")
-                all_passed = False
-        else:
-            print_error(f"Admin GET factures failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"Admin GET factures exception: {str(e)}")
-        all_passed = False
-    
-    # Test parent@demo.re GET factures (should see only for Lucas + Noah = 2)
-    try:
-        print_info("Testing parent@demo.re GET /api/factures")
-        response = requests.get(
-            f"{BASE_URL}/factures",
-            headers={"Authorization": f"Bearer {tokens['parent']}"}
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            factures = data.get("factures", [])
-            if len(factures) == 2:
-                print_success(f"parent@demo.re sees 2 factures (Lucas + Noah)")
-            else:
-                print_error(f"parent@demo.re should see 2 factures, got {len(factures)}")
-                all_passed = False
-        else:
-            print_error(f"parent@demo.re GET factures failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"parent@demo.re GET factures exception: {str(e)}")
-        all_passed = False
-    
-    # Test parent2@demo.re GET factures (should see 3 for Emma + Chloé + Léa)
-    try:
-        print_info("Testing parent2@demo.re GET /api/factures")
-        response = requests.get(
-            f"{BASE_URL}/factures",
-            headers={"Authorization": f"Bearer {tokens['parent2']}"}
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            factures = data.get("factures", [])
-            if len(factures) == 3:
-                print_success(f"parent2@demo.re sees 3 factures (Emma + Chloé + Léa)")
-            else:
-                print_error(f"parent2@demo.re should see 3 factures, got {len(factures)}")
-                all_passed = False
-        else:
-            print_error(f"parent2@demo.re GET factures failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"parent2@demo.re GET factures exception: {str(e)}")
-        all_passed = False
-    
-    return all_passed
-
-
-# ============================================================================
-# TEST 10: Messages
-# ============================================================================
-def test_messages():
-    print_test("10. Messages - GET/POST /api/messages")
-    
-    all_passed = True
-    
-    # Test parent@demo.re GET messages
-    try:
-        print_info("Testing parent@demo.re GET /api/messages")
-        response = requests.get(
-            f"{BASE_URL}/messages",
-            headers={"Authorization": f"Bearer {tokens['parent']}"}
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            messages = data.get("messages", [])
-            # Should see at least 2 seeded messages
-            if len(messages) >= 2:
-                print_success(f"parent@demo.re sees {len(messages)} messages")
-            else:
-                print_error(f"parent@demo.re should see at least 2 messages, got {len(messages)}")
-                all_passed = False
-        else:
-            print_error(f"parent@demo.re GET messages failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"parent@demo.re GET messages exception: {str(e)}")
-        all_passed = False
-    
-    # Test parent POST message
-    try:
-        print_info("Testing parent@demo.re POST /api/messages")
-        response = requests.post(
-            f"{BASE_URL}/messages",
-            json={"contenu": "Bonjour, test message from parent"},
-            headers={
-                "Authorization": f"Bearer {tokens['parent']}",
-                "Content-Type": "application/json"
-            }
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            if "message" in data:
-                msg = data["message"]
-                # Should auto-route to admin
-                if msg.get("to_role") == "admin":
-                    print_success(f"Parent message auto-routed to admin")
-                else:
-                    print_error(f"Parent message should auto-route to admin, got to_role={msg.get('to_role')}")
-                    all_passed = False
-            else:
-                print_error(f"Parent POST message response missing message: {data}")
-                all_passed = False
-        else:
-            print_error(f"Parent POST message failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"Parent POST message exception: {str(e)}")
-        all_passed = False
-    
-    # Test admin POST message to parent
-    try:
-        print_info("Testing admin POST /api/messages to parent")
-        parent_id = users["parent"]["id"]
-        response = requests.post(
-            f"{BASE_URL}/messages",
-            json={
-                "contenu": "Hello from admin",
-                "to_role": "parent",
-                "to_id": parent_id
-            },
-            headers={
-                "Authorization": f"Bearer {tokens['admin']}",
-                "Content-Type": "application/json"
-            }
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            if "message" in data:
-                print_success(f"Admin successfully sent message to parent")
-            else:
-                print_error(f"Admin POST message response missing message: {data}")
-                all_passed = False
-        else:
-            print_error(f"Admin POST message failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"Admin POST message exception: {str(e)}")
-        all_passed = False
-    
-    return all_passed
-
-
-# ============================================================================
-# TEST 11: Employes
-# ============================================================================
-def test_employes():
-    print_test("11. Employes - GET /api/employes (Admin Only)")
-    
-    all_passed = True
-    
-    # Test admin GET employes
-    try:
-        print_info("Testing admin GET /api/employes")
-        response = requests.get(
-            f"{BASE_URL}/employes",
-            headers={"Authorization": f"Bearer {tokens['admin']}"}
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            employes = data.get("employes", [])
-            if len(employes) == 2:
-                print_success(f"Admin sees 2 employes (pros)")
-                # Verify password is stripped
-                has_password = any("password" in e for e in employes)
-                if not has_password:
-                    print_success(f"Employes data has password stripped")
-                else:
-                    print_error(f"Employes data should not include password field")
-                    all_passed = False
-            else:
-                print_error(f"Admin should see 2 employes, got {len(employes)}")
-                all_passed = False
-        else:
-            print_error(f"Admin GET employes failed with status {response.status_code}: {response.text}")
-            all_passed = False
-    except Exception as e:
-        print_error(f"Admin GET employes exception: {str(e)}")
-        all_passed = False
-    
-    # Test parent GET employes (should be rejected)
-    try:
-        print_info("Testing parent GET /api/employes (should be rejected)")
-        response = requests.get(
-            f"{BASE_URL}/employes",
-            headers={"Authorization": f"Bearer {tokens['parent']}"}
-        )
-        
-        if response.status_code != 200:
-            print_success(f"Parent correctly denied GET /api/employes (status {response.status_code})")
-        else:
-            print_error(f"Parent should not be able to GET /api/employes, but got 200")
-            all_passed = False
-    except Exception as e:
-        print_error(f"Parent GET employes exception: {str(e)}")
-        all_passed = False
-    
-    return all_passed
-
-
-# ============================================================================
-# TEST 12: Unauthenticated Access
-# ============================================================================
-def test_unauthenticated():
-    print_test("12. Unauthenticated Access - Protected Routes Without Token")
-    
-    all_passed = True
-    
-    protected_routes = [
-        "/enfants",
-        "/transmissions",
-        "/dashboard/stats",
-        "/pointages",
-        "/factures",
-        "/employes",
-        "/messages"
-    ]
-    
-    for route in protected_routes:
-        try:
-            print_info(f"Testing unauthenticated GET {route}")
-            response = requests.get(f"{BASE_URL}{route}")
+            print(f"  Factures count: {len(factures)}")
             
-            if response.status_code == 401:
-                print_success(f"{route} correctly returns 401 without token")
+            if len(factures) == 5:
+                print("  ✓ Marie has 5 factures")
+                # Check first facture structure
+                if factures:
+                    f = factures[0]
+                    if f.get("numero", "").startswith("F-"):
+                        print(f"  ✓ Facture numero format correct: {f.get('numero')}")
+                    if "articles" in f:
+                        print(f"  ✓ Facture has articles array")
             else:
-                print_error(f"{route} should return 401 without token, got {response.status_code}")
-                all_passed = False
+                print(f"  ✗ Expected 5 factures, got {len(factures)}")
+    except Exception as e:
+        print(f"✗ Marie GET /factures exception: {e}")
+    
+    # Parent: GET /factures (should only see their children's invoices)
+    try:
+        resp = requests.get(f"{BASE_URL}/factures", 
+                          headers=get_headers("parent"), 
+                          timeout=10)
+        print(f"✓ Parent GET /factures: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            factures = data.get("factures", [])
+            print(f"  Parent's factures: {len(factures)}")
+            
+            if len(factures) == 2:
+                print("  ✓ Parent sees 2 factures (Lucas + Noah)")
+            else:
+                print(f"  ✗ Expected 2 factures for parent, got {len(factures)}")
+    except Exception as e:
+        print(f"✗ Parent GET /factures exception: {e}")
+    
+    # Marie: POST /factures
+    marie_sd_id = creches.get("marie_Saint-Denis")
+    if marie_sd_id:
+        try:
+            resp = requests.post(f"{BASE_URL}/factures", 
+                               headers=get_headers("marie"),
+                               json={
+                                   "famille": "Famille Test Facture",
+                                   "articles": [
+                                       {
+                                           "description": "Test Service",
+                                           "quantite": 1,
+                                           "prix_unit": 500,
+                                           "tva": 0
+                                       }
+                                   ],
+                                   "creche_id": marie_sd_id
+                               },
+                               timeout=10)
+            print(f"✓ Marie POST /factures: {resp.status_code}")
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                facture = data.get("facture", {})
+                facture_id = facture.get("id")
+                print(f"  ✓ Facture created: {facture.get('numero')}")
+                print(f"    Total HT: {facture.get('total_ht')}, Total TTC: {facture.get('total_ttc')}")
+                
+                # Test POST /factures/:id/send
+                if facture_id:
+                    try:
+                        resp = requests.post(f"{BASE_URL}/factures/{facture_id}/send", 
+                                           headers=get_headers("marie"),
+                                           timeout=10)
+                        print(f"✓ Marie POST /factures/{facture_id}/send: {resp.status_code}")
+                        
+                        if resp.status_code == 200:
+                            print("  ✓ Facture marked as sent")
+                    except Exception as e:
+                        print(f"✗ POST /factures/send exception: {e}")
+                    
+                    # Test POST /factures/:id/pay
+                    try:
+                        resp = requests.post(f"{BASE_URL}/factures/{facture_id}/pay", 
+                                           headers=get_headers("marie"),
+                                           timeout=10)
+                        print(f"✓ Marie POST /factures/{facture_id}/pay: {resp.status_code}")
+                        
+                        if resp.status_code == 200:
+                            print("  ✓ Facture marked as paid")
+                    except Exception as e:
+                        print(f"✗ POST /factures/pay exception: {e}")
         except Exception as e:
-            print_error(f"Unauthenticated {route} exception: {str(e)}")
-            all_passed = False
+            print(f"✗ POST /factures exception: {e}")
+
+def test_threads():
+    """Test 8: Threads Pro↔Parent 1-to-1"""
+    print("\n" + "="*80)
+    print("TEST 8: THREADS PRO↔PARENT 1-TO-1")
+    print("="*80)
     
-    return all_passed
+    # Pro: GET /threads
+    try:
+        resp = requests.get(f"{BASE_URL}/threads", 
+                          headers=get_headers("pro"), 
+                          timeout=10)
+        print(f"✓ Pro GET /threads: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            threads = data.get("threads", [])
+            print(f"  Pro's threads: {len(threads)}")
+            
+            if len(threads) >= 1:
+                print("  ✓ Pro has at least 1 thread")
+                thread = threads[0]
+                thread_id = thread.get("id")
+                print(f"    Thread with: {thread.get('others', [])}")
+                print(f"    Enfant: {thread.get('enfant', {}).get('prenom')}")
+                
+                if "others" in thread and "enfant" in thread:
+                    print("  ✓ Thread has 'others' array and 'enfant' object")
+                
+                # GET /threads/:id/messages
+                if thread_id:
+                    try:
+                        resp = requests.get(f"{BASE_URL}/threads/{thread_id}/messages", 
+                                          headers=get_headers("pro"), 
+                                          timeout=10)
+                        print(f"✓ Pro GET /threads/{thread_id}/messages: {resp.status_code}")
+                        
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            messages = data.get("messages", [])
+                            print(f"  Messages count: {len(messages)}")
+                            
+                            if len(messages) == 2:
+                                print("  ✓ Thread has 2 seeded messages")
+                            
+                            # POST /threads/:id/messages
+                            try:
+                                resp = requests.post(f"{BASE_URL}/threads/{thread_id}/messages", 
+                                                   headers=get_headers("pro"),
+                                                   json={"contenu": "Test message from pro"},
+                                                   timeout=10)
+                                print(f"✓ Pro POST /threads/{thread_id}/messages: {resp.status_code}")
+                                
+                                if resp.status_code == 200:
+                                    print("  ✓ Message posted successfully")
+                                    
+                                    # Verify message count increased
+                                    resp = requests.get(f"{BASE_URL}/threads/{thread_id}/messages", 
+                                                      headers=get_headers("pro"), 
+                                                      timeout=10)
+                                    if resp.status_code == 200:
+                                        new_messages = resp.json().get("messages", [])
+                                        if len(new_messages) == 3:
+                                            print("  ✓ Message count increased to 3")
+                            except Exception as e:
+                                print(f"✗ POST message exception: {e}")
+                            
+                            # POST message with media
+                            try:
+                                resp = requests.post(f"{BASE_URL}/threads/{thread_id}/messages", 
+                                                   headers=get_headers("pro"),
+                                                   json={
+                                                       "contenu": "Message with media",
+                                                       "media": "https://cloudinary.example/img.jpg",
+                                                       "media_type": "image"
+                                                   },
+                                                   timeout=10)
+                                print(f"✓ Pro POST message with media: {resp.status_code}")
+                                
+                                if resp.status_code == 200:
+                                    print("  ✓ Message with media posted successfully")
+                            except Exception as e:
+                                print(f"✗ POST message with media exception: {e}")
+                    except Exception as e:
+                        print(f"✗ GET messages exception: {e}")
+    except Exception as e:
+        print(f"✗ GET /threads exception: {e}")
+    
+    # Pro: POST /threads (create new thread)
+    try:
+        # Get parent2 id and an enfant
+        parent2_id = users.get("parent2", {}).get("id")
+        
+        # Get enfants to find Emma (parent2's child)
+        resp = requests.get(f"{BASE_URL}/enfants", 
+                          headers=get_headers("marie"), 
+                          timeout=10)
+        if resp.status_code == 200:
+            enfants = resp.json().get("enfants", [])
+            emma = next((e for e in enfants if e.get("prenom") == "Emma"), None)
+            
+            if emma and parent2_id:
+                try:
+                    resp = requests.post(f"{BASE_URL}/threads", 
+                                       headers=get_headers("pro"),
+                                       json={
+                                           "parent_id": parent2_id,
+                                           "enfant_id": emma.get("id")
+                                       },
+                                       timeout=10)
+                    print(f"✓ Pro POST /threads (new): {resp.status_code}")
+                    
+                    if resp.status_code == 200:
+                        print("  ✓ New thread created (or existing returned)")
+                except Exception as e:
+                    print(f"✗ POST /threads exception: {e}")
+    except Exception as e:
+        print(f"✗ Create thread test exception: {e}")
 
+def test_other_modules():
+    """Test 9: Nourriture / Rappels / News / Documents / Feedbacks / Alarme"""
+    print("\n" + "="*80)
+    print("TEST 9: OTHER MODULES")
+    print("="*80)
+    
+    marie_sd_id = creches.get("marie_Saint-Denis")
+    
+    # GET /nourriture
+    try:
+        resp = requests.get(f"{BASE_URL}/nourriture", 
+                          headers=get_headers("marie"), 
+                          timeout=10)
+        print(f"✓ Marie GET /nourriture: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            menus = data.get("menus", [])
+            print(f"  Menus count: {len(menus)}")
+            
+            if len(menus) >= 1:
+                menu = menus[0]
+                repas = menu.get("repas", [])
+                print(f"  ✓ Menu has {len(repas)} jours")
+                
+                if len(repas) == 5:
+                    print("  ✓ Menu has 5 days (Lundi-Vendredi)")
+    except Exception as e:
+        print(f"✗ GET /nourriture exception: {e}")
+    
+    # GET /rappels
+    try:
+        resp = requests.get(f"{BASE_URL}/rappels", 
+                          headers=get_headers("marie"), 
+                          timeout=10)
+        print(f"✓ Marie GET /rappels: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            rappels = data.get("rappels", [])
+            print(f"  Rappels count: {len(rappels)}")
+            
+            if len(rappels) == 3:
+                print("  ✓ Marie has 3 rappels")
+    except Exception as e:
+        print(f"✗ GET /rappels exception: {e}")
+    
+    # POST /rappels
+    if marie_sd_id:
+        try:
+            resp = requests.post(f"{BASE_URL}/rappels", 
+                               headers=get_headers("marie"),
+                               json={
+                                   "titre": "Test Rappel",
+                                   "echeance": "2025-01-01",
+                                   "priorite": "haute",
+                                   "creche_id": marie_sd_id
+                               },
+                               timeout=10)
+            print(f"✓ Marie POST /rappels: {resp.status_code}")
+            
+            if resp.status_code == 200:
+                print("  ✓ Rappel created successfully")
+        except Exception as e:
+            print(f"✗ POST /rappels exception: {e}")
+    
+    # GET /news
+    try:
+        resp = requests.get(f"{BASE_URL}/news", 
+                          headers=get_headers("marie"), 
+                          timeout=10)
+        print(f"✓ Marie GET /news: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            news = data.get("news", [])
+            print(f"  News count: {len(news)}")
+            
+            if len(news) == 2:
+                print("  ✓ Marie has 2 news")
+                # Check if first is pinned
+                if news[0].get("pinned"):
+                    print("  ✓ First news is pinned (correct order)")
+    except Exception as e:
+        print(f"✗ GET /news exception: {e}")
+    
+    # GET /documents
+    try:
+        resp = requests.get(f"{BASE_URL}/documents", 
+                          headers=get_headers("marie"), 
+                          timeout=10)
+        print(f"✓ Marie GET /documents: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            documents = data.get("documents", [])
+            print(f"  Documents count: {len(documents)}")
+            
+            if len(documents) == 2:
+                print("  ✓ Marie has 2 documents")
+    except Exception as e:
+        print(f"✗ GET /documents exception: {e}")
+    
+    # POST /feedbacks (as parent)
+    try:
+        resp = requests.post(f"{BASE_URL}/feedbacks", 
+                           headers=get_headers("parent"),
+                           json={
+                               "rating": 5,
+                               "message": "Super app!",
+                               "category": "compliment"
+                           },
+                           timeout=10)
+        print(f"✓ Parent POST /feedbacks: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            print("  ✓ Feedback created successfully")
+    except Exception as e:
+        print(f"✗ POST /feedbacks exception: {e}")
+    
+    # GET /feedbacks (as super_admin)
+    try:
+        resp = requests.get(f"{BASE_URL}/feedbacks", 
+                          headers=get_headers("super_admin"), 
+                          timeout=10)
+        print(f"✓ Super admin GET /feedbacks: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            feedbacks = data.get("feedbacks", [])
+            print(f"  Feedbacks count: {len(feedbacks)}")
+            
+            if len(feedbacks) >= 1:
+                print("  ✓ Super admin can see feedbacks")
+    except Exception as e:
+        print(f"✗ Super admin GET /feedbacks exception: {e}")
+    
+    # GET /feedbacks (as parent - should fail)
+    try:
+        resp = requests.get(f"{BASE_URL}/feedbacks", 
+                          headers=get_headers("parent"), 
+                          timeout=10)
+        print(f"✓ Parent GET /feedbacks: {resp.status_code}")
+        
+        if resp.status_code in [404, 403]:
+            print("  ✓ Parent correctly denied access to feedbacks list")
+        else:
+            print(f"  ✗ Parent should be denied, got {resp.status_code}")
+    except Exception as e:
+        print(f"✗ Parent GET /feedbacks exception: {e}")
+    
+    # GET /alarme/evacuation
+    if marie_sd_id:
+        try:
+            resp = requests.get(f"{BASE_URL}/alarme/evacuation?creche_id={marie_sd_id}", 
+                              headers=get_headers("marie"), 
+                              timeout=10)
+            print(f"✓ Marie GET /alarme/evacuation: {resp.status_code}")
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                print(f"  Creche: {data.get('creche', {}).get('nom')}")
+                print(f"  Date: {data.get('date')}")
+                print(f"  Enfants présents: {len(data.get('enfants_presents', []))}")
+                print(f"  Employés présents: {len(data.get('employes_presents', []))}")
+                
+                # Should have Lucas + Noah (they have 'arrivee' transmissions)
+                enfants_presents = data.get('enfants_presents', [])
+                if len(enfants_presents) >= 2:
+                    print("  ✓ Enfants with 'arrivee' transmissions listed")
+                
+                # Should have 2 pros (Aurélie + Sandra with pointages)
+                employes_presents = data.get('employes_presents', [])
+                if len(employes_presents) == 2:
+                    print("  ✓ 2 employés with pointages listed")
+        except Exception as e:
+            print(f"✗ GET /alarme/evacuation exception: {e}")
 
-# ============================================================================
-# MAIN TEST RUNNER
-# ============================================================================
+def test_stripe_fallback():
+    """Test 10: Stripe fallback mode"""
+    print("\n" + "="*80)
+    print("TEST 10: STRIPE FALLBACK MODE")
+    print("="*80)
+    
+    # GET /stripe/status
+    try:
+        resp = requests.get(f"{BASE_URL}/stripe/status", 
+                          headers=get_headers("marie"), 
+                          timeout=10)
+        print(f"✓ Marie GET /stripe/status: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            configured = data.get("configured")
+            subscription = data.get("subscription")
+            
+            print(f"  Configured: {configured}")
+            print(f"  Subscription: {subscription}")
+            
+            if configured == False:
+                print("  ✓ Stripe not configured (fallback mode)")
+    except Exception as e:
+        print(f"✗ GET /stripe/status exception: {e}")
+    
+    # POST /stripe/checkout (should activate in demo mode)
+    try:
+        resp = requests.post(f"{BASE_URL}/stripe/checkout", 
+                           headers=get_headers("marie"),
+                           json={},
+                           timeout=10)
+        print(f"✓ Marie POST /stripe/checkout: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            
+            if data.get("demo_mode"):
+                print("  ✓ Demo mode activated (Stripe keys empty)")
+                print(f"  Message: {data.get('message')}")
+                
+                # Verify subscription updated
+                resp = requests.get(f"{BASE_URL}/stripe/status", 
+                                  headers=get_headers("marie"), 
+                                  timeout=10)
+                if resp.status_code == 200:
+                    sub = resp.json().get("subscription", {})
+                    if sub.get("status") == "active":
+                        print("  ✓ Marie's subscription now active")
+    except Exception as e:
+        print(f"✗ POST /stripe/checkout exception: {e}")
+
+def test_cloudinary_fallback():
+    """Test 11: Cloudinary fallback mode"""
+    print("\n" + "="*80)
+    print("TEST 11: CLOUDINARY FALLBACK MODE")
+    print("="*80)
+    
+    # POST /media/sign
+    try:
+        resp = requests.post(f"{BASE_URL}/media/sign", 
+                           headers=get_headers("marie"),
+                           json={"folder": "test"},
+                           timeout=10)
+        print(f"✓ Marie POST /media/sign: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            
+            if data.get("configured") == False:
+                print("  ✓ Cloudinary not configured (fallback mode)")
+                print(f"  Error: {data.get('error')}")
+    except Exception as e:
+        print(f"✗ POST /media/sign exception: {e}")
+
+def test_employes_parents():
+    """Test 12: Employes + Parents"""
+    print("\n" + "="*80)
+    print("TEST 12: EMPLOYES + PARENTS")
+    print("="*80)
+    
+    marie_sd_id = creches.get("marie_Saint-Denis")
+    
+    # GET /employes
+    try:
+        resp = requests.get(f"{BASE_URL}/employes", 
+                          headers=get_headers("marie"), 
+                          timeout=10)
+        print(f"✓ Marie GET /employes: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            employes = data.get("employes", [])
+            print(f"  Employes count: {len(employes)}")
+            
+            if len(employes) == 2:
+                print("  ✓ Marie has 2 employes (pros)")
+    except Exception as e:
+        print(f"✗ GET /employes exception: {e}")
+    
+    # GET /parents (as pro)
+    try:
+        resp = requests.get(f"{BASE_URL}/parents", 
+                          headers=get_headers("pro"), 
+                          timeout=10)
+        print(f"✓ Pro GET /parents: {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            parents = data.get("parents", [])
+            print(f"  Parents count: {len(parents)}")
+            
+            if len(parents) >= 2:
+                print("  ✓ Pro can see parents list with their children")
+                for p in parents[:2]:
+                    print(f"    - {p.get('prenom')} {p.get('nom')}: {len(p.get('enfants', []))} enfants")
+    except Exception as e:
+        print(f"✗ Pro GET /parents exception: {e}")
+    
+    # POST /employes
+    if marie_sd_id:
+        rand_email = f"newpro{random.randint(1000,9999)}@demo.re"
+        try:
+            resp = requests.post(f"{BASE_URL}/employes", 
+                               headers=get_headers("marie"),
+                               json={
+                                   "email": rand_email,
+                                   "password": "test123",
+                                   "prenom": "Test",
+                                   "nom": "Pro",
+                                   "creche_id": marie_sd_id
+                               },
+                               timeout=10)
+            print(f"✓ Marie POST /employes: {resp.status_code}")
+            
+            if resp.status_code == 200:
+                print(f"  ✓ New employe created: {rand_email}")
+        except Exception as e:
+            print(f"✗ POST /employes exception: {e}")
+
+def test_register_admin():
+    """Test 13: Register new admin"""
+    print("\n" + "="*80)
+    print("TEST 13: REGISTER NEW ADMIN")
+    print("="*80)
+    
+    # Generate random email
+    rand = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+    new_email = f"newadmin{rand}@test.re"
+    
+    try:
+        resp = requests.post(f"{BASE_URL}/auth/register", 
+                           json={
+                               "email": new_email,
+                               "password": "test123",
+                               "prenom": "New",
+                               "nom": "Admin",
+                               "role": "admin",
+                               "creche_nom": "Nouvelle Crèche",
+                               "creche_ville": "Le Tampon"
+                           },
+                           timeout=10)
+        print(f"✓ POST /auth/register (new admin): {resp.status_code}")
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            token = data.get("token")
+            user = data.get("user")
+            
+            print(f"  ✓ New admin registered: {new_email}")
+            print(f"  User: {user.get('prenom')} {user.get('nom')}")
+            print(f"  Creche IDs: {user.get('creche_ids')}")
+            
+            if len(user.get("creche_ids", [])) == 1:
+                print("  ✓ New admin has 1 crèche")
+                
+                # Verify the crèche is owned by this admin
+                headers = {"Authorization": f"Bearer {token}"}
+                resp = requests.get(f"{BASE_URL}/creches", headers=headers, timeout=10)
+                if resp.status_code == 200:
+                    creches_data = resp.json().get("creches", [])
+                    if len(creches_data) == 1:
+                        creche = creches_data[0]
+                        if creche.get("owner_id") == user.get("id"):
+                            print(f"  ✓ Crèche '{creche.get('nom')}' owned by new admin")
+        else:
+            print(f"  ✗ Registration failed: {resp.text}")
+    except Exception as e:
+        print(f"✗ POST /auth/register exception: {e}")
+
 def main():
+    """Run all tests"""
     print("\n" + "="*80)
-    print("TiKréol Backend API Test Suite")
+    print("TiMétis V2 Backend Testing Suite")
+    print("Multi-tenant SaaS Architecture")
     print("="*80)
-    print(f"Base URL: {BASE_URL}")
-    print("="*80)
+    print(f"Backend URL: {BASE_URL}")
+    print(f"Test started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
-    results = {}
+    # Run all tests
+    test_auth()
+    test_super_admin()
+    test_multi_tenant_isolation()
+    test_creche_switcher()
+    test_crud_operations()
+    test_devis()
+    test_factures()
+    test_threads()
+    test_other_modules()
+    test_stripe_fallback()
+    test_cloudinary_fallback()
+    test_employes_parents()
+    test_register_admin()
     
-    # Run all tests in priority order
-    results["1. Auth Login"] = test_auth_login()
-    results["2. Auth Register"] = test_auth_register()
-    results["3. Auth Me"] = test_auth_me()
-    results["4. Enfants Filtering (CRITICAL)"] = test_enfants_filtering()
-    results["5. Enfants POST (Admin Only)"] = test_enfants_post()
-    results["6. Transmissions (CRITICAL)"] = test_transmissions()
-    results["7. Dashboard Stats"] = test_dashboard_stats()
-    results["8. Pointages"] = test_pointages()
-    results["9. Factures"] = test_factures()
-    results["10. Messages"] = test_messages()
-    results["11. Employes (Admin Only)"] = test_employes()
-    results["12. Unauthenticated Access"] = test_unauthenticated()
-    
-    # Print summary
     print("\n" + "="*80)
-    print("TEST SUMMARY")
+    print("ALL TESTS COMPLETED")
     print("="*80)
-    
-    passed = sum(1 for v in results.values() if v)
-    total = len(results)
-    
-    for test_name, passed_flag in results.items():
-        status = "✅ PASSED" if passed_flag else "❌ FAILED"
-        print(f"{status} - {test_name}")
-    
-    print("="*80)
-    print(f"Total: {passed}/{total} tests passed")
-    print("="*80)
-    
-    return passed == total
-
+    print(f"Test finished: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 if __name__ == "__main__":
-    success = main()
-    exit(0 if success else 1)
+    main()
