@@ -206,6 +206,25 @@ function TopBar({ user, onLogout, onMenu, title, activeCreche, creches, onSelect
 
 // ===== Sidebar =====
 function Sidebar({ user, view, setView, open, setOpen }) {
+  const [preinscriptionsCount, setPreinscriptionsCount] = useState(0);
+  useEffect(() => {
+    if (user.role !== 'admin') return;
+    (async () => {
+      try {
+        const d = await api('preinscriptions');
+        const pending = (d.preinscriptions||[]).filter(p => !p.statut || p.statut === 'nouveau' || p.statut === 'en_attente').length;
+        setPreinscriptionsCount(pending);
+      } catch(e){}
+    })();
+    const t = setInterval(async () => {
+      try {
+        const d = await api('preinscriptions');
+        const pending = (d.preinscriptions||[]).filter(p => !p.statut || p.statut === 'nouveau' || p.statut === 'en_attente').length;
+        setPreinscriptionsCount(pending);
+      } catch(e){}
+    }, 30000);
+    return () => clearInterval(t);
+  }, [user.role]);
   const menus = {
     super_admin: [
       { key: 'super/dashboard', label: 'Cockpit', icon: BarChart3 },
@@ -217,6 +236,7 @@ function Sidebar({ user, view, setView, open, setOpen }) {
     ],
     admin: [
       { key: 'admin/dashboard', label: 'Cockpit', icon: Home },
+      { key: 'admin/preinscriptions', label: 'Pré-inscriptions', icon: UserCheck, highlight: true, badgeKey: 'preinscriptions' },
       { key: 'admin/enfants', label: 'Enfants', icon: Baby },
       { key: 'admin/familles', label: 'Foyers', icon: Users },
       { key: 'admin/groupes', label: 'Sections', icon: Layers },
@@ -231,7 +251,6 @@ function Sidebar({ user, view, setView, open, setOpen }) {
       { key: 'admin/factures', label: 'Factures', icon: FileText },
       { key: 'admin/finances', label: 'Finances · CA', icon: TrendingUp },
       { key: 'admin/charges', label: 'Charges & Salaires', icon: PiggyBank },
-      { key: 'admin/preinscriptions', label: 'Pré-inscriptions', icon: UserCheck },
       { key: 'admin/employes', label: 'Équipe', icon: Briefcase },
       { key: 'admin/planning-employes', label: 'Horaires équipe', icon: Calendar },
       { key: 'admin/fiches-paie', label: 'Fiches de paie', icon: Wallet },
@@ -289,12 +308,21 @@ function Sidebar({ user, view, setView, open, setOpen }) {
         {items.map((it) => {
           const Icon = it.icon;
           const active = view === it.key;
+          const badge = it.badgeKey === 'preinscriptions' && preinscriptionsCount > 0 ? preinscriptionsCount : null;
           return (
             <button key={it.key} onClick={() => { setView(it.key); setOpen(false); }}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 my-0.5 rounded-r-pill text-sm font-bold transition-all
-                ${active ? 'bg-teal text-white shadow-soft' : 'text-ink-muted hover:bg-teal-light hover:text-teal-dark'}`}>
+              className={`w-full flex items-center gap-3 px-4 py-2.5 my-0.5 rounded-r-pill text-sm font-bold transition-all relative
+                ${active ? 'bg-teal text-white shadow-soft'
+                  : it.highlight ? 'bg-coral/10 text-coral hover:bg-coral hover:text-white'
+                  : 'text-ink-muted hover:bg-teal-light hover:text-teal-dark'}`}>
               <Icon className="w-4 h-4 flex-shrink-0" />
-              <span className="truncate-1 text-left text-[13px]">{it.label}</span>
+              <span className="truncate-1 text-left text-[13px] flex-1">{it.label}</span>
+              {badge != null && (
+                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${active?'bg-white text-teal-dark':'bg-coral text-white'}`}>{badge}</span>
+              )}
+              {it.highlight && badge == null && !active && (
+                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-full bg-coral text-white">NEW</span>
+              )}
             </button>
           );
         })}
@@ -673,9 +701,12 @@ function SuperDashboard() {
 
 function SuperClients() {
   const [clients, setClients] = useState([]);
-  useEffect(() => { (async()=>{const c=await api('super/clients'); setClients(c.clients);})(); }, []);
+  const [edit, setEdit] = useState(null);
+  const load = async () => { try { const c=await api('super/clients'); setClients(c.clients);} catch(e){ toast.error(e.message); } };
+  useEffect(() => { load(); }, []);
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-up">
+    <div className="animate-fade-up">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {clients.map(c => (
         <div key={c.id} className="bg-white rounded-lg p-5 shadow-softer">
           <div className="flex items-center gap-3 mb-3">
@@ -683,9 +714,10 @@ function SuperClients() {
             <div className="flex-1 min-w-0">
               <div className="font-extrabold truncate-1">{c.prenom} {c.nom}</div>
               <div className="text-xs text-ink-muted truncate-1">{c.email}</div>
+              {c.tel && <div className="text-xs text-ink-muted truncate-1">📞 {c.tel}</div>}
             </div>
             <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${c.subscription?.status==='active'?'bg-teal-light text-teal-dark':'bg-amber/20 text-amber'}`}>
-              {c.subscription?.status}
+              {c.subscription?.status || 'inactif'}
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs pt-3 border-t border-bgsoft">
@@ -700,8 +732,254 @@ function SuperClients() {
               </div>
             ))}
           </div>
+          <div className="mt-3 flex gap-2">
+            <button onClick={()=>setEdit(c)} className="btn-pill flex-1 bg-teal text-white text-xs shadow-soft"><Edit3 className="w-3 h-3" /> Éditer client</button>
+          </div>
         </div>
       ))}
+      </div>
+      {edit && <SuperClientEditor client={edit} onClose={()=>{setEdit(null);load();}} />}
+    </div>
+  );
+}
+
+function SuperClientEditor({ client, onClose }) {
+  const [f, setF] = useState({
+    prenom: client.prenom||'', nom: client.nom||'', email: client.email||'', tel: client.tel||'',
+    password: '', plan_prix: client.plan_prix||79, notes_admin: client.notes_admin||'',
+    subscription: client.subscription || { status: 'trialing', plan: 'timetis-standard' },
+  });
+  const save = async () => {
+    try {
+      const body = { ...f };
+      if (!body.password) delete body.password;
+      await api(`users/${client.id}`, { method: 'PUT', body: JSON.stringify(body) });
+      toast.success('Client mis à jour'); onClose();
+    } catch(e){ toast.error(e.message); }
+  };
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
+        <div className="flex items-center justify-between mb-4">
+          <div><div className="font-extrabold text-lg">Éditer client</div><div className="text-xs text-ink-muted">{client.email}</div></div>
+          <button onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Prénom</label>
+              <input value={f.prenom} onChange={e=>setF({...f,prenom:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Nom</label>
+              <input value={f.nom} onChange={e=>setF({...f,nom:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          </div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Email</label>
+            <input type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Téléphone</label>
+            <input value={f.tel} onChange={e=>setF({...f,tel:e.target.value})} placeholder="0692 …" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Nouveau mot de passe (optionnel)</label>
+            <input type="password" value={f.password} onChange={e=>setF({...f,password:e.target.value})} placeholder="Laissez vide pour conserver" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Prix mensuel (€)</label>
+              <input type="number" value={f.plan_prix} onChange={e=>setF({...f,plan_prix:+e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Statut abo</label>
+              <select value={f.subscription?.status||'trialing'} onChange={e=>setF({...f,subscription:{...(f.subscription||{}), status:e.target.value}})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold">
+                <option value="trialing">Essai</option>
+                <option value="active">Actif</option>
+                <option value="past_due">Impayé</option>
+                <option value="canceled">Résilié</option>
+              </select></div>
+          </div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Notes internes</label>
+            <textarea value={f.notes_admin} onChange={e=>setF({...f,notes_admin:e.target.value})} rows={3} placeholder="Notes visibles uniquement en Super Admin…" className="w-full mt-1 px-4 py-2.5 rounded-2xl bg-bgsoft outline-none text-sm font-semibold resize-none" /></div>
+          <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function SuperDevisFactures() {
+  const [tab, setTab] = useState('devis');
+  const [devis, setDevis] = useState([]);
+  const [factures, setFactures] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const load = async () => {
+    try {
+      const d = await api('super/devis'); setDevis(d.devis||[]);
+      const f = await api('super/factures'); setFactures(f.factures||[]);
+      const c = await api('super/clients'); setClients(c.clients||[]);
+    } catch(e){ toast.error(e.message); }
+  };
+  useEffect(() => { load(); }, []);
+
+  const sendDoc = async (doc) => {
+    try {
+      const type = doc.type === 'devis' ? 'devis' : 'factures';
+      const r = await api(`super/${type}/${doc.id}/send`, { method: 'POST' });
+      // Ouvrir client mail (mailto:) avec sujet + corps pré-remplis
+      window.location.href = r.mailto;
+      toast.success('Client mail ouvert · document marqué envoyé');
+      setTimeout(load, 500);
+    } catch(e){ toast.error(e.message); }
+  };
+  const deleteDoc = async (doc) => {
+    if (!confirm(`Supprimer ce ${doc.type} ${doc.numero} ?`)) return;
+    try {
+      const type = doc.type === 'devis' ? 'devis' : 'factures';
+      await api(`super/${type}/${doc.id}`, { method: 'DELETE' });
+      toast.success('Supprimé'); load();
+    } catch(e){ toast.error(e.message); }
+  };
+  const items = tab === 'devis' ? devis : factures;
+
+  return (
+    <div className="space-y-4 animate-fade-up">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex gap-2">
+          <button onClick={()=>setTab('devis')} className={`btn-pill text-sm ${tab==='devis'?'bg-teal text-white shadow-soft':'bg-bgsoft text-ink-muted'}`}><Copy className="w-4 h-4" /> Devis ({devis.length})</button>
+          <button onClick={()=>setTab('factures')} className={`btn-pill text-sm ${tab==='factures'?'bg-teal text-white shadow-soft':'bg-bgsoft text-ink-muted'}`}><FileText className="w-4 h-4" /> Factures ({factures.length})</button>
+        </div>
+        <button onClick={()=>setShowCreate(true)} className="btn-pill bg-coral text-white shadow-soft"><Plus className="w-4 h-4" /> Nouveau {tab==='devis'?'devis':'facture'}</button>
+      </div>
+
+      {items.length === 0 && <PlaceholderView title={`Aucun ${tab==='devis'?'devis':'facture'} pour l'instant`} icon={FileText} subtitle="Créez votre premier document et envoyez-le directement par email au client." />}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {items.map(d => (
+          <div key={d.id} className="bg-white rounded-lg p-4 shadow-softer">
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-extrabold">{d.numero}</div>
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${d.envoye?'bg-teal-light text-teal-dark':'bg-amber/20 text-amber'}`}>{d.envoye?'Envoyé':'Brouillon'}</span>
+            </div>
+            <div className="text-sm font-bold truncate-1">{d.client_nom}</div>
+            <div className="text-xs text-ink-muted truncate-1">{d.client_email}</div>
+            <div className="text-xs text-ink-muted mt-2">{d.description}</div>
+            <div className="mt-2 flex items-center justify-between">
+              <div className="text-xs text-ink-muted">Période : <b>{d.periode}</b></div>
+              <div className="text-lg font-extrabold text-teal-dark">{d.montant_ttc}€</div>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button onClick={()=>sendDoc(d)} className="btn-pill flex-1 bg-teal text-white text-xs shadow-soft"><Send className="w-3 h-3" /> {d.envoye?'Renvoyer':'Envoyer par email'}</button>
+              <button onClick={()=>deleteDoc(d)} className="btn-pill bg-coral/10 text-coral text-xs"><Trash2 className="w-3 h-3" /></button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {showCreate && <SuperDocCreate type={tab} clients={clients} onClose={()=>{setShowCreate(false);load();}} />}
+    </div>
+  );
+}
+
+function SuperDocCreate({ type, clients, onClose }) {
+  const [f, setF] = useState({
+    client_id: clients[0]?.id || '',
+    description: 'Abonnement TiMétis · Solution de gestion de crèche',
+    periode: new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'}),
+    echeance: new Date(Date.now()+30*86400000).toISOString().slice(0,10),
+    notes: '',
+    lignes: [{ label: 'Abonnement TiMétis (1ʳᵉ crèche)', qte: 1, pu: 79, total: 79 }],
+    tva: 0,
+  });
+  const [autoPreset, setAutoPreset] = useState(true);
+
+  // Auto-remplir en fonction du nombre de crèches du client
+  useEffect(() => {
+    if (!autoPreset || !f.client_id) return;
+    const c = clients.find(x=>x.id===f.client_id);
+    if (!c) return;
+    const nb = c.creches?.length || 1;
+    const lignes = [{ label: 'Abonnement TiMétis · 1ʳᵉ crèche', qte: 1, pu: 79, total: 79 }];
+    if (nb > 1) lignes.push({ label: `Crèches supplémentaires (${nb-1} × 40€)`, qte: nb-1, pu: 40, total: (nb-1)*40 });
+    setF(x => ({ ...x, lignes }));
+  }, [f.client_id, autoPreset, clients]);
+
+  const total_ht = f.lignes.reduce((s,l)=>s+(l.total||0),0);
+  const total_ttc = total_ht + (f.tva||0);
+
+  const updateLigne = (i, k, v) => {
+    const nl = [...f.lignes];
+    nl[i] = { ...nl[i], [k]: k==='label' ? v : +v };
+    if (k==='qte' || k==='pu') nl[i].total = (nl[i].qte||0) * (nl[i].pu||0);
+    setF({ ...f, lignes: nl });
+    setAutoPreset(false);
+  };
+  const addLigne = () => { setF({ ...f, lignes: [...f.lignes, { label:'', qte:1, pu:0, total:0 }] }); setAutoPreset(false); };
+  const delLigne = (i) => { setF({ ...f, lignes: f.lignes.filter((_,x)=>x!==i) }); setAutoPreset(false); };
+
+  const submit = async (sendNow) => {
+    try {
+      if (!f.client_id) return toast.error('Choisissez un client');
+      const body = { ...f, montant_ht: total_ht, montant_ttc: total_ttc };
+      const created = await api(`super/${type}`, { method: 'POST', body: JSON.stringify(body) });
+      const doc = created[type==='devis'?'devis':'facture'];
+      toast.success(`${type==='devis'?'Devis':'Facture'} créé(e)`);
+      if (sendNow && doc?.id) {
+        const r = await api(`super/${type==='devis'?'devis':'factures'}/${doc.id}/send`, { method: 'POST' });
+        window.location.href = r.mailto;
+      }
+      onClose();
+    } catch(e){ toast.error(e.message); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-lg my-6">
+        <div className="flex items-center justify-between mb-4">
+          <div><div className="font-extrabold text-lg">Nouveau {type==='devis'?'devis':'facture'} SaaS</div><div className="text-xs text-ink-muted">Envoi direct par email au client</div></div>
+          <button onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+        <div className="space-y-3">
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Client (crèche)</label>
+            <select value={f.client_id} onChange={e=>{setF({...f,client_id:e.target.value}); setAutoPreset(true);}} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold">
+              <option value="">-- Choisir --</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.prenom} {c.nom} · {c.email}</option>)}
+            </select></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Description</label>
+            <input value={f.description} onChange={e=>setF({...f,description:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Période</label>
+              <input value={f.periode} onChange={e=>setF({...f,periode:e.target.value})} placeholder="juillet 2026" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Échéance</label>
+              <input type="date" value={f.echeance} onChange={e=>setF({...f,echeance:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          </div>
+
+          <div className="bg-bgsoft rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-extrabold uppercase text-ink-muted">Lignes</div>
+              <button onClick={addLigne} className="btn-pill bg-white text-teal text-xs"><Plus className="w-3 h-3" /> Ajouter</button>
+            </div>
+            {f.lignes.map((l,i)=>(
+              <div key={i} className="grid grid-cols-12 gap-1 items-center">
+                <input value={l.label} onChange={e=>updateLigne(i,'label',e.target.value)} placeholder="Libellé" className="col-span-6 px-2 py-1.5 rounded-lg bg-white outline-none text-xs font-semibold" />
+                <input type="number" value={l.qte} onChange={e=>updateLigne(i,'qte',e.target.value)} className="col-span-2 px-2 py-1.5 rounded-lg bg-white outline-none text-xs font-semibold" />
+                <input type="number" step="0.01" value={l.pu} onChange={e=>updateLigne(i,'pu',e.target.value)} className="col-span-3 px-2 py-1.5 rounded-lg bg-white outline-none text-xs font-semibold" />
+                <button onClick={()=>delLigne(i)} className="col-span-1 text-coral"><X className="w-4 h-4" /></button>
+              </div>
+            ))}
+            <div className="flex items-center justify-between pt-2 border-t border-white text-xs">
+              <span className="text-ink-muted">Total HT</span>
+              <b>{total_ht}€</b>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-ink-muted">TVA</span>
+              <input type="number" value={f.tva} onChange={e=>setF({...f,tva:+e.target.value})} className="w-20 px-2 py-1 rounded bg-white outline-none text-xs font-semibold text-right" />
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <b>Total TTC</b>
+              <b className="text-teal-dark text-lg">{total_ttc}€</b>
+            </div>
+          </div>
+
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Notes / conditions</label>
+            <textarea value={f.notes} onChange={e=>setF({...f,notes:e.target.value})} rows={2} placeholder="Ex : règlement par virement IBAN FR76…" className="w-full mt-1 px-4 py-2.5 rounded-2xl bg-bgsoft outline-none text-sm font-semibold resize-none" /></div>
+
+          <div className="flex gap-2">
+            <button onClick={()=>submit(false)} className="btn-pill flex-1 bg-bgsoft text-ink-strong text-sm"><Save className="w-4 h-4" /> Enregistrer</button>
+            <button onClick={()=>submit(true)} className="btn-pill flex-1 bg-teal text-white shadow-soft text-sm"><Send className="w-4 h-4" /> Créer & envoyer</button>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -1065,14 +1343,28 @@ function AddChildModal({ activeCId, onClose }) {
 // ===== FAMILLES / GROUPES / TAGS =====
 function AdminFamilles({ activeCId }) {
   const [items, setItems] = useState([]);
+  const [enfants, setEnfants] = useState([]);
   const [edit, setEdit] = useState(null); // famille object or 'new'
-  const load = async () => { try {const d=await api('familles'+(activeCId?`?creche_id=${activeCId}`:'')); setItems(d.familles);}catch(e){toast.error(e.message);} };
+  const load = async () => {
+    try {
+      const d = await api('familles'+(activeCId?`?creche_id=${activeCId}`:''));
+      setItems(d.familles);
+      const en = await api('enfants'+(activeCId?`?creche_id=${activeCId}`:''));
+      setEnfants(en.enfants||[]);
+    } catch(e){ toast.error(e.message); }
+  };
   useEffect(() => { load(); }, [activeCId]);
+  const enfantsPourFamille = (f) => {
+    const linked = enfants.filter(e => (f.enfants||[]).includes(e.id));
+    return linked;
+  };
   return (
     <div className="space-y-4 animate-fade-up">
       <div className="flex justify-end"><button onClick={()=>setEdit('new')} className="btn-pill bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Nouveau foyer</button></div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {items.map(f => (
+        {items.map(f => {
+          const linked = enfantsPourFamille(f);
+          return (
           <div key={f.id} className="bg-white rounded-lg p-5 shadow-softer">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
@@ -1084,19 +1376,28 @@ function AdminFamilles({ activeCId }) {
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
               <div><div className="text-ink-muted">Parents</div><div className="font-bold">{(f.parents||[]).length}</div></div>
-              <div><div className="text-ink-muted">Enfants</div><div className="font-bold">{(f.enfants||[]).length}</div></div>
+              <div><div className="text-ink-muted">Enfants rattachés</div><div className="font-bold">{linked.length}</div></div>
             </div>
+            {linked.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {linked.map(en => <span key={en.id} className="text-[10px] font-bold bg-teal-light text-teal-dark px-2 py-0.5 rounded-full">{en.prenom}</span>)}
+              </div>
+            )}
             {f.notes && <div className="mt-3 pt-3 border-t border-bgsoft text-xs text-ink-muted italic">{f.notes}</div>}
           </div>
-        ))}
+        );})}
       </div>
-      {edit && <FamilleEditor famille={edit==='new'?null:edit} activeCId={activeCId} onClose={()=>{setEdit(null);load();}} />}
+      {edit && <FamilleEditor famille={edit==='new'?null:edit} enfantsAll={enfants} activeCId={activeCId} onClose={()=>{setEdit(null);load();}} />}
     </div>
   );
 }
 
-function FamilleEditor({ famille, activeCId, onClose }) {
-  const [f, setF] = useState(famille || { nom:'', tel:'', email:'', adresse:'', notes:'' });
+function FamilleEditor({ famille, enfantsAll, activeCId, onClose }) {
+  const [f, setF] = useState(famille || { nom:'', tel:'', email:'', adresse:'', notes:'', enfants: [] });
+  const toggleEnfant = (id) => {
+    const cur = f.enfants||[];
+    setF({ ...f, enfants: cur.includes(id) ? cur.filter(x=>x!==id) : [...cur, id] });
+  };
   const save = async () => {
     try {
       if (famille?.id) await api(`familles/${famille.id}`, { method: 'PUT', body: JSON.stringify(f) });
@@ -1112,7 +1413,7 @@ function FamilleEditor({ famille, activeCId, onClose }) {
     <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
         <div className="flex items-center justify-between mb-4">
-          <div><div className="font-extrabold text-lg">{famille?'Éditer le foyer':'Nouveau foyer'}</div><div className="text-xs text-ink-muted">Coordonnées de la famille</div></div>
+          <div><div className="font-extrabold text-lg">{famille?'Éditer le foyer':'Nouveau foyer'}</div><div className="text-xs text-ink-muted">Coordonnées & enfants rattachés</div></div>
           <button onClick={onClose}><X className="w-5 h-5" /></button>
         </div>
         <div className="space-y-3">
@@ -1124,6 +1425,28 @@ function FamilleEditor({ famille, activeCId, onClose }) {
             <input type="email" value={f.email||''} onChange={e=>setF({...f,email:e.target.value})} placeholder="famille@email.com" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
           <div><label className="text-xs font-extrabold uppercase text-ink-muted">Adresse</label>
             <input value={f.adresse} onChange={e=>setF({...f,adresse:e.target.value})} placeholder="12 rue des Flamboyants, 97400 Saint-Denis" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-extrabold uppercase text-ink-muted">Enfants rattachés</label>
+              <span className="text-xs font-bold text-teal-dark">{(f.enfants||[]).length} sélectionné{(f.enfants||[]).length>1?'s':''}</span>
+            </div>
+            <div className="mt-2 bg-bgsoft rounded-2xl p-2 max-h-48 overflow-y-auto space-y-1">
+              {(enfantsAll||[]).length === 0 && <div className="text-xs text-ink-muted italic p-2">Aucun enfant enregistré. Créez d'abord un enfant depuis la vue "Enfants".</div>}
+              {(enfantsAll||[]).map(en => {
+                const checked = (f.enfants||[]).includes(en.id);
+                return (
+                  <label key={en.id} className={`flex items-center gap-2 p-2 rounded-xl cursor-pointer ${checked?'bg-teal text-white':'bg-white'}`}>
+                    <input type="checkbox" checked={checked} onChange={()=>toggleEnfant(en.id)} className="w-4 h-4 accent-teal-dark" />
+                    <span className="text-sm font-semibold flex-1 truncate">{en.prenom} {en.nom}</span>
+                    <span className={`text-[10px] font-bold ${checked?'text-white/80':'text-ink-muted'}`}>{en.groupe||''}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <div className="mt-1 text-[11px] text-ink-muted">Cochez pour rattacher/dératacher un enfant à ce foyer.</div>
+          </div>
+
           <div><label className="text-xs font-extrabold uppercase text-ink-muted">Notes</label>
             <textarea value={f.notes||''} onChange={e=>setF({...f,notes:e.target.value})} placeholder="Informations complémentaires..." rows={3} className="w-full mt-1 px-4 py-2.5 rounded-2xl bg-bgsoft outline-none text-sm font-semibold resize-none" /></div>
           <div className="flex gap-2">
@@ -1910,8 +2233,8 @@ function ThreadedMessagerie({ user }) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-softer h-[calc(100vh-140px)] max-h-[720px] flex flex-col md:flex-row overflow-hidden animate-fade-up">
-      <div className={`${active?'hidden md:flex':'flex'} w-full md:w-72 border-b md:border-b-0 md:border-r border-bgsoft flex-col flex-shrink-0`}>
+    <div className="bg-white rounded-lg shadow-softer h-[calc(100vh-140px)] max-h-[720px] flex flex-col md:flex-row overflow-hidden animate-fade-up min-w-0 w-full">
+      <div className={`${active?'hidden md:flex':'flex'} w-full md:w-72 border-b md:border-b-0 md:border-r border-bgsoft flex-col flex-shrink-0 min-w-0`}>
         <div className="px-4 py-3 border-b border-bgsoft flex items-center justify-between">
           <div className="font-extrabold">Conversations</div>
           {(user.role==='pro'||user.role==='admin') && <button onClick={()=>setShowNew(true)} className="w-8 h-8 rounded-full bg-teal text-white flex items-center justify-center"><Plus className="w-4 h-4" /></button>}
@@ -1933,7 +2256,7 @@ function ThreadedMessagerie({ user }) {
         </div>
       </div>
 
-      <div className={`${active?'flex':'hidden md:flex'} flex-1 flex-col`}>
+      <div className={`${active?'flex':'hidden md:flex'} flex-1 flex-col min-w-0 w-full`}>
         {!active && <div className="flex-1 flex items-center justify-center text-ink-muted text-sm">Sélectionne une conversation</div>}
         {active && (
           <>
@@ -1942,17 +2265,17 @@ function ThreadedMessagerie({ user }) {
               <Avatar user={active.others?.[0]} enfant={active.enfant} size={36} />
               <div className="flex-1 min-w-0"><div className="font-extrabold truncate-1">{active.others?.[0]?.prenom} {active.others?.[0]?.nom}</div><div className="text-xs text-ink-muted">{active.enfant ? `Enfant : ${active.enfant.prenom}` : 'Conversation'}</div></div>
             </div>
-            <div className="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-3 bg-bgsoft/30">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin px-2 md:px-3 py-3 space-y-3 bg-bgsoft/30 min-w-0">
               {messages.map(m => {
                 const mine = m.from_id === user.id;
                 return (
-                  <motion.div key={m.id} initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} className={`flex ${mine?'justify-end':'justify-start'}`}>
-                    <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-3 py-2 ${mine?'bg-teal text-white':'bg-white text-ink shadow-softer'}`}>
+                  <motion.div key={m.id} initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} className={`flex ${mine?'justify-end':'justify-start'} w-full min-w-0`}>
+                    <div className={`max-w-[80%] md:max-w-[75%] rounded-2xl px-3 py-2 min-w-0 ${mine?'bg-teal text-white':'bg-white text-ink shadow-softer'}`}>
                       {!mine && <div className="text-[10px] font-extrabold opacity-70 mb-0.5">{m.from_nom}</div>}
                       {m.media && (m.media_type==='video' ? (
-                        <video src={m.media} controls className="w-full max-w-[280px] rounded-xl mb-1" />
+                        <video src={m.media} controls className="w-full max-w-full rounded-xl mb-1" />
                       ) : (
-                        <img src={m.media} alt="" className="w-full max-w-[280px] rounded-xl mb-1" />
+                        <img src={m.media} alt="" className="w-full max-w-full rounded-xl mb-1" />
                       ))}
                       {m.contenu && <div className="text-sm font-semibold whitespace-pre-wrap break-words">{m.contenu}</div>}
                       <div className={`text-[10px] mt-1 ${mine?'opacity-70':'text-ink-muted'}`}>{fmtTime(m.created_at)}</div>
@@ -1962,7 +2285,7 @@ function ThreadedMessagerie({ user }) {
               })}
               <div ref={endRef} />
             </div>
-            <div className="border-t border-bgsoft p-2 flex items-center gap-2">
+            <div className="border-t border-bgsoft p-2 flex items-center gap-2 min-w-0">
               <MediaUploader folder={`thread-${active.id}`} onUpload={(m)=>send(m)} />
               <input value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} placeholder="Message..." className="flex-1 min-w-0 px-3 py-2.5 rounded-pill bg-bgsoft outline-none focus:ring-2 focus:ring-teal/30 text-sm font-semibold" />
               <button onClick={()=>send()} className="btn-pill bg-teal text-white shadow-soft flex-shrink-0"><Send className="w-4 h-4" /></button>
@@ -2734,37 +3057,6 @@ function RGPDView() {
   );
 }
 
-function SuperClientEditor({ client, onClose }) {
-  const [sub, setSub] = useState(client.subscription || { status: 'trialing', plan: 'timetis-79', prix_perso: 79 });
-  const [prixCreche, setPrixCreche] = useState(client.plan_prix?.creche_supp || 40);
-  const [notes, setNotes] = useState(client.notes_admin || '');
-  const save = async () => {
-    try { await api(`users/${client.id}`, { method: 'PUT', body: JSON.stringify({ subscription: sub, plan_prix: { base: sub.prix_perso, creche_supp: +prixCreche }, notes_admin: notes }) });
-      toast.success('Client mis à jour'); onClose(); }
-    catch(e){ toast.error(e.message); }
-  };
-  return (
-    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
-      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-lg my-6">
-        <div className="flex items-center justify-between mb-4"><div><div className="font-extrabold text-lg">{client.prenom} {client.nom}</div><div className="text-xs text-ink-muted">{client.email} · {(client.creches||[]).length} crèche(s)</div></div><button onClick={onClose}><X className="w-5 h-5" /></button></div>
-        <div className="space-y-3">
-          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Statut abonnement</label>
-            <select value={sub.status} onChange={e=>setSub({...sub,status:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold">
-              <option value="trialing">Essai</option><option value="active">Actif</option><option value="past_due">Impayé</option><option value="canceled">Annulé</option><option value="paused">En pause</option>
-            </select></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Prix personnalisé (€/mois)</label><input type="number" value={sub.prix_perso||79} onChange={e=>setSub({...sub,prix_perso:+e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
-            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Prix crèche supp (€)</label><input type="number" value={prixCreche} onChange={e=>setPrixCreche(e.target.value)} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
-          </div>
-          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Notes admin (interne)</label>
-            <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Arrangement, remarques..." rows={3} className="w-full mt-1 px-4 py-2.5 rounded-2xl bg-bgsoft outline-none text-sm font-semibold resize-none" /></div>
-          <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
 function SuperProspects() {
   const [items, setItems] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
@@ -2857,7 +3149,7 @@ function App() {
       case 'super/dashboard': return <SuperDashboard />;
       case 'super/clients': return <SuperClients />;
       case 'super/prospects': return <SuperProspects />;
-      case 'super/factures': return <PlaceholderView title="Devis & factures SaaS" icon={FileText} subtitle="Facturation clients (79€ + 40€/crèche supp)" />;
+      case 'super/factures': return <SuperDevisFactures />;
       case 'super/feedbacks': return <SuperFeedbacks />;
       case 'super/settings': return <ProfileEditor user={user} />;
       case 'admin/dashboard': return <AdminDashboard user={user} activeCId={activeCId} />;

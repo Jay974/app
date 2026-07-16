@@ -1067,21 +1067,64 @@ async function handle(request, params) {
     }});
   }
 
-  // ---- STATS SUPER ADMIN par client ----
-  if (route.startsWith('super/clients/') && path.length === 3 && path[2] === 'invoice' && method === 'POST' && user.role === 'super_admin') {
-    // Facture manuelle pour un client (arrangement/ajustement)
-    const b = await request.json();
-    const clientId = path[1];
-    const f = { id: uuidv4(), super_admin_invoice: true, client_id: clientId,
-      description: b.description||'Abonnement TiMétis',
-      montant: b.montant, mois: b.mois||new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'}),
-      statut: 'en_attente', date: new Date(), created_at: new Date() };
-    await db.collection('factures_saas').insertOne(f);
-    return json({ facture: f });
+  // ---- SUPER ADMIN — DEVIS & FACTURES SAAS ----
+  if ((route === 'super/devis' || route === 'super/factures') && method === 'GET' && user.role === 'super_admin') {
+    const type = route === 'super/devis' ? 'devis' : 'facture';
+    const list = await db.collection('saas_docs').find({ type }).sort({ created_at: -1 }).toArray();
+    // Enrichir avec info client
+    const enriched = await Promise.all(list.map(async d => {
+      const c = await db.collection('users').findOne({ id: d.client_id });
+      return { ...one(d), client: c ? { id: c.id, prenom: c.prenom, nom: c.nom, email: c.email } : null };
+    }));
+    return json(route === 'super/devis' ? { devis: enriched } : { factures: enriched });
   }
-  if (route === 'super/factures' && method === 'GET' && user.role === 'super_admin') {
-    const list = await db.collection('factures_saas').find({}).sort({ created_at: -1 }).toArray();
-    return json({ factures: clean(list) });
+  if ((route === 'super/devis' || route === 'super/factures') && method === 'POST' && user.role === 'super_admin') {
+    const type = route === 'super/devis' ? 'devis' : 'facture';
+    const b = await request.json();
+    const client = await db.collection('users').findOne({ id: b.client_id, role: 'admin' });
+    if (!client) return err('Client introuvable', 404);
+    // Numérotation
+    const prefix = type === 'devis' ? 'DEV' : 'FAC';
+    const cnt = await db.collection('saas_docs').countDocuments({ type });
+    const numero = `${prefix}-${new Date().getFullYear()}-${String(cnt+1).padStart(4,'0')}`;
+    const d = { id: uuidv4(), type, numero, client_id: client.id,
+      client_email: client.email, client_nom: `${client.prenom} ${client.nom}`,
+      description: b.description || 'Abonnement TiMétis · Solution de gestion de crèche',
+      lignes: b.lignes || [{ label: 'Abonnement TiMétis (1ʳᵉ crèche)', qte: 1, pu: 79, total: 79 }],
+      montant_ht: b.montant_ht || b.montant || 79,
+      tva: b.tva || 0,
+      montant_ttc: b.montant_ttc || b.montant || 79,
+      periode: b.periode || new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'}),
+      echeance: b.echeance || new Date(Date.now()+30*86400000).toISOString().slice(0,10),
+      notes: b.notes || '',
+      statut: type === 'devis' ? 'brouillon' : 'en_attente',
+      envoye: false, envoye_at: null,
+      created_at: new Date() };
+    await db.collection('saas_docs').insertOne(d);
+    return json(type === 'devis' ? { devis: one(d) } : { facture: one(d) });
+  }
+  if ((route.startsWith('super/devis/') || route.startsWith('super/factures/')) && path.length === 4 && path[3] === 'send' && method === 'POST' && user.role === 'super_admin') {
+    // Marque comme envoyé et retourne le contenu du mail à ouvrir en mailto:
+    const doc = await db.collection('saas_docs').findOne({ id: path[2] });
+    if (!doc) return err('Document introuvable', 404);
+    await db.collection('saas_docs').updateOne({ id: path[2] }, { $set: { envoye: true, envoye_at: new Date(), statut: doc.type==='devis'?'envoye':'en_attente' } });
+    const isDevis = doc.type === 'devis';
+    const subject = `${isDevis?'Devis':'Facture'} TiMétis ${doc.numero} — ${doc.periode}`;
+    const lignesTxt = (doc.lignes||[]).map(l => `- ${l.label} : ${l.qte} × ${l.pu}€ = ${l.total}€`).join('\n');
+    const body = `Bonjour ${doc.client_nom},\n\nVeuillez trouver ci-dessous votre ${isDevis?'devis':'facture'} TiMétis :\n\nRéférence : ${doc.numero}\nPériode : ${doc.periode}\nÉchéance : ${doc.echeance}\n\n${doc.description}\n\n${lignesTxt}\n\nTotal HT : ${doc.montant_ht}€\nTVA : ${doc.tva}€\nTotal TTC : ${doc.montant_ttc}€\n\n${doc.notes ? doc.notes+'\n\n' : ''}${isDevis?'Merci de nous retourner votre accord pour finaliser l’abonnement.':'Règlement à réception par virement bancaire.'}\n\nCordialement,\nL’équipe TiMétis · Made in 974`;
+    const mailto = `mailto:${encodeURIComponent(doc.client_email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    return json({ ok: true, mailto, subject, body, email: doc.client_email });
+  }
+  if ((route.startsWith('super/devis/') || route.startsWith('super/factures/')) && path.length === 3 && method === 'PUT' && user.role === 'super_admin') {
+    const b = await request.json();
+    delete b._id; delete b.id; delete b.created_at;
+    await db.collection('saas_docs').updateOne({ id: path[2] }, { $set: b });
+    const fresh = await db.collection('saas_docs').findOne({ id: path[2] });
+    return json({ doc: one(fresh) });
+  }
+  if ((route.startsWith('super/devis/') || route.startsWith('super/factures/')) && path.length === 3 && method === 'DELETE' && user.role === 'super_admin') {
+    await db.collection('saas_docs').deleteOne({ id: path[2] });
+    return json({ ok: true });
   }
 
   // ---- MEDIA UPLOAD (Cloudinary signed) ----
