@@ -11,7 +11,8 @@ import {
   Loader2, Mail, Lock, ArrowRight, Sparkle, Wallet, ChevronDown,
   Newspaper, AlertTriangle, Award, FileCheck, Layers, Tag as TagIcon,
   UtensilsCrossed, Package, Video, Paperclip, Trash2, Edit3, Save, Copy,
-  Building2, CreditCard, ShieldCheck, Zap, Star, MessageSquare, User
+  Building2, CreditCard, ShieldCheck, Zap, Star, MessageSquare, User,
+  Check, Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -2900,49 +2901,199 @@ function PreinscriptionsView({ activeCId, canEdit }) {
 function FichesPaieView({ user, activeCId }) {
   const [items, setItems] = useState([]);
   const [employes, setEmployes] = useState([]);
-  const [showAdd, setShowAdd] = useState(false);
+  const [openEmp, setOpenEmp] = useState(null); // employé actif (drawer admin)
+  const [showAdd, setShowAdd] = useState(false); // modal dépôt (admin)
   const load = async () => {
     try {
       const d = await api('fiches-paie'); setItems(d.fiches||[]);
-      if (user.role === 'admin') { const e = await api('employes'+(activeCId?`?creche_id=${activeCId}`:'')); setEmployes(e.employes); }
+      if (user.role === 'admin') { const e = await api('employes'+(activeCId?`?creche_id=${activeCId}`:'')); setEmployes(e.employes||[]); }
     } catch(e){}
   };
   useEffect(() => { load(); }, [activeCId]);
-  const onUpload = async (media) => {
-    const emp = employes.find(e => e.id === document.getElementById('fp_employe')?.value);
-    const periode = document.getElementById('fp_periode')?.value;
-    if (!emp || !periode) return toast.error('Sélectionne un employé et une période');
-    try { await api('fiches-paie', { method: 'POST', body: JSON.stringify({
-      employe_id: emp.id, employe_nom: `${emp.prenom} ${emp.nom}`, periode, url: media.url,
-      creche_id: activeCId }) }); toast.success('Fiche déposée'); setShowAdd(false); load();
-    } catch(e){ toast.error(e.message); }
-  };
+
+  // --- Vue Pro : uniquement SES fiches (backend filtre par employe_id) ---
+  if (user.role === 'pro') {
+    return (
+      <div className="space-y-4 animate-fade-up">
+        <div className="bg-white rounded-lg p-4 shadow-softer flex items-center gap-3">
+          <Avatar user={user} size={44} />
+          <div className="flex-1 min-w-0"><div className="font-extrabold truncate-1">{user.prenom} {user.nom}</div><div className="text-xs text-ink-muted">Mes bulletins de salaire · {items.length} document{items.length>1?'s':''}</div></div>
+          <Wallet className="w-6 h-6 text-teal" />
+        </div>
+        {items.length === 0 && <PlaceholderView title="Aucune fiche disponible" icon={Wallet} subtitle="Votre employeur n'a pas encore déposé de bulletin. Vous serez notifié dès qu'une fiche sera disponible." />}
+        <div className="space-y-2">
+          {items.map(f => (
+            <div key={f.id} className="bg-white rounded-lg p-4 shadow-softer flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-teal-light flex items-center justify-center flex-shrink-0"><FileText className="w-5 h-5 text-teal-dark" /></div>
+              <div className="flex-1 min-w-0">
+                <div className="font-extrabold truncate-1">{f.periode}</div>
+                <div className="text-xs text-ink-muted">Déposée le {fmtDate(f.created_at)}</div>
+                {(f.montant_brut>0 || f.montant_net>0) && <div className="text-xs text-ink-muted mt-0.5">Brut : <b>{f.montant_brut}€</b> · Net : <b className="text-teal-dark">{f.montant_net}€</b></div>}
+              </div>
+              {f.url && <a href={f.url} target="_blank" rel="noopener noreferrer" download className="btn-pill bg-teal text-white text-xs shadow-soft"><Download className="w-3 h-3" /> Télécharger</a>}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // --- Vue Admin : cards employés cliquables ---
+  const fichesByEmp = employes.reduce((acc, e) => {
+    acc[e.id] = items.filter(f => f.employe_id === e.id);
+    return acc;
+  }, {});
+
   return (
     <div className="space-y-4 animate-fade-up">
-      {user.role === 'admin' && <div className="flex justify-end"><button onClick={()=>setShowAdd(true)} className="btn-pill bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Déposer une fiche</button></div>}
-      <div className="space-y-2">
-        {items.length===0 && <PlaceholderView title={user.role==='pro'?"Aucune fiche disponible":"Aucune fiche déposée"} icon={Wallet} />}
-        {items.map(f => (
-          <div key={f.id} className="bg-white rounded-lg p-4 shadow-softer flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-teal-light flex items-center justify-center"><Wallet className="w-5 h-5 text-teal" /></div>
-            <div className="flex-1 min-w-0"><div className="font-bold truncate-1">{f.employe_nom} · {f.periode}</div><div className="text-xs text-ink-muted">Déposée le {fmtDate(f.created_at)}</div></div>
-            {f.url && <a href={f.url} target="_blank" rel="noopener noreferrer" className="btn-pill bg-teal text-white text-xs">Télécharger</a>}
+      <div className="bg-white rounded-lg p-4 shadow-softer">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="font-extrabold text-lg">Fiches de paie</div>
+            <div className="text-xs text-ink-muted">Cliquez sur un employé pour déposer / consulter ses bulletins de salaire</div>
           </div>
-        ))}
-      </div>
-      {showAdd && (
-        <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4">
-          <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">Déposer une fiche de paie</div><button onClick={()=>setShowAdd(false)}><X className="w-5 h-5" /></button></div>
-            <div className="space-y-3">
-              <select id="fp_employe" className="w-full px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold"><option value="">— Employé —</option>{employes.map(e=><option key={e.id} value={e.id}>{e.prenom} {e.nom}</option>)}</select>
-              <input id="fp_periode" placeholder="Période (ex: Juin 2026)" className="w-full px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" />
-              <MediaUploader folder="fiches-paie" onUpload={onUpload} />
-              <div className="text-xs text-ink-muted">Formats acceptés : PDF, image. Nécessite Cloudinary configuré.</div>
-            </div>
-          </motion.div>
+          <div className="flex items-center gap-2 text-xs text-ink-muted">
+            <Users className="w-4 h-4" /> <b>{employes.length}</b> employé{employes.length>1?'s':''}
+            <FileText className="w-4 h-4 ml-2" /> <b>{items.length}</b> bulletin{items.length>1?'s':''}
+          </div>
         </div>
+      </div>
+
+      {employes.length === 0 && <PlaceholderView title="Aucun employé dans cette crèche" icon={Users} subtitle="Ajoutez d'abord des employés depuis la vue « Équipe »." />}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {employes.map(e => {
+          const nb = (fichesByEmp[e.id]||[]).length;
+          const lastF = (fichesByEmp[e.id]||[])[0];
+          return (
+            <button key={e.id} onClick={()=>setOpenEmp(e)} className="bg-white rounded-lg p-4 shadow-softer text-left hover:shadow-soft transition group">
+              <div className="flex items-center gap-3">
+                <Avatar user={e} size={48} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-extrabold truncate-1">{e.prenom} {e.nom}</div>
+                  <div className="text-xs text-ink-muted truncate-1">{e.email}</div>
+                </div>
+                <div className={`text-[10px] font-extrabold px-2 py-1 rounded-full ${nb>0?'bg-teal-light text-teal-dark':'bg-amber/20 text-amber'}`}>{nb} fiche{nb>1?'s':''}</div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-bgsoft flex items-center justify-between text-xs">
+                <span className="text-ink-muted">{lastF ? `Dernière : ${lastF.periode}` : 'Aucun bulletin déposé'}</span>
+                <span className="text-teal-dark font-bold group-hover:translate-x-1 transition">Ouvrir →</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {openEmp && (
+        <EmployePayslipsDrawer
+          employe={openEmp}
+          fiches={fichesByEmp[openEmp.id]||[]}
+          activeCId={activeCId}
+          onClose={()=>{setOpenEmp(null); load();}}
+        />
       )}
+    </div>
+  );
+}
+
+function EmployePayslipsDrawer({ employe, fiches, activeCId, onClose }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ periode: '', montant_brut: 0, montant_net: 0, note: '', url: null });
+
+  const submit = async () => {
+    if (!form.periode) return toast.error('Renseignez une période (ex : juin 2026)');
+    if (!form.url) return toast.error('Veuillez déposer un fichier PDF ou image');
+    try {
+      await api('fiches-paie', { method: 'POST', body: JSON.stringify({
+        employe_id: employe.id, employe_nom: `${employe.prenom} ${employe.nom}`,
+        creche_id: activeCId,
+        periode: form.periode, url: form.url,
+        montant_brut: +form.montant_brut || 0, montant_net: +form.montant_net || 0,
+        note: form.note || '',
+      }) });
+      toast.success(`Fiche déposée pour ${employe.prenom}`);
+      setForm({ periode: '', montant_brut: 0, montant_net: 0, note: '', url: null });
+      setShowAdd(false);
+      onClose(); // refresh
+    } catch(e){ toast.error(e.message); }
+  };
+
+  const del = async (f) => {
+    if (!confirm(`Supprimer la fiche « ${f.periode} » de ${employe.prenom} ?`)) return;
+    try { await api(`fiches-paie/${f.id}`, { method: 'DELETE' }); toast.success('Fiche supprimée'); onClose(); }
+    catch(e){ toast.error(e.message); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg w-full max-w-lg my-6 shadow-soft">
+        {/* Header */}
+        <div className="p-5 border-b border-bgsoft flex items-center gap-3">
+          <Avatar user={employe} size={56} />
+          <div className="flex-1 min-w-0">
+            <div className="font-extrabold text-lg truncate-1">{employe.prenom} {employe.nom}</div>
+            <div className="text-xs text-ink-muted truncate-1">{employe.email}</div>
+            <div className="text-xs text-ink-muted">{fiches.length} bulletin{fiches.length>1?'s':''} déposé{fiches.length>1?'s':''}</div>
+          </div>
+          <button onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+
+        {/* Content */}
+        <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-thin">
+          {!showAdd && (
+            <button onClick={()=>setShowAdd(true)} className="btn-pill w-full bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Déposer un nouveau bulletin</button>
+          )}
+
+          {showAdd && (
+            <div className="bg-bgsoft rounded-2xl p-4 space-y-3">
+              <div className="font-extrabold text-sm">Nouveau bulletin de salaire</div>
+              <div><label className="text-xs font-extrabold uppercase text-ink-muted">Période</label>
+                <input value={form.periode} onChange={e=>setForm({...form,periode:e.target.value})} placeholder="ex : juin 2026" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-white outline-none text-sm font-semibold" /></div>
+              <div className="grid grid-cols-2 gap-2">
+                <div><label className="text-xs font-extrabold uppercase text-ink-muted">Brut (€)</label>
+                  <input type="number" value={form.montant_brut} onChange={e=>setForm({...form,montant_brut:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-white outline-none text-sm font-semibold" /></div>
+                <div><label className="text-xs font-extrabold uppercase text-ink-muted">Net (€)</label>
+                  <input type="number" value={form.montant_net} onChange={e=>setForm({...form,montant_net:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-white outline-none text-sm font-semibold" /></div>
+              </div>
+              <div><label className="text-xs font-extrabold uppercase text-ink-muted">Note (optionnelle)</label>
+                <input value={form.note} onChange={e=>setForm({...form,note:e.target.value})} placeholder="ex : bonus, prime, …" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-white outline-none text-sm font-semibold" /></div>
+              <div><label className="text-xs font-extrabold uppercase text-ink-muted">Fichier PDF ou image</label>
+                <div className="mt-1">
+                  <MediaUploader folder={`fiches-paie/${employe.id}`} onUpload={(m)=>{ setForm(f=>({...f, url:m.url})); toast.success('Fichier prêt'); }} />
+                </div>
+                {form.url && <div className="text-[11px] text-teal-dark font-bold mt-1 flex items-center gap-1"><Check className="w-3 h-3" /> Fichier prêt : <a href={form.url} target="_blank" rel="noopener noreferrer" className="underline">aperçu</a></div>}
+              </div>
+              <div className="flex gap-2">
+                <button onClick={()=>{setShowAdd(false); setForm({ periode:'', montant_brut:0, montant_net:0, note:'', url:null });}} className="btn-pill bg-white text-ink-muted text-xs flex-1">Annuler</button>
+                <button onClick={submit} className="btn-pill bg-teal text-white text-xs shadow-soft flex-1"><Save className="w-3 h-3" /> Déposer</button>
+              </div>
+            </div>
+          )}
+
+          {/* Historique */}
+          <div>
+            <div className="text-xs font-extrabold uppercase text-ink-muted mb-2">Historique</div>
+            {fiches.length === 0 && <div className="bg-bgsoft rounded-2xl p-4 text-sm text-ink-muted text-center">Aucun bulletin déposé pour cet employé.</div>}
+            <div className="space-y-2">
+              {fiches.map(f => (
+                <div key={f.id} className="bg-bgsoft rounded-2xl p-3 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0"><FileText className="w-5 h-5 text-teal-dark" /></div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-extrabold truncate-1">{f.periode}</div>
+                    <div className="text-[11px] text-ink-muted">Déposée le {fmtDate(f.created_at)}</div>
+                    {(f.montant_brut>0 || f.montant_net>0) && <div className="text-[11px] text-ink-muted">Brut {f.montant_brut}€ · Net <b className="text-teal-dark">{f.montant_net}€</b></div>}
+                    {f.note && <div className="text-[11px] text-ink-muted italic mt-0.5">{f.note}</div>}
+                  </div>
+                  <div className="flex gap-1">
+                    {f.url && <a href={f.url} target="_blank" rel="noopener noreferrer" download className="btn-pill bg-teal text-white text-[10px] shadow-soft"><Download className="w-3 h-3" /></a>}
+                    <button onClick={()=>del(f)} className="btn-pill bg-coral/10 text-coral text-[10px]"><Trash2 className="w-3 h-3" /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }

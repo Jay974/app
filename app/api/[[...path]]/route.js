@@ -987,9 +987,21 @@ async function handle(request, params) {
     const f = { id: uuidv4(), creche_id: b.creche_id||activeCId, employe_id: b.employe_id,
       employe_nom: b.employe_nom||'', periode: b.periode, url: b.url||null,
       montant_brut: b.montant_brut||0, montant_net: b.montant_net||0,
+      note: b.note||'',
       created_at: new Date() };
     await db.collection('fiches_paie').insertOne(f);
     return json({ fiche: f });
+  }
+  if (route.startsWith('fiches-paie/') && path.length === 2 && method === 'DELETE' && user.role === 'admin') {
+    await db.collection('fiches_paie').deleteOne({ id: path[1] });
+    return json({ ok: true });
+  }
+  if (route.startsWith('fiches-paie/') && path.length === 2 && method === 'PUT' && user.role === 'admin') {
+    const b = await request.json();
+    delete b._id; delete b.id; delete b.created_at;
+    await db.collection('fiches_paie').updateOne({ id: path[1] }, { $set: b });
+    const fresh = await db.collection('fiches_paie').findOne({ id: path[1] });
+    return json({ fiche: one(fresh) });
   }
 
   // ---- PRE-INSCRIPTIONS ENFANTS (côté admin) ----
