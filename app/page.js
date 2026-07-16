@@ -52,13 +52,88 @@ const TYPE_META = {
   note:     { label: 'Note',    icon: Sparkle,  color: '#FFA726', bg: '#FFF4E0' },
 };
 
-function Avatar({ enfant, user, size = 44 }) {
+function Avatar({ enfant, user, size = 44, onClick }) {
   const src = enfant || user || {};
   const color = src.avatar_color || (['#3ECDB5','#8B6BE8','#FFA726','#42A5F5','#66BB6A'][((src.prenom||'A').charCodeAt(0))%5]);
+  const hasPhoto = !!src.avatar_url;
   return (
-    <div className="flex items-center justify-center rounded-full font-extrabold text-white shadow-softer flex-shrink-0"
+    <div onClick={onClick}
+      className={`flex items-center justify-center rounded-full font-extrabold text-white shadow-softer flex-shrink-0 overflow-hidden ${onClick?'cursor-pointer hover:ring-2 hover:ring-teal/40 transition':''}`}
       style={{ width: size, height: size, background: color, fontSize: size * 0.36 }}>
-      {initials(src?.prenom, src?.nom)}
+      {hasPhoto ? <img src={src.avatar_url} alt="" className="w-full h-full object-cover" /> : initials(src?.prenom, src?.nom)}
+    </div>
+  );
+}
+
+// ===== Child Avatar upload modal =====
+function AvatarUploadModal({ enfant, onClose, onSaved }) {
+  const [color, setColor] = useState(enfant.avatar_color || '#3ECDB5');
+  const [preview, setPreview] = useState(enfant.avatar_url || null);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef();
+  const palette = ['#3ECDB5','#FF6B6B','#FFA726','#8B6BE8','#42A5F5','#66BB6A','#F06292','#26A69A'];
+
+  const handleFile = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Image requise'); return; }
+    if (file.size > 3 * 1024 * 1024) { toast.error('Image trop lourde (max 3 Mo)'); return; }
+    setUploading(true);
+    try {
+      // Try Cloudinary first
+      const sig = await api('media/sign', { method: 'POST', body: JSON.stringify({ folder: 'enfants' }) });
+      if (sig.configured) {
+        const form = new FormData();
+        form.append('file', file); form.append('api_key', sig.api_key); form.append('timestamp', sig.timestamp);
+        form.append('signature', sig.signature); form.append('folder', sig.folder);
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloud_name}/auto/upload`, { method: 'POST', body: form });
+        const data = await res.json();
+        setPreview(data.secure_url);
+      } else {
+        // Fallback : base64 (limité mais fonctionnel)
+        const reader = new FileReader();
+        reader.onload = (e) => setPreview(e.target.result);
+        reader.readAsDataURL(file);
+      }
+    } catch(e){ toast.error(e.message); }
+    finally { setUploading(false); }
+  };
+
+  const save = async () => {
+    try { await api(`enfants/${enfant.id}/avatar`, { method: 'PUT', body: JSON.stringify({ url: preview, color }) });
+      toast.success(`Photo mise à jour pour ${enfant.prenom} 🌺`); onSaved?.(); onClose(); }
+    catch(e){ toast.error(e.message); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="flex items-center justify-between mb-4">
+          <div><div className="font-extrabold text-lg">Photo de {enfant.prenom}</div><div className="text-xs text-ink-muted">Glisser une image ou choisir une couleur</div></div>
+          <button onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+        <div onDragOver={(e)=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)}
+          onDrop={(e)=>{e.preventDefault();setDragOver(false);handleFile(e.dataTransfer.files?.[0]);}}
+          className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center gap-3 transition ${dragOver?'border-teal bg-teal-light':'border-bgsoft'}`}>
+          <div className="w-24 h-24 rounded-full flex items-center justify-center font-extrabold text-white text-3xl overflow-hidden" style={{ background: color }}>
+            {preview ? <img src={preview} alt="" className="w-full h-full object-cover" /> : initials(enfant.prenom, enfant.nom)}
+          </div>
+          <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e)=>handleFile(e.target.files?.[0])} />
+          <div className="flex gap-2">
+            <button onClick={()=>inputRef.current?.click()} disabled={uploading} className="btn-pill bg-teal text-white text-xs shadow-soft">
+              {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Camera className="w-3 h-3" />} {preview ? 'Changer' : 'Choisir une photo'}
+            </button>
+            {preview && <button onClick={()=>setPreview(null)} className="btn-pill bg-coral/10 text-coral text-xs"><Trash2 className="w-3 h-3" /> Retirer</button>}
+          </div>
+        </div>
+        <div className="mt-4">
+          <div className="text-xs font-extrabold uppercase tracking-wider text-ink-muted mb-2">Couleur avatar (si pas de photo)</div>
+          <div className="flex gap-2 flex-wrap">
+            {palette.map(c => <button key={c} onClick={()=>setColor(c)} className={`w-9 h-9 rounded-full ${color===c?'ring-4 ring-offset-2 ring-teal':''}`} style={{ background: c }} />)}
+          </div>
+        </div>
+        <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft mt-5"><Save className="w-4 h-4" /> Enregistrer</button>
+      </motion.div>
     </div>
   );
 }
@@ -67,7 +142,7 @@ function Avatar({ enfant, user, size = 44 }) {
 function TopBar({ user, onLogout, onMenu, title, activeCreche, creches, onSelectCreche }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="relative tk-wave text-white">
+    <div className="relative tk-wave text-white z-30">
       <div className="px-4 md:px-8 pt-4 pb-10 flex items-center justify-between relative z-10 gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={onMenu} className="md:hidden p-2 rounded-full bg-white/15 active:scale-95 flex-shrink-0">
@@ -80,23 +155,30 @@ function TopBar({ user, onLogout, onMenu, title, activeCreche, creches, onSelect
         </div>
         <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
           {creches && creches.length > 1 && (
-            <div className="relative">
-              <button onClick={()=>setOpen(!open)} className="hidden md:flex items-center gap-2 bg-white/15 rounded-pill px-3 py-1.5 text-xs font-bold">
+            <div className="relative z-40">
+              <button onClick={()=>setOpen(!open)} className="hidden md:flex items-center gap-2 bg-white/15 rounded-pill px-3 py-1.5 text-xs font-bold hover:bg-white/25 transition">
                 <Building2 className="w-4 h-4" />
-                <span className="truncate-1 max-w-[140px]">{activeCreche?.nom} · {activeCreche?.ville}</span>
-                <ChevronDown className="w-3 h-3" />
+                <span className="truncate-1 max-w-[160px]">{activeCreche?.nom} · {activeCreche?.ville}</span>
+                <ChevronDown className={`w-3 h-3 transition-transform ${open?'rotate-180':''}`} />
               </button>
-              {open && (
-                <div className="absolute right-0 top-full mt-2 bg-white text-ink rounded-2xl shadow-soft py-2 min-w-[220px] z-20">
-                  {creches.map(c => (
-                    <button key={c.id} onClick={()=>{ onSelectCreche(c.id); setOpen(false); }}
-                      className={`w-full text-left px-4 py-2 hover:bg-teal-light text-sm font-semibold ${activeCreche?.id===c.id?'text-teal-dark bg-teal-light':''}`}>
-                      <div className="font-extrabold">{c.nom}</div>
-                      <div className="text-xs text-ink-muted">{c.ville}</div>
-                    </button>
-                  ))}
-                </div>
-              )}
+              <AnimatePresence>
+                {open && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={()=>setOpen(false)} />
+                    <motion.div initial={{ opacity:0, y:-6 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-6 }}
+                      className="absolute right-0 top-full mt-2 bg-white text-ink rounded-2xl shadow-soft py-2 min-w-[260px] z-50 border border-bgsoft">
+                      <div className="px-4 py-2 text-[10px] font-extrabold uppercase tracking-wider text-ink-muted border-b border-bgsoft">Mes crèches</div>
+                      {creches.map(c => (
+                        <button key={c.id} onClick={()=>{ onSelectCreche(c.id); setOpen(false); }}
+                          className={`w-full text-left px-4 py-2.5 hover:bg-teal-light text-sm transition ${activeCreche?.id===c.id?'text-teal-dark bg-teal-light/60':''}`}>
+                          <div className="font-extrabold truncate-1">{c.nom}</div>
+                          <div className="text-xs text-ink-muted truncate-1">{c.ville} · {c.capacite||20} places</div>
+                        </button>
+                      ))}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
           )}
           <button className="p-2 rounded-full bg-white/15 active:scale-95 relative">
@@ -126,59 +208,60 @@ function TopBar({ user, onLogout, onMenu, title, activeCreche, creches, onSelect
 function Sidebar({ user, view, setView, open, setOpen }) {
   const menus = {
     super_admin: [
-      { key: 'super/dashboard', label: 'Tour de contrôle', icon: BarChart3 },
+      { key: 'super/dashboard', label: 'Cockpit', icon: BarChart3 },
       { key: 'super/clients', label: 'Mes clients', icon: Users },
-      { key: 'super/feedbacks', label: 'Feedbacks', icon: MessageSquare },
+      { key: 'super/feedbacks', label: 'Avis & suggestions', icon: MessageSquare },
       { key: 'super/settings', label: 'Paramètres', icon: Settings },
     ],
     admin: [
-      { key: 'admin/dashboard', label: 'Tour de contrôle', icon: Home },
-      { key: 'admin/monitoring', label: 'Monitoring live', icon: Zap },
-      { key: 'admin/enfants', label: 'Gestion des enfants', icon: Baby },
-      { key: 'admin/familles', label: 'Familles', icon: Users },
-      { key: 'admin/groupes', label: 'Groupes', icon: Layers },
-      { key: 'admin/tags', label: 'Tags', icon: TagIcon },
-      { key: 'admin/presences', label: 'Planning enfants', icon: ClipboardList },
-      { key: 'admin/synthese', label: 'Synthèse hebdo', icon: FileCheck },
-      { key: 'admin/nourriture', label: 'Nourriture', icon: UtensilsCrossed },
-      { key: 'admin/rappels', label: 'Rappels', icon: AlertTriangle },
-      { key: 'admin/news', label: 'News', icon: Newspaper },
-      { key: 'admin/documents', label: 'Documents', icon: FileText },
+      { key: 'admin/dashboard', label: 'Cockpit', icon: Home },
+      { key: 'admin/monitoring', label: 'Vue temps réel', icon: Zap },
+      { key: 'admin/enfants', label: 'Enfants', icon: Baby },
+      { key: 'admin/familles', label: 'Foyers', icon: Users },
+      { key: 'admin/groupes', label: 'Sections', icon: Layers },
+      { key: 'admin/tags', label: 'Étiquettes', icon: TagIcon },
+      { key: 'admin/presences', label: 'Présences hebdo', icon: ClipboardList },
+      { key: 'admin/synthese', label: 'Bilan hebdo', icon: FileCheck },
+      { key: 'admin/nourriture', label: 'Restauration', icon: UtensilsCrossed },
+      { key: 'admin/rappels', label: 'Alertes', icon: AlertTriangle },
+      { key: 'admin/news', label: 'Actus', icon: Newspaper },
+      { key: 'admin/documents', label: 'Espace docs', icon: FileText },
       { key: 'admin/devis', label: 'Devis', icon: Copy },
       { key: 'admin/factures', label: 'Factures', icon: FileText },
       { key: 'admin/finances', label: 'Finances · CA', icon: TrendingUp },
       { key: 'admin/charges', label: 'Charges & Salaires', icon: PiggyBank },
-      { key: 'admin/employes', label: 'Employés', icon: Briefcase },
-      { key: 'admin/planning-employes', label: 'Planning employés', icon: Calendar },
-      { key: 'admin/messagerie', label: 'Messagerie', icon: MessageCircle },
-      { key: 'admin/alarme', label: 'Alarme incendie', icon: AlertTriangle },
+      { key: 'admin/employes', label: 'Équipe', icon: Briefcase },
+      { key: 'admin/planning-employes', label: 'Horaires équipe', icon: Calendar },
+      { key: 'admin/messagerie', label: 'Discussions', icon: MessageCircle },
+      { key: 'admin/alarme', label: 'Sécurité incendie', icon: AlertTriangle },
       { key: 'admin/abonnement', label: 'Abonnement', icon: CreditCard },
-      { key: 'admin/feedback', label: 'Envoyer feedback', icon: Star },
+      { key: 'admin/feedback', label: 'Envoyer un avis', icon: Star },
     ],
     pro: [
       { key: 'pro/profil', label: 'Mon profil', icon: User },
       { key: 'pro/pointage', label: 'Pointage', icon: Clock },
+      { key: 'pro/mes-horaires', label: 'Mes horaires', icon: Calendar },
       { key: 'pro/activites', label: 'Activités enfants', icon: Sparkles },
-      { key: 'pro/enfants', label: 'Gestion enfants', icon: Baby },
-      { key: 'pro/nourriture', label: 'Nourriture', icon: UtensilsCrossed },
-      { key: 'pro/rappels', label: 'Rappels', icon: AlertTriangle },
-      { key: 'pro/messagerie', label: 'Messagerie parents', icon: MessageCircle },
-      { key: 'pro/documents', label: 'Documents', icon: FileText },
-      { key: 'pro/news', label: 'News', icon: Newspaper },
+      { key: 'pro/enfants', label: 'Enfants', icon: Baby },
+      { key: 'pro/nourriture', label: 'Restauration', icon: UtensilsCrossed },
+      { key: 'pro/rappels', label: 'Alertes', icon: AlertTriangle },
+      { key: 'pro/messagerie', label: 'Discussions parents', icon: MessageCircle },
+      { key: 'pro/documents', label: 'Espace docs', icon: FileText },
+      { key: 'pro/news', label: 'Actus', icon: Newspaper },
       { key: 'pro/taches', label: 'Mes tâches', icon: CheckCircle2 },
-      { key: 'pro/feedback', label: 'Envoyer feedback', icon: Star },
+      { key: 'pro/feedback', label: 'Envoyer un avis', icon: Star },
     ],
     parent: [
       { key: 'parent/live', label: 'Suivi en direct', icon: Sparkles },
       { key: 'parent/journal', label: 'Journal du jour', icon: ClipboardList },
       { key: 'parent/photos', label: 'Album photos', icon: ImageIcon },
       { key: 'parent/reservations', label: 'Réservations', icon: Calendar },
-      { key: 'parent/nourriture', label: 'Menu semaine', icon: UtensilsCrossed },
-      { key: 'parent/news', label: 'Actualités', icon: Newspaper },
-      { key: 'parent/messagerie', label: 'Messagerie', icon: MessageCircle },
-      { key: 'parent/documents', label: 'Documents', icon: FileText },
+      { key: 'parent/nourriture', label: 'Menu de la semaine', icon: UtensilsCrossed },
+      { key: 'parent/news', label: 'Actus', icon: Newspaper },
+      { key: 'parent/messagerie', label: 'Discussions', icon: MessageCircle },
+      { key: 'parent/documents', label: 'Espace docs', icon: FileText },
       { key: 'parent/factures', label: 'Mes factures', icon: Wallet },
-      { key: 'parent/feedback', label: 'Envoyer feedback', icon: Star },
+      { key: 'parent/feedback', label: 'Envoyer un avis', icon: Star },
     ],
   };
   const items = menus[user.role] || [];
@@ -699,6 +782,8 @@ function AdminEnfants({ activeCId }) {
   const [filter, setFilter] = useState('Tous');
   const [showAdd, setShowAdd] = useState(false);
   const [tags, setTags] = useState([]);
+  const [editAvatar, setEditAvatar] = useState(null);
+  const [editSante, setEditSante] = useState(null);
   const load = async () => {
     try {
       const suffix = activeCId ? `?creche_id=${activeCId}` : '';
@@ -726,7 +811,7 @@ function AdminEnfants({ activeCId }) {
             <motion.div key={e.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
               className="bg-white rounded-lg p-4 shadow-softer hover:shadow-soft hover:-translate-y-1 transition-all">
               <div className="flex items-center gap-3">
-                <Avatar enfant={e} size={56} />
+                <Avatar enfant={e} size={56} onClick={()=>setEditAvatar(e)} />
                 <div className="flex-1 min-w-0">
                   <div className="font-extrabold text-lg truncate-1">{e.prenom}</div>
                   <div className="text-xs text-ink-muted">{ageStr(e.date_naissance)}</div>
@@ -742,11 +827,69 @@ function AdminEnfants({ activeCId }) {
                 <div><div className="text-ink-muted">Contrat</div><div className="font-bold">{e.contrat_heures}h / sem</div></div>
                 <div><div className="text-ink-muted">Mensualité</div><div className="font-bold text-teal-dark">{fmtEur(e.mensualite)}</div></div>
               </div>
+              <div className="mt-2 flex gap-2">
+                <button onClick={()=>setEditAvatar(e)} className="btn-pill bg-bgsoft text-ink-muted text-xs flex-1"><Camera className="w-3 h-3" /> Photo</button>
+                <button onClick={()=>setEditSante(e)} className="btn-pill bg-coral/10 text-coral text-xs flex-1"><Heart className="w-3 h-3" /> Santé</button>
+              </div>
             </motion.div>
           );
         })}
       </div>
       {showAdd && <AddChildModal activeCId={activeCId} onClose={() => { setShowAdd(false); load(); }} />}
+      {editAvatar && <AvatarUploadModal enfant={editAvatar} onClose={()=>setEditAvatar(null)} onSaved={load} />}
+      {editSante && <FicheSanteModal enfant={editSante} onClose={()=>setEditSante(null)} onSaved={load} />}
+    </div>
+  );
+}
+
+function FicheSanteModal({ enfant, onClose, onSaved }) {
+  const [f, setF] = useState({
+    allergies: enfant.allergies || '',
+    regime_alimentaire: enfant.regime_alimentaire || '',
+    medecin: enfant.medecin || '',
+    contacts_urgence: enfant.contacts_urgence || [{ nom: '', tel: '', lien: '' }],
+    vaccins: enfant.vaccins || '',
+    notes_sante: enfant.notes_sante || '',
+  });
+  const save = async () => {
+    try { await api(`enfants/${enfant.id}/sante`, { method: 'PUT', body: JSON.stringify(f) });
+      toast.success('Fiche santé mise à jour'); onSaved?.(); onClose();
+    } catch(e){ toast.error(e.message); }
+  };
+  const setCU = (i, k, v) => setF({...f, contacts_urgence: f.contacts_urgence.map((c,x)=>x===i?{...c,[k]:v}:c)});
+  const addCU = () => setF({...f, contacts_urgence: [...f.contacts_urgence, {nom:'',tel:'',lien:''}]});
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4 overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-lg my-8">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3"><Heart className="w-6 h-6 text-coral" /><div><div className="font-extrabold text-lg">Fiche santé de {enfant.prenom}</div><div className="text-xs text-ink-muted">Confidentiel</div></div></div>
+          <button onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+        <div className="space-y-3">
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Allergies connues</label>
+            <input value={f.allergies} onChange={e=>setF({...f,allergies:e.target.value})} placeholder="Ex : Lait de vache, gluten..." className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none focus:ring-2 focus:ring-teal/30 text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Régime alimentaire</label>
+            <input value={f.regime_alimentaire} onChange={e=>setF({...f,regime_alimentaire:e.target.value})} placeholder="Ex : Végétarien, sans porc..." className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none focus:ring-2 focus:ring-teal/30 text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Médecin traitant</label>
+            <input value={f.medecin} onChange={e=>setF({...f,medecin:e.target.value})} placeholder="Dr. Dupont · 0262 21 00 00" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none focus:ring-2 focus:ring-teal/30 text-sm font-semibold" /></div>
+          <div>
+            <label className="text-xs font-extrabold uppercase text-ink-muted">Contacts d'urgence</label>
+            {f.contacts_urgence.map((c,i) => (
+              <div key={i} className="grid grid-cols-3 gap-2 mt-2">
+                <input value={c.nom} onChange={e=>setCU(i,'nom',e.target.value)} placeholder="Nom" className="px-3 py-2 rounded-xl bg-bgsoft outline-none text-xs font-semibold" />
+                <input value={c.tel} onChange={e=>setCU(i,'tel',e.target.value)} placeholder="Téléphone" className="px-3 py-2 rounded-xl bg-bgsoft outline-none text-xs font-semibold" />
+                <input value={c.lien} onChange={e=>setCU(i,'lien',e.target.value)} placeholder="Lien (papa, mamie...)" className="px-3 py-2 rounded-xl bg-bgsoft outline-none text-xs font-semibold" />
+              </div>
+            ))}
+            <button onClick={addCU} className="btn-pill bg-teal-light text-teal-dark text-xs mt-2"><Plus className="w-3 h-3" /> Contact</button>
+          </div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Vaccins</label>
+            <textarea value={f.vaccins} onChange={e=>setF({...f,vaccins:e.target.value})} placeholder="DTP à jour, ROR..." rows={2} className="w-full mt-1 px-4 py-2.5 rounded-2xl bg-bgsoft outline-none focus:ring-2 focus:ring-teal/30 text-sm font-semibold resize-none" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Notes santé</label>
+            <textarea value={f.notes_sante} onChange={e=>setF({...f,notes_sante:e.target.value})} placeholder="Traitements en cours, particularités..." rows={2} className="w-full mt-1 px-4 py-2.5 rounded-2xl bg-bgsoft outline-none focus:ring-2 focus:ring-teal/30 text-sm font-semibold resize-none" /></div>
+          <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -1089,22 +1232,216 @@ function AdminEmployes({ activeCId }) {
 
 function AdminPlanningEmployes({ activeCId }) {
   const [employes, setEmployes] = useState([]);
-  useEffect(() => { (async()=>{try{const e=await api('employes'+(activeCId?`?creche_id=${activeCId}`:'')); setEmployes(e.employes);}catch(e){}})(); }, [activeCId]);
-  const jours = ['Lun','Mar','Mer','Jeu','Ven'];
+  const [selected, setSelected] = useState(null);
+  const [planning, setPlanning] = useState(null);
+  const [edit, setEdit] = useState(false);
+  const [semaine, setSemaine] = useState(new Date().toISOString().slice(0,10));
+
+  const loadEmployes = async () => { try{const e=await api('employes'+(activeCId?`?creche_id=${activeCId}`:'')); setEmployes(e.employes); if (!selected && e.employes[0]) setSelected(e.employes[0].id);}catch(e){} };
+  const loadPlanning = async () => { if (!selected) return; try {const p=await api(`employes/${selected}/planning?semaine=${semaine}`); setPlanning(p);}catch(e){toast.error(e.message);} };
+
+  useEffect(() => { loadEmployes(); }, [activeCId]);
+  useEffect(() => { loadPlanning(); }, [selected, semaine]);
+
+  const statutMeta = {
+    a_l_heure: { color: '#3ECDB5', bg: '#E6F9F5', label: 'À l\'heure' },
+    depasse: { color: '#8B6BE8', bg: '#EFEAFF', label: 'Dépassé' },
+    court: { color: '#FFA726', bg: '#FFF4E0', label: 'Court' },
+    absent: { color: '#FF6B6B', bg: '#FFE9E9', label: 'Absent' },
+    a_venir: { color: '#718096', bg: '#F5F7F9', label: 'À venir' },
+    en_cours: { color: '#42A5F5', bg: '#E3F2FD', label: 'En cours' },
+    repos: { color: '#CBD5E0', bg: '#F5F7F9', label: 'Repos' },
+  };
+  const emp = employes.find(e => e.id === selected);
+
   return (
-    <div className="bg-white rounded-lg p-5 shadow-softer animate-fade-up">
-      <div className="font-extrabold text-lg mb-4">Planning cette semaine</div>
-      <div className="overflow-x-auto">
-        <div className="min-w-[600px] grid grid-cols-6 gap-2">
-          <div className="text-xs font-extrabold uppercase tracking-wider text-ink-muted p-2">Employé</div>
-          {jours.map(j => <div key={j} className="text-xs font-extrabold uppercase tracking-wider text-ink-muted p-2 text-center">{j}</div>)}
+    <div className="space-y-4 animate-fade-up">
+      <div className="flex flex-wrap gap-3 items-center justify-between">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {employes.map(e => (
-            <>
-              <div key={e.id} className="flex items-center gap-2 p-2"><Avatar user={e} size={28} /><span className="font-bold text-sm truncate-1">{e.prenom}</span></div>
-              {jours.map(j => <div key={j+e.id} className="p-2 rounded-xl bg-teal-light text-center"><div className="text-xs font-bold text-teal-dark">8h-17h</div></div>)}
-            </>
+            <button key={e.id} onClick={()=>setSelected(e.id)} className={`flex items-center gap-2 px-3 py-2 rounded-pill text-sm font-bold flex-shrink-0 ${selected===e.id?'bg-teal text-white shadow-soft':'bg-white text-ink-muted'}`}>
+              <Avatar user={e} size={26} /> {e.prenom}
+            </button>
           ))}
         </div>
+        <div className="flex gap-2 items-center">
+          <input type="date" value={semaine} onChange={e=>setSemaine(e.target.value)} className="px-3 py-2 rounded-pill bg-white outline-none text-xs font-semibold shadow-softer" />
+          {emp && <button onClick={()=>setEdit(true)} className="btn-pill bg-teal text-white shadow-soft text-xs"><Edit3 className="w-3 h-3" /> Modifier contrat</button>}
+        </div>
+      </div>
+
+      {planning && emp && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="bg-white rounded-lg p-4 shadow-softer">
+              <div className="text-[11px] font-extrabold uppercase text-ink-muted">Prévu</div>
+              <div className="text-2xl font-extrabold mt-1">{Math.floor(planning.total_prevu_min/60)}h{String(planning.total_prevu_min%60).padStart(2,'0')}</div>
+            </div>
+            <div className="bg-white rounded-lg p-4 shadow-softer">
+              <div className="text-[11px] font-extrabold uppercase text-ink-muted">Effectif</div>
+              <div className="text-2xl font-extrabold text-teal-dark mt-1">{Math.floor(planning.total_effectif_min/60)}h{String(planning.total_effectif_min%60).padStart(2,'0')}</div>
+            </div>
+            <div className="bg-gradient-to-br from-teal to-teal-dark text-white rounded-lg p-4 shadow-soft">
+              <div className="text-[11px] font-extrabold uppercase opacity-80">Prorata</div>
+              <div className="text-2xl font-extrabold mt-1">{planning.prorata_pct}%</div>
+            </div>
+            {planning.salaire_estime && (
+              <div className="bg-white rounded-lg p-4 shadow-softer">
+                <div className="text-[11px] font-extrabold uppercase text-ink-muted">Salaire estimé</div>
+                <div className="text-2xl font-extrabold text-violet mt-1">{fmtEur(planning.salaire_estime)}</div>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-lg p-5 shadow-softer overflow-x-auto">
+            <div className="font-extrabold text-lg mb-3">Semaine du {fmtDate(planning.semaine_du)}</div>
+            <div className="min-w-[720px] grid grid-cols-7 gap-2">
+              {planning.jours.map((j,i) => {
+                const st = statutMeta[j.statut] || statutMeta.repos;
+                const jourLabel = j.jour.charAt(0).toUpperCase() + j.jour.slice(1,3);
+                return (
+                  <motion.div key={i} initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} transition={{ delay:i*0.03 }}
+                    className="rounded-2xl p-3 flex flex-col gap-1 min-h-[130px]" style={{ background: st.bg }}>
+                    <div className="flex items-center justify-between">
+                      <div className="text-[10px] font-extrabold uppercase" style={{ color: st.color }}>{jourLabel}</div>
+                      <div className="text-[10px] font-bold text-ink-muted">{new Date(j.date).getDate()}</div>
+                    </div>
+                    {j.prevu && (
+                      <div className="text-[11px] mt-1"><div className="text-ink-muted font-bold">Prévu</div><div className="font-extrabold">{j.prevu.arrivee} → {j.prevu.depart}</div></div>
+                    )}
+                    {j.effectif && (
+                      <div className="text-[11px] mt-1"><div className="text-ink-muted font-bold">Réel</div><div className="font-extrabold" style={{ color: st.color }}>{j.effectif.arrivee || '—'} → {j.effectif.depart || '—'}</div></div>
+                    )}
+                    <div className="mt-auto flex items-center justify-between">
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: st.color+'33', color: st.color }}>{st.label}</span>
+                      {j.delta_min !== 0 && j.effectif && <span className="text-[10px] font-extrabold" style={{ color: st.color }}>{j.delta_min>0?'+':''}{j.delta_min}min</span>}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      {edit && emp && <ContratEditorModal employe={emp} onClose={()=>{setEdit(false);loadEmployes();loadPlanning();}} />}
+    </div>
+  );
+}
+
+function ContratEditorModal({ employe, onClose }) {
+  const jours = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+  const [contrat, setContrat] = useState(employe.contrat_horaires || { heures_hebdo: 35, jours: {} });
+  const [taux, setTaux] = useState(employe.taux_horaire || 12);
+  const [poste, setPoste] = useState(employe.poste || 'Auxiliaire');
+
+  const setJour = (jour, k, v) => setContrat({ ...contrat, jours: { ...contrat.jours, [jour]: { ...(contrat.jours[jour]||{arrivee:'08:00',depart:'17:00',pause_min:30}), [k]: v } } });
+  const toggleJour = (jour) => {
+    const has = contrat.jours[jour];
+    setContrat({ ...contrat, jours: { ...contrat.jours, [jour]: has ? null : { arrivee:'08:00', depart:'17:00', pause_min: 30 } } });
+  };
+  const totalHebdo = useMemo(() => {
+    return Object.values(contrat.jours || {}).reduce((s,j) => {
+      if (!j) return s;
+      const [ah,am] = j.arrivee.split(':').map(Number); const [dh,dm] = j.depart.split(':').map(Number);
+      return s + Math.max(0, (dh*60+dm) - (ah*60+am) - (j.pause_min||0));
+    }, 0) / 60;
+  }, [contrat]);
+
+  const save = async () => {
+    try { await api(`employes/${employe.id}`, { method: 'PUT', body: JSON.stringify({ contrat_horaires: { ...contrat, heures_hebdo: Math.round(totalHebdo*10)/10 }, taux_horaire: +taux, poste }) });
+      toast.success('Contrat mis à jour'); onClose();
+    } catch(e){ toast.error(e.message); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4 overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-xl my-8">
+        <div className="flex items-center justify-between mb-4">
+          <div><div className="font-extrabold text-lg">Contrat de {employe.prenom} {employe.nom}</div><div className="text-xs text-ink-muted">Horaires hebdomadaires · taux horaire</div></div>
+          <button onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Poste</label>
+            <input value={poste} onChange={e=>setPoste(e.target.value)} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Taux horaire (€/h)</label>
+            <input type="number" step="0.1" value={taux} onChange={e=>setTaux(e.target.value)} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+        </div>
+        <div className="space-y-2">
+          {jours.map(j => {
+            const c = contrat.jours?.[j];
+            return (
+              <div key={j} className="grid grid-cols-12 items-center gap-2 p-2 rounded-2xl bg-bgsoft">
+                <button onClick={()=>toggleJour(j)} className={`col-span-3 btn-pill text-xs ${c?'bg-teal text-white':'bg-white text-ink-muted'}`}>{j.charAt(0).toUpperCase()+j.slice(1)}</button>
+                {c ? <>
+                  <input type="time" value={c.arrivee} onChange={e=>setJour(j,'arrivee',e.target.value)} className="col-span-3 px-3 py-2 rounded-xl bg-white outline-none text-xs font-semibold" />
+                  <input type="time" value={c.depart} onChange={e=>setJour(j,'depart',e.target.value)} className="col-span-3 px-3 py-2 rounded-xl bg-white outline-none text-xs font-semibold" />
+                  <input type="number" value={c.pause_min} onChange={e=>setJour(j,'pause_min',+e.target.value)} placeholder="Pause min" className="col-span-3 px-3 py-2 rounded-xl bg-white outline-none text-xs font-semibold" />
+                </> : <div className="col-span-9 text-xs text-ink-muted italic pl-3">Repos</div>}
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-4 p-4 rounded-2xl bg-teal-light text-teal-dark flex items-center justify-between">
+          <div className="font-extrabold">Total hebdomadaire</div>
+          <div className="text-2xl font-extrabold">{Math.floor(totalHebdo)}h{String(Math.round((totalHebdo%1)*60)).padStart(2,'0')}</div>
+        </div>
+        <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft mt-4"><Save className="w-4 h-4" /> Enregistrer</button>
+      </motion.div>
+    </div>
+  );
+}
+
+// ===== PRO : Mes horaires (self-view) =====
+function ProMesHoraires({ user }) {
+  const [planning, setPlanning] = useState(null);
+  const [semaine, setSemaine] = useState(new Date().toISOString().slice(0,10));
+  useEffect(() => { (async()=>{try{const p=await api(`employes/${user.id}/planning?semaine=${semaine}`); setPlanning(p);}catch(e){toast.error(e.message);}})(); }, [semaine, user.id]);
+  if (!planning) return <Loading />;
+  const statutMeta = {
+    a_l_heure: { color: '#3ECDB5', bg: '#E6F9F5', label: 'À l\'heure', icon: CheckCircle2 },
+    depasse: { color: '#8B6BE8', bg: '#EFEAFF', label: 'Dépassé', icon: TrendingUp },
+    court: { color: '#FFA726', bg: '#FFF4E0', label: 'Écourté', icon: AlertTriangle },
+    absent: { color: '#FF6B6B', bg: '#FFE9E9', label: 'Absent', icon: X },
+    a_venir: { color: '#718096', bg: '#F5F7F9', label: 'À venir', icon: Clock },
+    en_cours: { color: '#42A5F5', bg: '#E3F2FD', label: 'En cours', icon: Zap },
+    repos: { color: '#CBD5E0', bg: '#F5F7F9', label: 'Repos', icon: Moon },
+  };
+  return (
+    <div className="space-y-4 animate-fade-up">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-white rounded-lg p-4 shadow-softer"><div className="text-[11px] font-extrabold uppercase text-ink-muted">Prévu cette semaine</div><div className="text-2xl font-extrabold mt-1">{Math.floor(planning.total_prevu_min/60)}h{String(planning.total_prevu_min%60).padStart(2,'0')}</div></div>
+        <div className="bg-white rounded-lg p-4 shadow-softer"><div className="text-[11px] font-extrabold uppercase text-ink-muted">Effectué</div><div className="text-2xl font-extrabold text-teal-dark mt-1">{Math.floor(planning.total_effectif_min/60)}h{String(planning.total_effectif_min%60).padStart(2,'0')}</div></div>
+        <div className="bg-gradient-to-br from-teal to-teal-dark text-white rounded-lg p-4 shadow-soft"><div className="text-[11px] font-extrabold uppercase opacity-80">Prorata</div><div className="text-2xl font-extrabold mt-1">{planning.prorata_pct}%</div></div>
+        {planning.salaire_estime && <div className="bg-white rounded-lg p-4 shadow-softer"><div className="text-[11px] font-extrabold uppercase text-ink-muted">Salaire estimé</div><div className="text-2xl font-extrabold text-violet mt-1">{fmtEur(planning.salaire_estime)}</div></div>}
+      </div>
+      <div className="flex items-center gap-2 justify-end">
+        <input type="date" value={semaine} onChange={e=>setSemaine(e.target.value)} className="px-3 py-2 rounded-pill bg-white outline-none text-xs font-semibold shadow-softer" />
+      </div>
+      <div className="space-y-2">
+        {planning.jours.map((j,i) => {
+          const st = statutMeta[j.statut] || statutMeta.repos;
+          const StIcon = st.icon;
+          return (
+            <motion.div key={i} initial={{ opacity:0, x:-10 }} animate={{ opacity:1, x:0 }} transition={{ delay: i*0.04 }}
+              className="bg-white rounded-lg p-4 shadow-softer flex items-center gap-4">
+              <div className="rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: st.bg, width: 52, height: 52 }}>
+                <StIcon className="w-6 h-6" style={{ color: st.color }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-extrabold capitalize">{j.jour} <span className="text-ink-muted text-sm font-bold">{fmtDate(j.date)}</span></div>
+                <div className="text-xs text-ink-muted mt-0.5">
+                  {j.prevu ? `Prévu ${j.prevu.arrivee}-${j.prevu.depart}` : 'Jour de repos'}
+                  {j.effectif && ` · Réel ${j.effectif.arrivee || '—'}-${j.effectif.depart || '—'}`}
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-bold px-2 py-1 rounded-full block" style={{ background: st.bg, color: st.color }}>{st.label}</span>
+                {j.delta_min !== 0 && j.effectif && <div className="text-xs font-extrabold mt-1" style={{ color: st.color }}>{j.delta_min>0?'+':''}{j.delta_min} min</div>}
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1172,12 +1509,27 @@ function AdminSynthese({ activeCId }) {
 // ===== NOURRITURE / RAPPELS / NEWS / DOCUMENTS =====
 function NourritureView({ activeCId, canEdit }) {
   const [menus, setMenus] = useState([]);
-  useEffect(() => { (async()=>{try{const d=await api('nourriture'+(activeCId?`?creche_id=${activeCId}`:'')); setMenus(d.menus);}catch(e){}})(); }, [activeCId]);
+  const [edit, setEdit] = useState(false);
+  const [draft, setDraft] = useState(null);
+  const load = async () => { try{const d=await api('nourriture'+(activeCId?`?creche_id=${activeCId}`:'')); setMenus(d.menus);}catch(e){} };
+  useEffect(() => { load(); }, [activeCId]);
   const current = menus[0];
+
+  const startEdit = () => { setDraft(JSON.parse(JSON.stringify(current || { repas: ['Lundi','Mardi','Mercredi','Jeudi','Vendredi'].map(j=>({jour:j,midi:'',gouter:''})) }))); setEdit(true); };
+  const save = async () => {
+    try {
+      if (current?.id) await api(`nourriture/${current.id}`, { method:'PUT', body: JSON.stringify({ repas: draft.repas }) });
+      else await api('nourriture', { method: 'POST', body: JSON.stringify({ ...draft, semaine: new Date().toISOString().slice(0,10), creche_id: activeCId }) });
+      toast.success('Menus enregistrés'); setEdit(false); load();
+    } catch(e){ toast.error(e.message); }
+  };
+  const setRepas = (i, k, v) => setDraft({ ...draft, repas: draft.repas.map((r,x)=>x===i?{...r,[k]:v}:r) });
+
   return (
     <div className="space-y-4 animate-fade-up">
-      {!current && <PlaceholderView title="Aucun menu défini" icon={UtensilsCrossed} />}
-      {current && (
+      {canEdit && !edit && <div className="flex justify-end"><button onClick={startEdit} className="btn-pill bg-teal text-white shadow-soft"><Edit3 className="w-4 h-4" /> {current?'Modifier':'Créer le menu'}</button></div>}
+      {!current && !edit && <PlaceholderView title="Aucun menu défini" icon={UtensilsCrossed} />}
+      {current && !edit && (
         <div className="bg-white rounded-lg p-5 shadow-softer">
           <div className="flex items-center justify-between mb-4">
             <div><div className="font-extrabold text-lg">Menu de la semaine</div><div className="text-xs text-ink-muted">Semaine du {fmtDate(current.semaine)}</div></div>
@@ -1187,8 +1539,28 @@ function NourritureView({ activeCId, canEdit }) {
             {current.repas.map((r,i) => (
               <div key={i} className="p-3 rounded-2xl bg-bgsoft">
                 <div className="text-[10px] font-extrabold uppercase text-ink-muted">{r.jour}</div>
-                <div className="mt-2"><div className="text-[10px] text-coral font-bold uppercase">🍽️ Midi</div><div className="text-xs font-bold">{r.midi}</div></div>
-                <div className="mt-2"><div className="text-[10px] text-amber font-bold uppercase">🍪 Goûter</div><div className="text-xs font-bold">{r.gouter}</div></div>
+                <div className="mt-2"><div className="text-[10px] text-coral font-bold uppercase">🍽️ Midi</div><div className="text-xs font-bold">{r.midi || '—'}</div></div>
+                <div className="mt-2"><div className="text-[10px] text-amber font-bold uppercase">🍪 Goûter</div><div className="text-xs font-bold">{r.gouter || '—'}</div></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {edit && draft && (
+        <div className="bg-white rounded-lg p-5 shadow-softer">
+          <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">Édition menu semaine</div>
+            <div className="flex gap-2"><button onClick={()=>setEdit(false)} className="btn-pill bg-bgsoft text-ink-muted text-xs">Annuler</button><button onClick={save} className="btn-pill bg-teal text-white shadow-soft text-xs"><Save className="w-3 h-3" /> Enregistrer</button></div>
+          </div>
+          <div className="space-y-3">
+            {draft.repas.map((r,i) => (
+              <div key={i} className="p-3 rounded-2xl bg-bgsoft">
+                <div className="text-xs font-extrabold uppercase text-ink-muted mb-2">{r.jour}</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div><label className="text-[10px] text-coral font-bold uppercase">🍽️ Midi</label>
+                    <input value={r.midi} onChange={e=>setRepas(i,'midi',e.target.value)} placeholder="Plat du midi..." className="w-full mt-1 px-3 py-2 rounded-xl bg-white outline-none text-xs font-semibold" /></div>
+                  <div><label className="text-[10px] text-amber font-bold uppercase">🍪 Goûter</label>
+                    <input value={r.gouter} onChange={e=>setRepas(i,'gouter',e.target.value)} placeholder="Goûter..." className="w-full mt-1 px-3 py-2 rounded-xl bg-white outline-none text-xs font-semibold" /></div>
+                </div>
               </div>
             ))}
           </div>
@@ -1890,21 +2262,21 @@ function App() {
 
   const activeCreche = creches.find(c => c.id === activeCId);
   const titleMap = {
-    'super/dashboard': 'Tour de contrôle', 'super/clients': 'Mes clients', 'super/feedbacks': 'Feedbacks',
-    'admin/dashboard': 'Tour de contrôle', 'admin/monitoring': 'Monitoring live', 'admin/enfants': 'Gestion des enfants',
-    'admin/familles': 'Familles', 'admin/groupes': 'Groupes', 'admin/tags': 'Tags',
-    'admin/presences': 'Planning enfants', 'admin/synthese': 'Synthèse hebdomadaire',
-    'admin/nourriture': 'Nourriture', 'admin/rappels': 'Rappels', 'admin/news': 'News', 'admin/documents': 'Documents',
+    'super/dashboard': 'Cockpit', 'super/clients': 'Mes clients', 'super/feedbacks': 'Avis & suggestions',
+    'admin/dashboard': 'Cockpit', 'admin/monitoring': 'Vue temps réel', 'admin/enfants': 'Enfants',
+    'admin/familles': 'Foyers', 'admin/groupes': 'Sections', 'admin/tags': 'Étiquettes',
+    'admin/presences': 'Présences hebdo', 'admin/synthese': 'Bilan hebdo',
+    'admin/nourriture': 'Restauration', 'admin/rappels': 'Alertes', 'admin/news': 'Actus', 'admin/documents': 'Espace docs',
     'admin/devis': 'Devis', 'admin/factures': 'Factures', 'admin/finances': 'Finances · CA', 'admin/charges': 'Charges & Salaires',
-    'admin/employes': 'Employés', 'admin/planning-employes': 'Planning employés', 'admin/messagerie': 'Messagerie',
-    'admin/alarme': 'Alarme incendie', 'admin/abonnement': 'Abonnement', 'admin/feedback': 'Envoyer feedback',
-    'pro/profil': 'Mon profil', 'pro/pointage': 'Pointage', 'pro/activites': 'Activités enfants',
-    'pro/enfants': 'Gestion enfants', 'pro/nourriture': 'Nourriture', 'pro/rappels': 'Rappels',
-    'pro/messagerie': 'Messagerie parents', 'pro/documents': 'Documents', 'pro/news': 'News',
-    'pro/taches': 'Mes tâches', 'pro/feedback': 'Feedback',
+    'admin/employes': 'Équipe', 'admin/planning-employes': 'Horaires équipe', 'admin/messagerie': 'Discussions',
+    'admin/alarme': 'Sécurité incendie', 'admin/abonnement': 'Abonnement', 'admin/feedback': 'Envoyer un avis',
+    'pro/profil': 'Mon profil', 'pro/pointage': 'Pointage', 'pro/mes-horaires': 'Mes horaires',
+    'pro/activites': 'Activités enfants', 'pro/enfants': 'Enfants', 'pro/nourriture': 'Restauration',
+    'pro/rappels': 'Alertes', 'pro/messagerie': 'Discussions parents', 'pro/documents': 'Espace docs',
+    'pro/news': 'Actus', 'pro/taches': 'Mes tâches', 'pro/feedback': 'Envoyer un avis',
     'parent/live': 'Suivi en direct', 'parent/journal': 'Journal du jour', 'parent/photos': 'Album photos',
-    'parent/reservations': 'Réservations', 'parent/nourriture': 'Menu semaine', 'parent/news': 'Actualités',
-    'parent/messagerie': 'Messagerie', 'parent/documents': 'Documents', 'parent/factures': 'Mes factures', 'parent/feedback': 'Feedback',
+    'parent/reservations': 'Réservations', 'parent/nourriture': 'Menu de la semaine', 'parent/news': 'Actus',
+    'parent/messagerie': 'Discussions', 'parent/documents': 'Espace docs', 'parent/factures': 'Mes factures', 'parent/feedback': 'Envoyer un avis',
   };
 
   const canEdit = (user.role === 'admin' || user.role === 'super_admin');
@@ -1939,6 +2311,7 @@ function App() {
       case 'admin/feedback': return <FeedbackForm user={user} />;
       case 'pro/profil': return <ProProfil user={user} />;
       case 'pro/pointage': return <ProPointage user={user} />;
+      case 'pro/mes-horaires': return <ProMesHoraires user={user} />;
       case 'pro/activites': return <ProActivites user={user} />;
       case 'pro/enfants': return <AdminEnfants activeCId={user.creche_id} />;
       case 'pro/nourriture': return <NourritureView activeCId={user.creche_id} canEdit />;

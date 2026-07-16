@@ -477,6 +477,135 @@ backend:
     priority: "medium"
     needs_retesting: false
     status_history:
+
+## V3 TiMétis (UI refresh + Horaires équipe + Photos enfants + Fiche santé)
+
+backend:
+  - task: "V3: Endpoint /employes/:id (PUT) et /employes/:id/planning (GET) avec calcul prorata"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "PUT /employes/:id (admin only) met à jour contrat_horaires, taux_horaire, poste. GET /employes/:id/planning?semaine=YYYY-MM-DD calcule pour chaque jour de la semaine (Lun-Dim) : prévu (contrat), effectif (via pointages arrivee/depart), delta_min, statut (a_l_heure/depasse/court/absent/a_venir/en_cours/repos). Retourne total_prevu_min, total_effectif_min, prorata_pct, salaire_estime. Un pro ne peut consulter que son propre planning. Vérifié via curl : pro@demo.re → 32h30 prévues, prorata calculé correctement."
+
+  - task: "V3: Endpoint /enfants/:id/avatar (PUT) et /enfants/:id/sante (PUT)"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "PUT /enfants/:id/avatar accepte {url, color} — url peut être une URL Cloudinary OU data URL base64. Parent restrict RLS OK. PUT /enfants/:id/sante met à jour allergies, régime, medecin, contacts_urgence[], vaccins, notes_sante. PUT /nourriture/:id ajouté pour éditer un menu existant."
+
+  - task: "V3: Seed avec contrat_horaires + taux_horaire pour les pros"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "Aurélie a un contrat 35h/sem (Lun-Ven 8h-15h, pause 30min, 12.5€/h). Sandra 30h/sem (Lun-Jeu 8h-15h, 14€/h, poste Éducatrice)."
+
+frontend:
+  - task: "V3: UI refresh — topbar clean, dropdown crèche portal, sidebar renamed"
+    implemented: true
+    working: "NA"
+    file: "app/page.js + globals.css"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Topbar : gradient teal fixe + border-radius 32px en bas (fini l'effet vague ondulée). Dropdown crèches : z-40/50 avec overlay fixe fullscreen pour fermeture, animation fade+slide, plus large (260px). Sidebar labels renommés : Cockpit / Vue temps réel / Enfants / Foyers / Sections / Étiquettes / Présences hebdo / Bilan hebdo / Restauration / Alertes / Actus / Espace docs / Devis / Factures / Finances · CA / Charges & Salaires / Équipe / Horaires équipe / Discussions / Sécurité incendie / Abonnement / Envoyer un avis. Pro : Mon profil / Pointage / Mes horaires / Activités enfants / Enfants / Restauration / Alertes / Discussions parents / Espace docs / Actus / Mes tâches / Envoyer un avis. Parent : Suivi en direct / Journal du jour / Album photos / Réservations / Menu de la semaine / Actus / Discussions / Espace docs / Mes factures / Envoyer un avis."
+
+  - task: "V3: AvatarUploadModal (drag-drop, Cloudinary+base64 fallback, palette couleur)"
+    implemented: true
+    working: "NA"
+    file: "app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Modal drag-drop, preview live, essai Cloudinary via /media/sign puis fallback base64 (max 3Mo) si non configuré. 8 couleurs palette + affichage photo/initiales dans Avatar composant. Bouton 📸 Photo sur chaque carte enfant admin."
+
+  - task: "V3: FicheSanteModal (allergies, contacts urgence, régime, vaccins)"
+    implemented: true
+    working: "NA"
+    file: "app/page.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Modal avec allergies, régime alimentaire, médecin traitant, contacts d'urgence (array {nom, tel, lien}) avec bouton +, vaccins, notes santé. Bouton ❤️ Santé sur chaque carte enfant."
+
+  - task: "V3: AdminPlanningEmployes (semaine avec prorata + statuts colorés)"
+    implemented: true
+    working: "NA"
+    file: "app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Refonte complète : tabs employés en haut, sélecteur date semaine, 4 stat cards (Prévu, Effectif, Prorata, Salaire estimé), grille 7 jours avec Prévu → Réel + statut coloré + delta minutes. Bouton 'Modifier contrat' → ContratEditorModal."
+
+  - task: "V3: ContratEditorModal (édition horaires jour par jour)"
+    implemented: true
+    working: "NA"
+    file: "app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Modal complet avec poste + taux horaire + toggle jour actif/repos + heures arrivée/départ + pause en min pour chaque jour Lun-Dim. Auto-calcul total hebdo en direct. Sauvegarde via PUT /employes/:id."
+
+  - task: "V3: ProMesHoraires (self-view pro avec prorata + salaire)"
+    implemented: true
+    working: "NA"
+    file: "app/page.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Nouvelle page Pro pour consulter sa propre semaine. 4 stat cards, sélecteur date, liste verticale des jours avec icône statut + prévu + réel + delta minutes."
+
+  - task: "V3: NourritureView éditable (admin/pro)"
+    implemented: true
+    working: "NA"
+    file: "app/page.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Bouton 'Modifier' pour admin/pro → passage en mode édition avec inputs midi/goûter par jour. Sauvegarde via PUT /nourriture/:id ou POST si aucun menu existant."
+
+agent_communication:
+    - agent: "main"
+      message: "V3 livrée : refresh UI (topbar clean, dropdown portal), renommage complet menus (Foyers/Sections/Étiquettes/Restauration/Alertes/Actus/Espace docs/Équipe/Horaires équipe/Discussions/Sécurité incendie/Cockpit/Vue temps réel/Présences hebdo/Bilan hebdo), horaires équipe avec calcul prorata via pointages, contrat éditable jour par jour avec pauses, photos de profil enfants (drag-drop + Cloudinary+base64 fallback), fiche santé complète (contacts urgence, allergies, vaccins), édition menu semaine. Tests prioritaires : GET /employes/:id/planning avec pointages seedés (statut jeudi='court' car depart avant arrivée dans seed - c'est correct), PUT /employes/:id met à jour contrat_horaires, PUT /enfants/:id/avatar accepte url ou base64 data URL, PUT /enfants/:id/sante persiste tous les champs, PUT /nourriture/:id fonctionne."
+
         - working: "NA"
           agent: "main"
           comment: "POST /media/sign returns { configured: false } if CLOUDINARY_* env vars missing (graceful fallback). Otherwise returns SHA1 signature + timestamp + cloud_name + api_key + folder for direct browser upload to Cloudinary. Frontend uses XMLHttpRequest for progress tracking."

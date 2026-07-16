@@ -83,8 +83,19 @@ async function seedIfEmpty(db) {
   await db.collection('users').insertMany([marie, sophie]);
 
   // Pros for crecheA
-  const pro1 = { id: uuidv4(), email: 'pro@demo.re', password: hash, role: 'pro', creche_id: crecheA.id, prenom: 'Aurélie', nom: 'Payet', created_at: new Date() };
-  const pro2 = { id: uuidv4(), email: 'pro2@demo.re', password: hash, role: 'pro', creche_id: crecheA.id, prenom: 'Sandra', nom: 'Grondin', created_at: new Date() };
+  const defaultContrat = {
+    heures_hebdo: 35,
+    jours: {
+      lundi: { arrivee: '08:00', depart: '15:00', pause_min: 30 },
+      mardi: { arrivee: '08:00', depart: '15:00', pause_min: 30 },
+      mercredi: { arrivee: '08:00', depart: '15:00', pause_min: 30 },
+      jeudi: { arrivee: '08:00', depart: '15:00', pause_min: 30 },
+      vendredi: { arrivee: '08:00', depart: '15:00', pause_min: 30 },
+      samedi: null, dimanche: null,
+    }
+  };
+  const pro1 = { id: uuidv4(), email: 'pro@demo.re', password: hash, role: 'pro', creche_id: crecheA.id, prenom: 'Aurélie', nom: 'Payet', poste: 'Auxiliaire de puériculture', contrat_horaires: defaultContrat, taux_horaire: 12.5, created_at: new Date() };
+  const pro2 = { id: uuidv4(), email: 'pro2@demo.re', password: hash, role: 'pro', creche_id: crecheA.id, prenom: 'Sandra', nom: 'Grondin', poste: 'Éducatrice de jeunes enfants', contrat_horaires: { ...defaultContrat, heures_hebdo: 30, jours: { ...defaultContrat.jours, vendredi: null } }, taux_horaire: 14, created_at: new Date() };
   // Parents
   const par1 = { id: uuidv4(), email: 'parent@demo.re', password: hash, role: 'parent', creche_id: crecheA.id, prenom: 'Jean', nom: 'Bègue', tel: '0692 11 22 33', created_at: new Date() };
   const par2 = { id: uuidv4(), email: 'parent2@demo.re', password: hash, role: 'parent', creche_id: crecheA.id, prenom: 'Élodie', nom: 'Técher', tel: '0692 44 55 66', created_at: new Date() };
@@ -763,6 +774,122 @@ async function handle(request, params) {
     const employes = await db.collection('users').find({ id: { $in: employesIds } }).toArray();
     const creche = await db.collection('creches').findOne({ id: cid });
     return json({ creche: one(creche), date: today, enfants_presents: clean(enfants), employes_presents: clean(employes) });
+  }
+
+  // ---- EMPLOYE CONTRAT + PLANNING HEBDO (avec prorata via pointages) ----
+  if (route.startsWith('employes/') && path.length === 2 && method === 'PUT' && user.role === 'admin') {
+    const b = await request.json();
+    const allowed = ['prenom', 'nom', 'poste', 'contrat_horaires', 'taux_horaire', 'tel', 'creche_id'];
+    const upd = {};
+    for (const k of allowed) if (b[k] !== undefined) upd[k] = b[k];
+    await db.collection('users').updateOne({ id: path[1], role: 'pro' }, { $set: upd });
+    const fresh = await db.collection('users').findOne({ id: path[1] });
+    return json({ employe: one(fresh) });
+  }
+
+  if (route.startsWith('employes/') && path.length === 3 && path[2] === 'planning' && method === 'GET') {
+    const empId = path[1];
+    // Sécurité : pro ne voit que son propre planning
+    if (user.role === 'pro' && empId !== user.id) return err('Accès refusé', 403);
+    const emp = await db.collection('users').findOne({ id: empId, role: 'pro' });
+    if (!emp) return err('Employé introuvable', 404);
+
+    const url = new URL(request.url);
+    const semaineParam = url.searchParams.get('semaine'); // YYYY-MM-DD (any day in week)
+    const anchor = semaineParam ? new Date(semaineParam) : new Date();
+    // Lundi de la semaine
+    const day = anchor.getDay() || 7;
+    const monday = new Date(anchor); monday.setDate(anchor.getDate() - (day - 1)); monday.setHours(0,0,0,0);
+
+    const jourNoms = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+    const contrat = emp.contrat_horaires || { heures_hebdo: 35, jours: {} };
+
+    const semaine = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday); d.setDate(monday.getDate() + i);
+      const dateStr = d.toISOString().slice(0,10);
+      const jourNom = jourNoms[i];
+      const jourContrat = contrat.jours?.[jourNom] || null;
+      // Pointages du jour
+      const ptgs = await db.collection('pointages').find({ employe_id: empId, date: dateStr }).sort({ heure: 1 }).toArray();
+      const arriveePtg = ptgs.find(p => p.type === 'arrivee');
+      const departPtg = ptgs.find(p => p.type === 'depart');
+
+      const toMin = (t) => { if (!t) return 0; const [h,m] = t.split(':').map(Number); return h*60 + (m||0); };
+      const timeOf = (iso) => { if (!iso) return null; const dt = new Date(iso); return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`; };
+
+      const prevu_min = jourContrat ? Math.max(0, toMin(jourContrat.depart) - toMin(jourContrat.arrivee) - (jourContrat.pause_min||0)) : 0;
+
+      let effectif_min = 0, statut = 'repos', delta_min = 0;
+      const arriveeT = timeOf(arriveePtg?.heure);
+      const departT = timeOf(departPtg?.heure);
+
+      if (!jourContrat) statut = 'repos';
+      else if (!arriveePtg && dateStr < todayKey()) statut = 'absent';
+      else if (!arriveePtg && dateStr === todayKey()) statut = 'a_venir';
+      else if (!arriveePtg) statut = 'a_venir';
+      else if (arriveePtg && !departPtg) statut = 'en_cours';
+      else if (arriveePtg && departPtg) {
+        effectif_min = Math.max(0, toMin(departT) - toMin(arriveeT) - (jourContrat.pause_min||0));
+        delta_min = effectif_min - prevu_min;
+        if (Math.abs(delta_min) <= 5) statut = 'a_l_heure';
+        else if (delta_min < -5) statut = 'court';
+        else statut = 'depasse';
+      }
+
+      semaine.push({
+        date: dateStr, jour: jourNom,
+        prevu: jourContrat ? { arrivee: jourContrat.arrivee, depart: jourContrat.depart, minutes: prevu_min } : null,
+        effectif: (arriveeT || departT) ? { arrivee: arriveeT, depart: departT, minutes: effectif_min } : null,
+        delta_min, statut,
+      });
+    }
+    const total_prevu = semaine.reduce((s,x)=>s+(x.prevu?.minutes||0),0);
+    const total_effectif = semaine.reduce((s,x)=>s+(x.effectif?.minutes||0),0);
+    const prorata = total_prevu > 0 ? Math.round((total_effectif/total_prevu)*100) : 0;
+    const salaire_est = emp.taux_horaire ? Math.round((total_effectif/60) * emp.taux_horaire * 100)/100 : null;
+    return json({
+      employe: one(emp), semaine_du: monday.toISOString().slice(0,10),
+      jours: semaine, total_prevu_min: total_prevu, total_effectif_min: total_effectif,
+      prorata_pct: prorata, salaire_estime: salaire_est
+    });
+  }
+
+  // ---- ENFANT AVATAR ----
+  if (route.startsWith('enfants/') && path.length === 3 && path[2] === 'avatar' && method === 'PUT') {
+    const b = await request.json();
+    // b.url (Cloudinary) OR b.data (base64 data URL)
+    if (user.role === 'parent') {
+      const e = await db.collection('enfants').findOne({ id: path[1] });
+      if (!e || !(e.parent_ids||[]).includes(user.id)) return err('Accès refusé', 403);
+    }
+    let upd = { avatar_url: b.url || b.data || null };
+    if (b.color) upd.avatar_color = b.color;
+    await db.collection('enfants').updateOne({ id: path[1] }, { $set: upd });
+    const fresh = await db.collection('enfants').findOne({ id: path[1] });
+    return json({ enfant: one(fresh) });
+  }
+
+  // ---- ENFANT FICHE SANTÉ (contacts urgence, allergies, vaccins) ----
+  if (route.startsWith('enfants/') && path.length === 3 && path[2] === 'sante' && method === 'PUT') {
+    const b = await request.json();
+    if (user.role === 'parent') {
+      const e = await db.collection('enfants').findOne({ id: path[1] });
+      if (!e || !(e.parent_ids||[]).includes(user.id)) return err('Accès refusé', 403);
+    }
+    const upd = {};
+    ['allergies','regime_alimentaire','medecin','contacts_urgence','vaccins','notes_sante','poids_naissance','taille_naissance'].forEach(k => { if (b[k]!==undefined) upd[k] = b[k]; });
+    await db.collection('enfants').updateOne({ id: path[1] }, { $set: upd });
+    const fresh = await db.collection('enfants').findOne({ id: path[1] });
+    return json({ enfant: one(fresh) });
+  }
+
+  // ---- NOURRITURE UPDATE ----
+  if (route.startsWith('nourriture/') && path.length === 2 && method === 'PUT' && (user.role === 'admin' || user.role === 'pro')) {
+    const b = await request.json();
+    delete b._id; delete b.id;
+    await db.collection('nourriture').updateOne({ id: path[1] }, { $set: b });
+    return json({ ok: true });
   }
 
   // ---- MEDIA UPLOAD (Cloudinary signed) ----

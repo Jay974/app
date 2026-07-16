@@ -40,17 +40,15 @@
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Topbar wave */
+/* Topbar clean gradient */
 .tk-wave {
-  background: linear-gradient(135deg, #3ECDB5 0%, #1E9E8A 50%, #3ECDB5 100%);
-  background-size: 200% 200%;
-  animation: wave-shift 8s ease-in-out infinite;
+  background: linear-gradient(135deg, #3ECDB5 0%, #2FB89F 100%);
 }
 .tk-wave-bottom {
-  position: absolute; left: 0; right: 0; bottom: -1px; height: 28px;
+  position: absolute; left: 0; right: 0; bottom: -1px; height: 32px;
   background: #F5F7F9;
-  -webkit-mask: radial-gradient(28px 28px at 50% 0, transparent 98%, #000 100%) 50% 0 / 56px 100% repeat-x;
-          mask: radial-gradient(28px 28px at 50% 0, transparent 98%, #000 100%) 50% 0 / 56px 100% repeat-x;
+  border-top-left-radius: 32px;
+  border-top-right-radius: 32px;
 }
 
 /* Pill button */
