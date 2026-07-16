@@ -642,14 +642,50 @@ async function handle(request, params) {
     return json({ messages: clean(list) });
   }
   if (route === 'messages' && method === 'POST') {
-    const { contenu, to_role, to_id } = await request.json();
+    const { contenu, to_role, to_id, priority, alert_type, heure_prevue } = await request.json();
     if (!contenu) return err('Message vide');
     const m = { id: uuidv4(), creche_id: user.creche_id||activeCId,
       from_id: user.id, from_nom: `${user.prenom} ${user.nom}`, from_role: user.role,
       to_role: to_role||(user.role==='parent'?'admin':'parent'), to_id: to_id||null,
-      contenu, lu: false, created_at: new Date() };
+      contenu, lu: false,
+      priority: priority || 'normal',
+      alert_type: alert_type || null,
+      heure_prevue: heure_prevue || null,
+      created_at: new Date() };
     await db.collection('messages').insertOne(m);
     return json({ message: one(m) });
+  }
+
+  // ---- ALERTES RAPIDES PARENT ----
+  if (route === 'parent/alertes' && method === 'GET' && (user.role === 'admin' || user.role === 'pro')) {
+    const cid = activeCId || user.creche_id;
+    const list = await db.collection('messages').find({ creche_id: cid, priority: 'urgent' }).sort({ created_at: -1 }).limit(50).toArray();
+    return json({ alertes: clean(list) });
+  }
+
+  if (route === 'parent/alertes' && method === 'POST' && user.role === 'parent') {
+    const { alert_type, contenu, heure_prevue, enfant_id } = await request.json();
+    const labels = {
+      retard: 'Retard prévu',
+      changement_horaire: 'Changement horaire',
+      medical: 'Info médicale / alimentation',
+      recuperation: 'Récupération anticipée',
+    };
+    const m = {
+      id: uuidv4(), creche_id: user.creche_id,
+      from_id: user.id, from_nom: `${user.prenom} ${user.nom}`, from_role: 'parent',
+      to_role: 'admin', enfant_id: enfant_id || null,
+      contenu: contenu || labels[alert_type] || 'Alerte',
+      priority: 'urgent', alert_type, heure_prevue: heure_prevue || null,
+      lu: false, created_at: new Date()
+    };
+    await db.collection('messages').insertOne(m);
+    return json({ alerte: one(m) });
+  }
+
+  if (route.startsWith('parent/alertes/') && path.length === 3 && path[2] && method === 'PUT' && (user.role === 'admin' || user.role === 'pro')) {
+    await db.collection('messages').updateOne({ id: path[2], priority: 'urgent' }, { $set: { lu: true, lu_at: new Date(), lu_par: user.id } });
+    return json({ ok: true });
   }
 
   // ---- EMPLOYES ----

@@ -143,7 +143,7 @@ function TopBar({ user, onLogout, onMenu, title, activeCreche, creches, onSelect
   const [open, setOpen] = useState(false);
   return (
     <div className="relative tk-wave text-white z-30">
-      <div className="px-4 md:px-8 pt-4 pb-10 flex items-center justify-between relative z-10 gap-3">
+      <div className="px-4 md:px-8 pt-4 pb-6 flex items-center justify-between relative z-10 gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={onMenu} className="md:hidden p-2 rounded-full bg-white/15 active:scale-95 flex-shrink-0">
             <Menu className="w-5 h-5" />
@@ -708,25 +708,78 @@ function SuperFeedbacks() {
 }
 
 // ===== ADMIN DASHBOARD =====
+// ===== Urgent Alerts Banner (admin/pro) =====
+const ALERT_META = {
+  retard: { label: 'Retard prévu', icon: Clock, color: '#FFA726', bg: '#FFF4E0' },
+  changement_horaire: { label: 'Changement horaire', icon: Calendar, color: '#8B6BE8', bg: '#EFEAFF' },
+  medical: { label: 'Traitement / alimentation', icon: Heart, color: '#FF6B6B', bg: '#FFE9E9' },
+  recuperation: { label: 'Récupération anticipée', icon: Zap, color: '#3ECDB5', bg: '#E6F9F5' },
+};
+
+function UrgentAlertsBanner({ alertes, onDone }) {
+  const traiter = async (id) => {
+    try { await api(`parent/alertes/${id}`, { method: 'PUT' }); toast.success('Alerte traitée'); onDone?.(); }
+    catch(e){ toast.error(e.message); }
+  };
+  return (
+    <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+      className="bg-gradient-to-r from-coral to-[#E53E3E] text-white rounded-lg p-4 shadow-soft">
+      <div className="flex items-center gap-3 mb-3">
+        <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 1.4 }}
+          className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+          <Bell className="w-5 h-5" />
+        </motion.div>
+        <div className="flex-1">
+          <div className="font-extrabold">{alertes.length} alerte{alertes.length>1?'s':''} parent{alertes.length>1?'s':''} en attente</div>
+          <div className="text-xs opacity-90">Message urgent — à traiter rapidement</div>
+        </div>
+      </div>
+      <div className="space-y-2">
+        {alertes.slice(0, 3).map(a => {
+          const meta = ALERT_META[a.alert_type] || { label: 'Alerte', icon: AlertTriangle };
+          const Icon = meta.icon;
+          return (
+            <div key={a.id} className="bg-white/15 backdrop-blur rounded-2xl p-3 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center flex-shrink-0"><Icon className="w-4 h-4" /></div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-extrabold uppercase tracking-wider opacity-80">{meta.label} · {a.from_nom}</div>
+                <div className="text-sm font-semibold truncate-1">{a.contenu}</div>
+                {a.heure_prevue && <div className="text-[10px] opacity-80">Heure prévue : {fmtTime(a.heure_prevue)}</div>}
+              </div>
+              <button onClick={()=>traiter(a.id)} className="btn-pill bg-white text-coral text-xs font-extrabold shadow-soft">
+                <CheckCircle2 className="w-3 h-3" /> Traiter
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
 function AdminDashboard({ user, activeCId }) {
   const [stats, setStats] = useState(null);
   const [transmissions, setTransmissions] = useState([]);
   const [enfants, setEnfants] = useState([]);
+  const [alertes, setAlertes] = useState([]);
   const load = async () => {
     try {
       const suffix = activeCId ? `?creche_id=${activeCId}` : '';
-      const [s, t, e] = await Promise.all([
+      const [s, t, e, a] = await Promise.all([
         api('dashboard/stats'+suffix),
         api(`transmissions?date=${new Date().toISOString().slice(0,10)}${activeCId?`&creche_id=${activeCId}`:''}`),
         api('enfants'+suffix),
+        api('parent/alertes'+suffix).catch(()=>({alertes:[]})),
       ]);
-      setStats(s.stats); setTransmissions(t.transmissions); setEnfants(e.enfants);
+      setStats(s.stats); setTransmissions(t.transmissions); setEnfants(e.enfants); setAlertes(a.alertes||[]);
     } catch (e) { toast.error(e.message); }
   };
   useEffect(() => { load(); const it = setInterval(load, 5000); return () => clearInterval(it); }, [activeCId]);
   if (!stats) return <Loading />;
+  const alertesNonLues = alertes.filter(x => !x.lu);
   return (
     <div className="space-y-4 animate-fade-up">
+      {alertesNonLues.length > 0 && <UrgentAlertsBanner alertes={alertesNonLues} onDone={load} />}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatRow icon={Moon} label="Siestes" color="#42A5F5" bg="#E3F2FD" items={[
           { value: stats.siestes, label: "Aujourd'hui" }, { value: enfants.length, label: 'Enfants' }, { value: '2h', label: 'Moy.' } ]} />
@@ -2012,6 +2065,7 @@ function ParentLive({ user }) {
         <StatRow icon={Coffee} label="Biberon" color="#FF6B6B" bg="#FFE9E9" items={[{value:counts.biberon,label:"Aujourd'hui"}]} />
         <StatRow icon={Flower} label="Changes" color="#66BB6A" bg="#E8F5E9" items={[{value:counts.change,label:"Aujourd'hui"}]} />
       </div>
+      <ParentQuickAlerts enfant={child} />
       <div className="bg-white rounded-lg p-5 shadow-softer">
         <div className="flex items-center justify-between mb-3">
           <div><div className="font-extrabold text-lg">Journée de {child?.prenom}</div><div className="text-xs text-ink-muted">En direct 🌺</div></div>
@@ -2026,6 +2080,105 @@ function ParentLive({ user }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// ===== Parent Quick Alerts (urgent notifications to admin) =====
+function ParentQuickAlerts({ enfant }) {
+  const [open, setOpen] = useState(null);
+  const [contenu, setContenu] = useState('');
+  const [heure, setHeure] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const alerts = [
+    { key: 'retard', label: 'Retard prévu', icon: Clock, color: '#FFA726', bg: '#FFF4E0',
+      placeholder: 'Ex : Je serai en retard de 15 min à cause d\'un embouteillage', needsHeure: true, heureLabel: 'Heure d\'arrivée prévue' },
+    { key: 'changement_horaire', label: 'Changement horaire', icon: Calendar, color: '#8B6BE8', bg: '#EFEAFF',
+      placeholder: 'Ex : Aujourd\'hui je récupère à 15h au lieu de 17h30', needsHeure: true, heureLabel: 'Nouvelle heure de départ' },
+    { key: 'medical', label: 'Traitement / alimentation', icon: Heart, color: '#FF6B6B', bg: '#FFE9E9',
+      placeholder: 'Ex : Doliprane 5ml à 14h. Ou : allergie ponctuelle aux fruits rouges' },
+    { key: 'recuperation', label: 'Récupération anticipée', icon: Zap, color: '#3ECDB5', bg: '#E6F9F5',
+      placeholder: 'Ex : Je suis en route, j\'arrive dans 10 min', needsHeure: true, heureLabel: 'Heure d\'arrivée' },
+  ];
+
+  const send = async () => {
+    const a = alerts.find(x => x.key === open);
+    setSending(true);
+    try {
+      await api('parent/alertes', { method: 'POST', body: JSON.stringify({
+        alert_type: open, contenu: contenu || a.label,
+        heure_prevue: heure ? new Date(new Date().toISOString().slice(0,10)+'T'+heure).toISOString() : null,
+        enfant_id: enfant?.id || null
+      }) });
+      toast.success(`Alerte envoyée à la crèche 🚨`);
+      setOpen(null); setContenu(''); setHeure('');
+    } catch(e){ toast.error(e.message); }
+    finally { setSending(false); }
+  };
+
+  const activeAlert = alerts.find(x => x.key === open);
+
+  return (
+    <>
+      <div className="bg-white rounded-lg p-4 shadow-softer">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 rounded-full bg-coral/15 flex items-center justify-center"><Zap className="w-4 h-4 text-coral" /></div>
+          <div className="flex-1">
+            <div className="font-extrabold text-sm">Alertes rapides</div>
+            <div className="text-[10px] text-ink-muted">Prévenir la crèche en 1 clic</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {alerts.map(a => {
+            const Icon = a.icon;
+            return (
+              <motion.button key={a.key} whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }} onClick={()=>setOpen(a.key)}
+                className="text-left p-3 rounded-2xl transition-all hover:shadow-softer" style={{ background: a.bg }}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-2" style={{ background: a.color+'22' }}>
+                  <Icon className="w-5 h-5" style={{ color: a.color }} />
+                </div>
+                <div className="text-xs font-extrabold" style={{ color: a.color }}>{a.label}</div>
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {open && activeAlert && (
+          <div className="fixed inset-0 bg-black/40 z-[80] flex items-end md:items-center justify-center p-4">
+            <motion.div initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
+              className="bg-white rounded-lg p-6 w-full max-w-md">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: activeAlert.bg }}>
+                  <activeAlert.icon className="w-6 h-6" style={{ color: activeAlert.color }} />
+                </div>
+                <div className="flex-1">
+                  <div className="font-extrabold text-lg" style={{ color: activeAlert.color }}>{activeAlert.label}</div>
+                  <div className="text-xs text-ink-muted">Notification urgente à la crèche</div>
+                </div>
+                <button onClick={()=>setOpen(null)}><X className="w-5 h-5" /></button>
+              </div>
+              {activeAlert.needsHeure && (
+                <div className="mb-3">
+                  <label className="text-xs font-extrabold uppercase tracking-wider text-ink-muted">{activeAlert.heureLabel}</label>
+                  <input type="time" value={heure} onChange={e=>setHeure(e.target.value)} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none focus:ring-2 focus:ring-teal/30 text-sm font-semibold" />
+                </div>
+              )}
+              <div className="mb-3">
+                <label className="text-xs font-extrabold uppercase tracking-wider text-ink-muted">Message</label>
+                <textarea value={contenu} onChange={e=>setContenu(e.target.value)} placeholder={activeAlert.placeholder} rows={4}
+                  className="w-full mt-1 px-4 py-3 rounded-2xl bg-bgsoft outline-none focus:ring-2 focus:ring-teal/30 text-sm font-semibold resize-none" />
+              </div>
+              {enfant && <div className="text-xs text-ink-muted mb-3">Concerne : <span className="font-extrabold text-ink">{enfant.prenom}</span></div>}
+              <button onClick={send} disabled={sending} className="btn-pill w-full text-white shadow-soft" style={{ background: activeAlert.color }}>
+                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> Envoyer l'alerte</>}
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -2341,7 +2494,7 @@ function App() {
       <main className="flex-1 min-w-0">
         <TopBar user={user} onLogout={logout} onMenu={()=>setMenuOpen(true)} title={titleMap[view] || ''}
           activeCreche={activeCreche} creches={creches} onSelectCreche={setActiveCId} />
-        <div className="px-4 md:px-8 pb-8 -mt-6 relative z-10">{renderView()}</div>
+        <div className="px-4 md:px-8 pt-4 pb-8 relative z-10">{renderView()}</div>
       </main>
     </div>
   );
