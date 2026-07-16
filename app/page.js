@@ -215,7 +215,6 @@ function Sidebar({ user, view, setView, open, setOpen }) {
     ],
     admin: [
       { key: 'admin/dashboard', label: 'Cockpit', icon: Home },
-      { key: 'admin/monitoring', label: 'Vue temps réel', icon: Zap },
       { key: 'admin/enfants', label: 'Enfants', icon: Baby },
       { key: 'admin/familles', label: 'Foyers', icon: Users },
       { key: 'admin/groupes', label: 'Sections', icon: Layers },
@@ -2416,7 +2415,7 @@ function App() {
   const activeCreche = creches.find(c => c.id === activeCId);
   const titleMap = {
     'super/dashboard': 'Cockpit', 'super/clients': 'Mes clients', 'super/feedbacks': 'Avis & suggestions',
-    'admin/dashboard': 'Cockpit', 'admin/monitoring': 'Vue temps réel', 'admin/enfants': 'Enfants',
+    'admin/dashboard': 'Cockpit', 'admin/enfants': 'Enfants',
     'admin/familles': 'Foyers', 'admin/groupes': 'Sections', 'admin/tags': 'Étiquettes',
     'admin/presences': 'Présences hebdo', 'admin/synthese': 'Bilan hebdo',
     'admin/nourriture': 'Restauration', 'admin/rappels': 'Alertes', 'admin/news': 'Actus', 'admin/documents': 'Espace docs',
@@ -2440,8 +2439,7 @@ function App() {
       case 'super/clients': return <SuperClients />;
       case 'super/feedbacks': return <SuperFeedbacks />;
       case 'super/settings': return <PlaceholderView title="Paramètres" icon={Settings} />;
-      case 'admin/dashboard':
-      case 'admin/monitoring': return <AdminDashboard user={user} activeCId={activeCId} />;
+      case 'admin/dashboard': return <AdminDashboard user={user} activeCId={activeCId} />;
       case 'admin/enfants': return <AdminEnfants activeCId={activeCId} />;
       case 'admin/familles': return <AdminFamilles activeCId={activeCId} />;
       case 'admin/groupes': return <AdminGroupes activeCId={activeCId} />;
