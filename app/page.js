@@ -445,7 +445,7 @@ function StatRow({ icon: Icon, label, color, bg, items }) {
   );
 }
 
-function TimelineEntry({ t, idx, canDelete, onDelete }) {
+function TimelineEntry({ t, idx, canDelete, onDelete, child }) {
   const meta = TYPE_META[t.type] || TYPE_META.note;
   const Icon = meta.icon;
   return (
@@ -456,12 +456,22 @@ function TimelineEntry({ t, idx, canDelete, onDelete }) {
       <div className="bg-white rounded-lg p-4 shadow-softer relative overflow-hidden">
         <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: meta.color }} />
         <div className="flex items-start gap-3">
-          <div className="rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: meta.bg, width: 42, height: 42 }}>
-            <Icon className="w-5 h-5" style={{ color: meta.color }} />
-          </div>
+          {child ? (
+            <div className="flex-shrink-0"><Avatar enfant={child} size={42} /></div>
+          ) : (
+            <div className="rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: meta.bg, width: 42, height: 42 }}>
+              <Icon className="w-5 h-5" style={{ color: meta.color }} />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
-              <div className="font-extrabold text-ink truncate-1">{t.titre}</div>
+              <div className="min-w-0 flex-1">
+                {child && <div className="text-xs font-extrabold" style={{ color: meta.color }}>{child.prenom}</div>}
+                <div className="font-extrabold text-ink truncate-1 flex items-center gap-1.5">
+                  {child && <Icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: meta.color }} />}
+                  {t.titre}
+                </div>
+              </div>
               <div className="text-xs text-ink-muted font-bold flex-shrink-0">{fmtTime(t.heure)}</div>
             </div>
             {t.detail && <div className="text-sm text-ink-muted mt-1">{t.detail}</div>}
@@ -797,7 +807,7 @@ function AdminDashboard({ user, activeCId }) {
           </div>
           <div className="max-h-[460px] overflow-y-auto scrollbar-thin pr-2">
             {transmissions.length === 0 && <div className="text-ink-muted text-sm">Aucune transmission</div>}
-            {transmissions.map((t, i) => <TimelineEntry key={t.id} t={t} idx={i} />)}
+            {transmissions.map((t, i) => <TimelineEntry key={t.id} t={t} idx={i} child={enfants.find(e=>e.id===t.enfant_id)} />)}
           </div>
         </div>
         <div className="space-y-4">
@@ -911,8 +921,8 @@ function FicheSanteModal({ enfant, onClose, onSaved }) {
   const setCU = (i, k, v) => setF({...f, contacts_urgence: f.contacts_urgence.map((c,x)=>x===i?{...c,[k]:v}:c)});
   const addCU = () => setF({...f, contacts_urgence: [...f.contacts_urgence, {nom:'',tel:'',lien:''}]});
   return (
-    <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4 overflow-y-auto">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-lg my-8">
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-lg my-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3"><Heart className="w-6 h-6 text-coral" /><div><div className="font-extrabold text-lg">Fiche santé de {enfant.prenom}</div><div className="text-xs text-ink-muted">Confidentiel</div></div></div>
           <button onClick={onClose}><X className="w-5 h-5" /></button>
@@ -1216,8 +1226,8 @@ function DocumentEditorModal({ type, activeCId, onClose }) {
     } catch(e){ toast.error(e.message); }
   };
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-2xl my-8">
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-start md:items-center justify-center p-4 overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-2xl my-6">
         <div className="flex items-center justify-between mb-4">
           <div><div className="font-extrabold text-xl">{type==='devis'?'Nouveau devis':'Nouvelle facture'}</div><div className="text-xs text-ink-muted">TiMétis · Made in 974</div></div>
           <button onClick={onClose}><X className="w-5 h-5" /></button>
@@ -1407,8 +1417,8 @@ function ContratEditorModal({ employe, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4 overflow-y-auto">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-xl my-8">
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-xl my-6">
         <div className="flex items-center justify-between mb-4">
           <div><div className="font-extrabold text-lg">Contrat de {employe.prenom} {employe.nom}</div><div className="text-xs text-ink-muted">Horaires hebdomadaires · taux horaire</div></div>
           <button onClick={onClose}><X className="w-5 h-5" /></button>
