@@ -846,6 +846,7 @@ function AdminEnfants({ activeCId }) {
   const [tags, setTags] = useState([]);
   const [editAvatar, setEditAvatar] = useState(null);
   const [editSante, setEditSante] = useState(null);
+  const [editProfil, setEditProfil] = useState(null);
   const load = async () => {
     try {
       const suffix = activeCId ? `?creche_id=${activeCId}` : '';
@@ -890,8 +891,9 @@ function AdminEnfants({ activeCId }) {
                 <div><div className="text-ink-muted">Mensualité</div><div className="font-bold text-teal-dark">{fmtEur(e.mensualite)}</div></div>
               </div>
               <div className="mt-2 flex gap-2">
-                <button onClick={()=>setEditAvatar(e)} className="btn-pill bg-bgsoft text-ink-muted text-xs flex-1"><Camera className="w-3 h-3" /> Photo</button>
-                <button onClick={()=>setEditSante(e)} className="btn-pill bg-coral/10 text-coral text-xs flex-1"><Heart className="w-3 h-3" /> Santé</button>
+                <button onClick={()=>setEditProfil(e)} className="btn-pill bg-teal-light text-teal-dark text-xs flex-1"><Edit3 className="w-3 h-3" /> Éditer</button>
+                <button onClick={()=>setEditAvatar(e)} className="btn-pill bg-bgsoft text-ink-muted text-xs"><Camera className="w-3 h-3" /></button>
+                <button onClick={()=>setEditSante(e)} className="btn-pill bg-coral/10 text-coral text-xs"><Heart className="w-3 h-3" /></button>
               </div>
             </motion.div>
           );
@@ -900,6 +902,65 @@ function AdminEnfants({ activeCId }) {
       {showAdd && <AddChildModal activeCId={activeCId} onClose={() => { setShowAdd(false); load(); }} />}
       {editAvatar && <AvatarUploadModal enfant={editAvatar} onClose={()=>setEditAvatar(null)} onSaved={load} />}
       {editSante && <FicheSanteModal enfant={editSante} onClose={()=>setEditSante(null)} onSaved={load} />}
+      {editProfil && <EnfantEditorModal enfant={editProfil} tags={tags} onClose={()=>{setEditProfil(null);load();}} />}
+    </div>
+  );
+}
+
+function EnfantEditorModal({ enfant, tags, onClose }) {
+  const [f, setF] = useState({
+    prenom: enfant.prenom || '',
+    nom: enfant.nom || '',
+    date_naissance: enfant.date_naissance || '',
+    groupe: enfant.groupe || 'Tournesol',
+    contrat_heures: enfant.contrat_heures || 35,
+    mensualite: enfant.mensualite || 500,
+    notes: enfant.notes || '',
+    tags: enfant.tags || [],
+  });
+  const toggleTag = (id) => setF({...f, tags: f.tags.includes(id) ? f.tags.filter(x=>x!==id) : [...f.tags, id] });
+  const save = async () => {
+    try { await api(`enfants/${enfant.id}`, { method: 'PUT', body: JSON.stringify(f) });
+      toast.success('Profil mis à jour'); onClose();
+    } catch(e){ toast.error(e.message); }
+  };
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-lg my-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3"><Avatar enfant={enfant} size={44} /><div><div className="font-extrabold text-lg">Éditer {enfant.prenom}</div><div className="text-xs text-ink-muted">Profil complet</div></div></div>
+          <button onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Prénom</label>
+              <input value={f.prenom} onChange={e=>setF({...f,prenom:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Nom</label>
+              <input value={f.nom} onChange={e=>setF({...f,nom:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          </div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Date de naissance</label>
+            <input type="date" value={f.date_naissance} onChange={e=>setF({...f,date_naissance:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Section</label>
+            <select value={f.groupe} onChange={e=>setF({...f,groupe:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold">
+              <option>Tournesol</option><option>Coquelicot</option><option>Marguerite</option>
+            </select></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Contrat (h/sem)</label>
+              <input type="number" value={f.contrat_heures} onChange={e=>setF({...f,contrat_heures:+e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Mensualité (€)</label>
+              <input type="number" value={f.mensualite} onChange={e=>setF({...f,mensualite:+e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          </div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Étiquettes</label>
+            <div className="flex gap-2 flex-wrap mt-1">
+              {tags.map(t => (
+                <button key={t.id} onClick={()=>toggleTag(t.id)} className={`text-xs font-bold px-3 py-1.5 rounded-full transition ${f.tags.includes(t.id)?'ring-2':''}`} style={{ background: t.couleur+'22', color: t.couleur, ringColor: t.couleur }}>{t.nom}</button>
+              ))}
+            </div></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Notes</label>
+            <textarea value={f.notes} onChange={e=>setF({...f,notes:e.target.value})} placeholder="Habitudes, personnalité, particularités..." rows={3} className="w-full mt-1 px-4 py-2.5 rounded-2xl bg-bgsoft outline-none text-sm font-semibold resize-none" /></div>
+          <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -995,19 +1056,73 @@ function AddChildModal({ activeCId, onClose }) {
 // ===== FAMILLES / GROUPES / TAGS =====
 function AdminFamilles({ activeCId }) {
   const [items, setItems] = useState([]);
-  useEffect(() => { (async()=>{try{const d=await api('familles'+(activeCId?`?creche_id=${activeCId}`:'')); setItems(d.familles);}catch(e){toast.error(e.message);}})(); }, [activeCId]);
+  const [edit, setEdit] = useState(null); // famille object or 'new'
+  const load = async () => { try {const d=await api('familles'+(activeCId?`?creche_id=${activeCId}`:'')); setItems(d.familles);}catch(e){toast.error(e.message);} };
+  useEffect(() => { load(); }, [activeCId]);
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-up">
-      {items.map(f => (
-        <div key={f.id} className="bg-white rounded-lg p-5 shadow-softer">
-          <div className="font-extrabold text-lg">{f.nom}</div>
-          <div className="text-xs text-ink-muted">{f.tel} · {f.adresse}</div>
-          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-            <div><div className="text-ink-muted">Parents</div><div className="font-bold">{(f.parents||[]).length}</div></div>
-            <div><div className="text-ink-muted">Enfants</div><div className="font-bold">{(f.enfants||[]).length}</div></div>
+    <div className="space-y-4 animate-fade-up">
+      <div className="flex justify-end"><button onClick={()=>setEdit('new')} className="btn-pill bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Nouveau foyer</button></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {items.map(f => (
+          <div key={f.id} className="bg-white rounded-lg p-5 shadow-softer">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="font-extrabold text-lg truncate-1">{f.nom}</div>
+                <div className="text-xs text-ink-muted">{f.tel} · {f.adresse || '—'}</div>
+                {f.email && <div className="text-xs text-ink-muted mt-0.5">{f.email}</div>}
+              </div>
+              <button onClick={()=>setEdit(f)} className="btn-pill bg-bgsoft text-ink-muted text-xs"><Edit3 className="w-3 h-3" /> Éditer</button>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <div><div className="text-ink-muted">Parents</div><div className="font-bold">{(f.parents||[]).length}</div></div>
+              <div><div className="text-ink-muted">Enfants</div><div className="font-bold">{(f.enfants||[]).length}</div></div>
+            </div>
+            {f.notes && <div className="mt-3 pt-3 border-t border-bgsoft text-xs text-ink-muted italic">{f.notes}</div>}
+          </div>
+        ))}
+      </div>
+      {edit && <FamilleEditor famille={edit==='new'?null:edit} activeCId={activeCId} onClose={()=>{setEdit(null);load();}} />}
+    </div>
+  );
+}
+
+function FamilleEditor({ famille, activeCId, onClose }) {
+  const [f, setF] = useState(famille || { nom:'', tel:'', email:'', adresse:'', notes:'' });
+  const save = async () => {
+    try {
+      if (famille?.id) await api(`familles/${famille.id}`, { method: 'PUT', body: JSON.stringify(f) });
+      else await api('familles', { method: 'POST', body: JSON.stringify({...f, creche_id: activeCId}) });
+      toast.success(famille?'Foyer mis à jour':'Foyer créé'); onClose();
+    } catch(e){ toast.error(e.message); }
+  };
+  const del = async () => {
+    if (!famille?.id || !confirm('Supprimer ce foyer ?')) return;
+    try { await api(`familles/${famille.id}`, { method: 'DELETE' }); toast.success('Foyer supprimé'); onClose(); } catch(e){ toast.error(e.message); }
+  };
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
+        <div className="flex items-center justify-between mb-4">
+          <div><div className="font-extrabold text-lg">{famille?'Éditer le foyer':'Nouveau foyer'}</div><div className="text-xs text-ink-muted">Coordonnées de la famille</div></div>
+          <button onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+        <div className="space-y-3">
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Nom du foyer</label>
+            <input value={f.nom} onChange={e=>setF({...f,nom:e.target.value})} placeholder="Famille Dupont" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Téléphone</label>
+            <input value={f.tel} onChange={e=>setF({...f,tel:e.target.value})} placeholder="0692 11 22 33" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Email</label>
+            <input type="email" value={f.email||''} onChange={e=>setF({...f,email:e.target.value})} placeholder="famille@email.com" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Adresse</label>
+            <input value={f.adresse} onChange={e=>setF({...f,adresse:e.target.value})} placeholder="12 rue des Flamboyants, 97400 Saint-Denis" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Notes</label>
+            <textarea value={f.notes||''} onChange={e=>setF({...f,notes:e.target.value})} placeholder="Informations complémentaires..." rows={3} className="w-full mt-1 px-4 py-2.5 rounded-2xl bg-bgsoft outline-none text-sm font-semibold resize-none" /></div>
+          <div className="flex gap-2">
+            {famille && <button onClick={del} className="btn-pill bg-coral/10 text-coral text-xs"><Trash2 className="w-3 h-3" /> Supprimer</button>}
+            <button onClick={save} className="btn-pill flex-1 bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
           </div>
         </div>
-      ))}
+      </motion.div>
     </div>
   );
 }
@@ -1818,17 +1933,17 @@ function ThreadedMessagerie({ user }) {
               <Avatar user={active.others?.[0]} enfant={active.enfant} size={36} />
               <div className="flex-1 min-w-0"><div className="font-extrabold truncate-1">{active.others?.[0]?.prenom} {active.others?.[0]?.nom}</div><div className="text-xs text-ink-muted">{active.enfant ? `Enfant : ${active.enfant.prenom}` : 'Conversation'}</div></div>
             </div>
-            <div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-3 bg-bgsoft/30">
+            <div className="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-3 bg-bgsoft/30">
               {messages.map(m => {
                 const mine = m.from_id === user.id;
                 return (
                   <motion.div key={m.id} initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} className={`flex ${mine?'justify-end':'justify-start'}`}>
-                    <div className={`max-w-[75%] rounded-2xl px-3 py-2 ${mine?'bg-teal text-white':'bg-white text-ink shadow-softer'}`}>
+                    <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl px-3 py-2 ${mine?'bg-teal text-white':'bg-white text-ink shadow-softer'}`}>
                       {!mine && <div className="text-[10px] font-extrabold opacity-70 mb-0.5">{m.from_nom}</div>}
                       {m.media && (m.media_type==='video' ? (
-                        <video src={m.media} controls className="max-w-[280px] rounded-xl mb-1" />
+                        <video src={m.media} controls className="w-full max-w-[280px] rounded-xl mb-1" />
                       ) : (
-                        <img src={m.media} alt="" className="max-w-[280px] rounded-xl mb-1" />
+                        <img src={m.media} alt="" className="w-full max-w-[280px] rounded-xl mb-1" />
                       ))}
                       {m.contenu && <div className="text-sm font-semibold whitespace-pre-wrap break-words">{m.contenu}</div>}
                       <div className={`text-[10px] mt-1 ${mine?'opacity-70':'text-ink-muted'}`}>{fmtTime(m.created_at)}</div>
@@ -1838,10 +1953,10 @@ function ThreadedMessagerie({ user }) {
               })}
               <div ref={endRef} />
             </div>
-            <div className="border-t border-bgsoft p-3 flex items-center gap-2">
+            <div className="border-t border-bgsoft p-2 flex items-center gap-2">
               <MediaUploader folder={`thread-${active.id}`} onUpload={(m)=>send(m)} />
-              <input value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} placeholder="Message..." className="flex-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none focus:ring-2 focus:ring-teal/30 text-sm font-semibold" />
-              <button onClick={()=>send()} className="btn-pill bg-teal text-white shadow-soft"><Send className="w-4 h-4" /></button>
+              <input value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} placeholder="Message..." className="flex-1 min-w-0 px-3 py-2.5 rounded-pill bg-bgsoft outline-none focus:ring-2 focus:ring-teal/30 text-sm font-semibold" />
+              <button onClick={()=>send()} className="btn-pill bg-teal text-white shadow-soft flex-shrink-0"><Send className="w-4 h-4" /></button>
             </div>
           </>
         )}
@@ -2297,9 +2412,12 @@ function AbonnementView({ user }) {
         <div className="text-[11px] font-extrabold uppercase tracking-wider opacity-80">Plan TiMétis</div>
         <div className="text-5xl font-extrabold mt-2">79 €<span className="text-lg opacity-70"> /mois</span></div>
         <div className="text-sm opacity-90 mt-2 font-bold">Prélèvement SEPA · Codes promo acceptés</div>
+        <div className="mt-3 inline-flex items-center gap-2 bg-white/15 rounded-pill px-3 py-1.5 text-xs font-bold">
+          <Plus className="w-3 h-3" /> +40 €/mois par crèche supplémentaire
+        </div>
         <ul className="mt-4 space-y-1 text-sm">
-          <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Crèches illimitées</li>
-          <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Enfants illimités</li>
+          <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> 1 crèche incluse (jusqu'à 24 enfants)</li>
+          <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Enfants et employés illimités</li>
           <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Support 974 dédié</li>
           <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Toutes les fonctionnalités</li>
         </ul>

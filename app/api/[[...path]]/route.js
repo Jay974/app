@@ -497,9 +497,22 @@ async function handle(request, params) {
   }
   if (route === 'familles' && method === 'POST' && (user.role === 'admin')) {
     const b = await request.json();
-    const f = { id: uuidv4(), creche_id: b.creche_id||activeCId, nom: b.nom, parents: b.parents||[], adresse: b.adresse||'', tel: b.tel||'', enfants: b.enfants||[], created_at: new Date() };
+    const f = { id: uuidv4(), creche_id: b.creche_id||activeCId, nom: b.nom, parents: b.parents||[], adresse: b.adresse||'', tel: b.tel||'', email: b.email||'', enfants: b.enfants||[], notes: b.notes||'', created_at: new Date() };
     await db.collection('familles').insertOne(f);
     return json({ famille: f });
+  }
+
+  if (route.startsWith('familles/') && path.length === 2 && method === 'PUT' && (user.role === 'admin' || user.role === 'pro')) {
+    const b = await request.json();
+    delete b._id; delete b.id; delete b.created_at;
+    await db.collection('familles').updateOne({ id: path[1] }, { $set: b });
+    const fresh = await db.collection('familles').findOne({ id: path[1] });
+    return json({ famille: one(fresh) });
+  }
+
+  if (route.startsWith('familles/') && path.length === 2 && method === 'DELETE' && user.role === 'admin') {
+    await db.collection('familles').deleteOne({ id: path[1] });
+    return json({ ok: true });
   }
 
   // ---- GROUPES ----
