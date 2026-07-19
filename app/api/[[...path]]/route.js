@@ -575,6 +575,10 @@ async function handle(request, params) {
     await db.collection('devis').updateOne({ id: path[1] }, { $set: b });
     return json({ ok: true });
   }
+  if (route.startsWith('devis/') && path.length === 2 && method === 'DELETE' && user.role === 'admin') {
+    await db.collection('devis').deleteOne({ id: path[1] });
+    return json({ ok: true });
+  }
 
   // ---- FACTURES (extended) ----
   if (route === 'factures' && method === 'GET') {
@@ -606,6 +610,59 @@ async function handle(request, params) {
   }
   if (route.startsWith('factures/') && path.length === 3 && path[2] === 'pay' && method === 'POST') {
     await db.collection('factures').updateOne({ id: path[1] }, { $set: { statut: 'payee', paid_at: new Date() } });
+    return json({ ok: true });
+  }
+  if (route.startsWith('factures/') && path.length === 2 && method === 'PUT' && user.role === 'admin') {
+    const b = await request.json();
+    delete b._id; delete b.id;
+    if (b.articles) {
+      b.total_ht = b.articles.reduce((s,a)=>s+((+a.prix_unit||0)*(+a.quantite||1)),0);
+      b.total_ttc = b.total_ht;
+      b.montant = b.total_ttc;
+    }
+    await db.collection('factures').updateOne({ id: path[1] }, { $set: b });
+    return json({ ok: true });
+  }
+  if (route.startsWith('factures/') && path.length === 2 && method === 'DELETE' && user.role === 'admin') {
+    await db.collection('factures').deleteOne({ id: path[1] });
+    return json({ ok: true });
+  }
+
+  // ---- CRUD TAGS ----
+  if (route.startsWith('tags/') && path.length === 2 && method === 'PUT' && user.role === 'admin') {
+    const b = await request.json(); delete b._id; delete b.id;
+    await db.collection('tags').updateOne({ id: path[1] }, { $set: b });
+    const fresh = await db.collection('tags').findOne({ id: path[1] });
+    return json({ tag: one(fresh) });
+  }
+  if (route.startsWith('tags/') && path.length === 2 && method === 'DELETE' && user.role === 'admin') {
+    // Retirer aussi le tag de tous les enfants
+    await db.collection('enfants').updateMany({ tags: path[1] }, { $pull: { tags: path[1] } });
+    await db.collection('tags').deleteOne({ id: path[1] });
+    return json({ ok: true });
+  }
+
+  // ---- CRUD RAPPELS (alertes admin) ----
+  if (route.startsWith('rappels/') && path.length === 2 && method === 'PUT' && user.role === 'admin') {
+    const b = await request.json(); delete b._id; delete b.id;
+    await db.collection('rappels').updateOne({ id: path[1] }, { $set: b });
+    const fresh = await db.collection('rappels').findOne({ id: path[1] });
+    return json({ rappel: one(fresh) });
+  }
+  if (route.startsWith('rappels/') && path.length === 2 && method === 'DELETE' && user.role === 'admin') {
+    await db.collection('rappels').deleteOne({ id: path[1] });
+    return json({ ok: true });
+  }
+
+  // ---- CRUD NEWS ----
+  if (route.startsWith('news/') && path.length === 2 && method === 'PUT' && user.role === 'admin') {
+    const b = await request.json(); delete b._id; delete b.id;
+    await db.collection('news').updateOne({ id: path[1] }, { $set: b });
+    const fresh = await db.collection('news').findOne({ id: path[1] });
+    return json({ news: one(fresh) });
+  }
+  if (route.startsWith('news/') && path.length === 2 && method === 'DELETE' && user.role === 'admin') {
+    await db.collection('news').deleteOne({ id: path[1] });
     return json({ ok: true });
   }
 
@@ -834,6 +891,17 @@ async function handle(request, params) {
     await db.collection('users').updateOne({ id: path[1], role: 'pro' }, { $set: upd });
     const fresh = await db.collection('users').findOne({ id: path[1] });
     return json({ employe: one(fresh) });
+  }
+  if (route.startsWith('employes/') && path.length === 2 && method === 'DELETE' && user.role === 'admin') {
+    // Vérifier que l'employé appartient à l'une des crèches de l'admin
+    const emp = await db.collection('users').findOne({ id: path[1], role: 'pro' });
+    if (!emp) return err('Employé introuvable', 404);
+    if (!(user.creche_ids||[]).includes(emp.creche_id)) return err('Accès refusé', 403);
+    await db.collection('users').deleteOne({ id: path[1], role: 'pro' });
+    // Nettoyage : supprimer aussi pointages et fiches de paie associés
+    await db.collection('pointages').deleteMany({ employe_id: path[1] });
+    await db.collection('fiches_paie').deleteMany({ employe_id: path[1] });
+    return json({ ok: true });
   }
 
   if (route.startsWith('employes/') && path.length === 3 && path[2] === 'planning' && method === 'GET') {

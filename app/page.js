@@ -143,8 +143,8 @@ function AvatarUploadModal({ enfant, onClose, onSaved }) {
 function TopBar({ user, onLogout, onMenu, title, activeCreche, creches, onSelectCreche }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="relative tk-wave text-white z-30">
-      <div className="px-4 md:px-8 pt-4 pb-6 flex items-center justify-between relative z-10 gap-3">
+    <div className="relative tk-wave text-white">
+      <div className="px-4 md:px-8 pt-4 pb-6 flex items-center justify-between relative gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={onMenu} className="md:hidden p-2 rounded-full bg-white/15 active:scale-95 flex-shrink-0">
             <Menu className="w-5 h-5" />
@@ -328,11 +328,13 @@ function Sidebar({ user, view, setView, open, setOpen }) {
           );
         })}
       </div>
-      <div className="m-3 px-3 py-3 rounded-2xl bg-teal-light text-teal-dark flex-shrink-0">
-        <div className="text-[11px] font-extrabold uppercase tracking-wider">Plan TiMétis</div>
-        <div className="text-sm font-bold">79 € / mois</div>
-        <div className="text-[10px] opacity-80">Solution locale 974 🌺</div>
-      </div>
+      {user.role === 'admin' && (
+        <div className="m-3 px-3 py-3 rounded-2xl bg-teal-light text-teal-dark flex-shrink-0">
+          <div className="text-[11px] font-extrabold uppercase tracking-wider">Plan TiMétis</div>
+          <div className="text-sm font-bold">79 € / mois</div>
+          <div className="text-[10px] opacity-80">Solution locale 974 🌺</div>
+        </div>
+      )}
     </div>
   );
 
@@ -1486,19 +1488,86 @@ function AdminGroupes({ activeCId }) {
 function AdminTags({ activeCId }) {
   const [items, setItems] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
+  const [edit, setEdit] = useState(null);
   const load = async () => { try {const d=await api('tags'+(activeCId?`?creche_id=${activeCId}`:'')); setItems(d.tags);}catch(e){} };
   useEffect(() => { load(); }, [activeCId]);
+  const del = async (t) => {
+    if (!confirm(`Supprimer l'étiquette "${t.nom}" ? Elle sera retirée de tous les enfants concernés.`)) return;
+    try { await api(`tags/${t.id}`, { method: 'DELETE' }); toast.success('Étiquette supprimée'); load(); }
+    catch(e){ toast.error(e.message); }
+  };
+  // Regroupement par catégorie (première lettre ou par couleur si absent)
+  const grouped = items.reduce((acc, t) => {
+    const cat = t.categorie || 'Général';
+    (acc[cat] = acc[cat] || []).push(t);
+    return acc;
+  }, {});
   return (
     <div className="space-y-4 animate-fade-up">
-      <div className="flex justify-end"><button onClick={()=>setShowAdd(true)} className="btn-pill bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Nouveau tag</button></div>
-      <div className="bg-white rounded-lg p-5 shadow-softer">
-        <div className="flex gap-2 flex-wrap">
-          {items.map(t => (
-            <span key={t.id} className="text-sm font-bold px-3 py-1.5 rounded-full" style={{ background: t.couleur+'22', color: t.couleur }}>{t.nom}</span>
-          ))}
-        </div>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="text-xs text-ink-muted">Classez les étiquettes par catégorie (Allergies, Comportement, Régime alimentaire…). Cliquez pour éditer, croix rouge pour supprimer.</div>
+        <button onClick={()=>setShowAdd(true)} className="btn-pill bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Nouvelle étiquette</button>
       </div>
-      {showAdd && <SimpleAddModal title="Nouveau tag" fields={[{k:'nom',l:'Nom'},{k:'couleur',l:'Couleur (hex)',default:'#3ECDB5'}]} onSubmit={async(d)=>{await api('tags',{method:'POST',body:JSON.stringify({...d,creche_id:activeCId})});}} onClose={()=>{setShowAdd(false);load();}} />}
+      {Object.entries(grouped).map(([cat, tags]) => (
+        <div key={cat} className="bg-white rounded-lg p-5 shadow-softer">
+          <div className="font-extrabold text-sm uppercase tracking-wider text-ink-muted mb-3">{cat}</div>
+          <div className="flex gap-2 flex-wrap">
+            {tags.map(t => (
+              <div key={t.id} className="group relative flex items-center gap-1 pl-3 pr-1 py-1 rounded-full font-bold text-sm cursor-pointer transition hover:shadow-soft" style={{ background: t.couleur+'22', color: t.couleur }} onClick={()=>setEdit(t)}>
+                <span>{t.nom}</span>
+                <button onClick={(e)=>{e.stopPropagation();del(t);}} className="ml-1 w-5 h-5 rounded-full bg-white/60 hover:bg-coral hover:text-white flex items-center justify-center transition"><X className="w-3 h-3" /></button>
+              </div>
+            ))}
+            {tags.length === 0 && <div className="text-xs text-ink-muted italic">Aucune étiquette dans cette catégorie</div>}
+          </div>
+        </div>
+      ))}
+      {items.length === 0 && <PlaceholderView title="Aucune étiquette" icon={TagIcon} subtitle="Créez des étiquettes pour classer les enfants (allergies, régimes, comportements…)" />}
+      {showAdd && <TagEditorModal activeCId={activeCId} onClose={()=>{setShowAdd(false);load();}} />}
+      {edit && <TagEditorModal tag={edit} activeCId={activeCId} onClose={()=>{setEdit(null);load();}} />}
+    </div>
+  );
+}
+
+function TagEditorModal({ tag, activeCId, onClose }) {
+  const CATS = ['Général', 'Allergies', 'Régime alimentaire', 'Comportement', 'Santé', 'Sommeil', 'Autres'];
+  const COLORS = ['#3ECDB5','#FF6B6B','#FFA726','#66BB6A','#8B6BE8','#42A5F5','#EC407A','#26A69A','#7E57C2'];
+  const [f, setF] = useState(tag || { nom:'', couleur:'#3ECDB5', categorie:'Général' });
+  const save = async () => {
+    if (!f.nom.trim()) return toast.error('Nom obligatoire');
+    try {
+      if (tag) await api(`tags/${tag.id}`, { method: 'PUT', body: JSON.stringify(f) });
+      else await api('tags', { method: 'POST', body: JSON.stringify({ ...f, creche_id: activeCId }) });
+      toast.success(tag?'Étiquette mise à jour':'Étiquette créée'); onClose();
+    } catch(e){ toast.error(e.message); }
+  };
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4">
+      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div className="font-extrabold text-lg">{tag?'Éditer l\'étiquette':'Nouvelle étiquette'}</div>
+          <button onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+        <div className="space-y-3">
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Nom</label>
+            <input value={f.nom} onChange={e=>setF({...f,nom:e.target.value})} placeholder="Ex : Allergie lait" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Catégorie</label>
+            <select value={f.categorie||'Général'} onChange={e=>setF({...f,categorie:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold">
+              {CATS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Couleur</label>
+            <div className="mt-2 flex gap-2 flex-wrap">
+              {COLORS.map(c => (
+                <button key={c} onClick={()=>setF({...f,couleur:c})} className={`w-8 h-8 rounded-full transition ${f.couleur===c?'ring-4 ring-offset-2 ring-teal':''}`} style={{background:c}} />
+              ))}
+            </div>
+          </div>
+          <div className="p-3 rounded-2xl bg-bgsoft flex items-center justify-center">
+            <span className="px-3 py-1.5 rounded-full font-bold text-sm" style={{background:f.couleur+'22', color:f.couleur}}>{f.nom || 'Aperçu'}</span>
+          </div>
+          <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -1605,20 +1674,31 @@ function AdminDevis({ activeCId }) {
   const [showAdd, setShowAdd] = useState(false);
   const load = async () => { try {const d=await api('devis'+(activeCId?`?creche_id=${activeCId}`:'')); setItems(d.devis);}catch(e){} };
   useEffect(() => { load(); }, [activeCId]);
+  const changeStatut = async (d, s) => {
+    try { await api(`devis/${d.id}`, { method: 'PUT', body: JSON.stringify({ statut: s }) }); toast.success('Statut mis à jour'); load(); }
+    catch(e){ toast.error(e.message); }
+  };
+  const del = async (d) => { if (!confirm(`Supprimer le devis ${d.numero} ?`)) return; try { await api(`devis/${d.id}`, { method: 'DELETE' }); toast.success('Devis supprimé'); load(); } catch(e){ toast.error(e.message); } };
+  const downloadPDF = (d) => generateDocPDF(d, 'devis');
+  const STATUTS = [{v:'en_cours', l:'En cours', c:'bg-sky/20 text-sky'}, {v:'en_attente', l:'En attente', c:'bg-amber/20 text-amber'}, {v:'envoye', l:'Envoyé', c:'bg-teal-light text-teal-dark'}];
   return (
     <div className="space-y-4 animate-fade-up">
       <div className="flex justify-end"><button onClick={()=>setShowAdd(true)} className="btn-pill bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Nouveau devis</button></div>
       <div className="bg-white rounded-lg shadow-softer">
         {items.length === 0 && <div className="p-10 text-center text-ink-muted">Aucun devis pour l'instant</div>}
         {items.map(d => (
-          <div key={d.id} className="p-4 border-b border-bgsoft last:border-0 flex items-center gap-3 hover:bg-bgsoft transition">
-            <div className="w-10 h-10 rounded-xl bg-violet/10 flex items-center justify-center"><Copy className="w-5 h-5 text-violet" /></div>
+          <div key={d.id} className="p-4 border-b border-bgsoft last:border-0 flex items-center gap-3 hover:bg-bgsoft transition flex-wrap">
+            <div className="w-10 h-10 rounded-xl bg-violet/10 flex items-center justify-center flex-shrink-0"><Copy className="w-5 h-5 text-violet" /></div>
             <div className="flex-1 min-w-0">
               <div className="font-bold truncate-1">{d.numero} · {d.famille}</div>
-              <div className="text-xs text-ink-muted">Valide jusqu'au {fmtDate(d.valide_jusqu)}</div>
+              <div className="text-xs text-ink-muted">Du {fmtDate(d.date_debut||d.date||d.created_at)} au {fmtDate(d.valide_jusqu||d.date_fin)}</div>
             </div>
             <div className="font-extrabold">{fmtEur(d.total_ttc)}</div>
-            <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${d.statut==='accepte'?'bg-teal-light text-teal-dark':d.statut==='refuse'?'bg-coral/20 text-coral':d.statut==='envoye'?'bg-sky/20 text-sky':'bg-bgsoft text-ink-muted'}`}>{d.statut}</span>
+            <select value={d.statut||'en_cours'} onChange={e=>changeStatut(d, e.target.value)} className={`text-[10px] font-bold px-2 py-1 rounded-full outline-none cursor-pointer ${STATUTS.find(s=>s.v===d.statut)?.c || 'bg-bgsoft text-ink-muted'}`}>
+              {STATUTS.map(s => <option key={s.v} value={s.v}>{s.l}</option>)}
+            </select>
+            <button onClick={()=>downloadPDF(d)} className="btn-pill text-xs bg-teal text-white shadow-soft"><Download className="w-3 h-3" /> PDF</button>
+            <button onClick={()=>del(d)} className="btn-pill text-xs bg-coral/10 text-coral"><Trash2 className="w-3 h-3" /></button>
           </div>
         ))}
       </div>
@@ -1632,21 +1712,31 @@ function AdminFactures({ activeCId }) {
   const [showAdd, setShowAdd] = useState(false);
   const load = async () => { try {const d=await api('factures'+(activeCId?`?creche_id=${activeCId}`:'')); setItems(d.factures);}catch(e){} };
   useEffect(() => { load(); }, [activeCId]);
-  const send = async (id) => { try { await api(`factures/${id}/send`, { method: 'POST' }); toast.success('Facture envoyée'); load(); } catch(e){ toast.error(e.message); } };
+  const changeStatut = async (f, s) => {
+    try { await api(`factures/${f.id}`, { method: 'PUT', body: JSON.stringify({ statut: s }) }); toast.success('Statut mis à jour'); load(); }
+    catch(e){ toast.error(e.message); }
+  };
+  const del = async (f) => { if (!confirm(`Supprimer la facture ${f.numero} ?`)) return; try { await api(`factures/${f.id}`, { method: 'DELETE' }); toast.success('Facture supprimée'); load(); } catch(e){ toast.error(e.message); } };
+  const downloadPDF = (f) => generateDocPDF(f, 'facture');
+  const STATUTS = [{v:'en_cours', l:'En cours', c:'bg-sky/20 text-sky'}, {v:'en_attente', l:'En attente', c:'bg-amber/20 text-amber'}, {v:'payee', l:'Payée', c:'bg-teal-light text-teal-dark'}];
   return (
     <div className="space-y-4 animate-fade-up">
       <div className="flex justify-end"><button onClick={()=>setShowAdd(true)} className="btn-pill bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Nouvelle facture</button></div>
       <div className="bg-white rounded-lg shadow-softer">
+        {items.length === 0 && <div className="p-10 text-center text-ink-muted">Aucune facture pour l'instant</div>}
         {items.map(f => (
-          <div key={f.id} className="p-4 border-b border-bgsoft last:border-0 flex items-center gap-3 hover:bg-bgsoft transition">
-            <div className="w-10 h-10 rounded-xl bg-teal-light flex items-center justify-center"><FileText className="w-5 h-5 text-teal" /></div>
+          <div key={f.id} className="p-4 border-b border-bgsoft last:border-0 flex items-center gap-3 hover:bg-bgsoft transition flex-wrap">
+            <div className="w-10 h-10 rounded-xl bg-teal-light flex items-center justify-center flex-shrink-0"><FileText className="w-5 h-5 text-teal" /></div>
             <div className="flex-1 min-w-0">
               <div className="font-bold truncate-1">{f.numero||'F-—'} · {f.famille}</div>
               <div className="text-xs text-ink-muted">{f.mois} · Échéance {fmtDate(f.echeance)}</div>
             </div>
             <div className="font-extrabold">{fmtEur(f.total_ttc||f.montant)}</div>
-            <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${f.statut==='payee'?'bg-teal-light text-teal-dark':'bg-amber/20 text-amber'}`}>{f.statut==='payee'?'Payée':'En attente'}</span>
-            {!f.envoyee && <button onClick={()=>send(f.id)} className="btn-pill bg-teal text-white text-xs"><Send className="w-3 h-3" /></button>}
+            <select value={f.statut||'en_cours'} onChange={e=>changeStatut(f, e.target.value)} className={`text-[10px] font-bold px-2 py-1 rounded-full outline-none cursor-pointer ${STATUTS.find(s=>s.v===f.statut)?.c || 'bg-bgsoft text-ink-muted'}`}>
+              {STATUTS.map(s => <option key={s.v} value={s.v}>{s.l}</option>)}
+            </select>
+            <button onClick={()=>downloadPDF(f)} className="btn-pill text-xs bg-teal text-white shadow-soft"><Download className="w-3 h-3" /> PDF</button>
+            <button onClick={()=>del(f)} className="btn-pill text-xs bg-coral/10 text-coral"><Trash2 className="w-3 h-3" /></button>
           </div>
         ))}
       </div>
@@ -1655,11 +1745,55 @@ function AdminFactures({ activeCId }) {
   );
 }
 
+// Génération PDF simplifiée via window.print d'un blob HTML (pas de dépendance)
+function generateDocPDF(doc, type) {
+  const isDevis = type === 'devis';
+  const total = (doc.articles||[]).reduce((s,a)=>s+((+a.prix_unit||0)*(+a.quantite||1)),0);
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${doc.numero||''}</title>
+    <style>
+      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:40px;color:#2D3748;max-width:800px;margin:auto;}
+      header{border-bottom:3px solid #3ECDB5;padding-bottom:20px;margin-bottom:30px;display:flex;justify-content:space-between;align-items:flex-start;}
+      .brand{color:#3ECDB5;font-weight:900;font-size:32px;}.brand small{display:block;font-size:11px;color:#718096;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-top:4px;}
+      .meta{text-align:right;font-size:12px;color:#718096;}
+      h1{color:#2D3748;font-size:22px;margin:20px 0 8px;}
+      .info{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:30px;font-size:13px;}
+      .info b{display:block;color:#3ECDB5;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
+      table{width:100%;border-collapse:collapse;margin:20px 0;}
+      th{background:#F5F7F9;padding:10px;text-align:left;font-size:11px;text-transform:uppercase;color:#718096;letter-spacing:1px;}
+      td{padding:10px;border-bottom:1px solid #E2E8F0;font-size:13px;}
+      td:last-child,th:last-child{text-align:right;}
+      .total{background:#E6F9F5;padding:20px;border-radius:12px;text-align:right;font-size:16px;margin-top:20px;}
+      .total b{font-size:24px;color:#3ECDB5;}
+      footer{margin-top:60px;padding-top:20px;border-top:1px solid #E2E8F0;font-size:11px;color:#718096;text-align:center;}
+      @media print { body { padding: 20px; } }
+    </style></head><body>
+    <header>
+      <div><div class="brand">TiMétis<small>Made in 974 · Crèche</small></div></div>
+      <div class="meta"><b>${isDevis?'DEVIS':'FACTURE'}</b><br/>N° ${doc.numero||''}<br/>${new Date().toLocaleDateString('fr-FR')}</div>
+    </header>
+    <div class="info">
+      <div><b>Client</b>${doc.famille||'—'}</div>
+      <div><b>${isDevis?'Validité':'Échéance'}</b>${fmtDate(isDevis?(doc.valide_jusqu||doc.date_fin):doc.echeance)}</div>
+      ${isDevis?`<div><b>Période</b>Du ${fmtDate(doc.date_debut||doc.date||doc.created_at)} au ${fmtDate(doc.valide_jusqu||doc.date_fin)}</div>`:`<div><b>Période</b>${doc.mois||''}</div>`}
+      <div><b>Statut</b>${(doc.statut||'—').replace('_',' ')}</div>
+    </div>
+    <table><thead><tr><th>Description</th><th>Qté</th><th>Prix unit.</th><th>Total</th></tr></thead>
+    <tbody>${(doc.articles||[]).map(a => `<tr><td>${a.description||''}</td><td>${a.quantite||1}</td><td>${(+a.prix_unit||0).toFixed(2)} €</td><td><b>${((+a.prix_unit||0)*(+a.quantite||1)).toFixed(2)} €</b></td></tr>`).join('')}</tbody></table>
+    <div class="total">Total TTC : <b>${total.toFixed(2)} €</b></div>
+    <footer>TiMétis · Solution locale de gestion de crèche · Made in 974 🌺<br/>${isDevis?'Devis à valider et retourner signé pour accord.':'Règlement à réception. Merci pour votre confiance.'}</footer>
+    <script>window.onload=()=>{window.print();setTimeout(()=>window.close(),500);};</script>
+    </body></html>`;
+  const w = window.open('', '_blank', 'width=800,height=900');
+  if (w) { w.document.write(html); w.document.close(); }
+  else toast.error('Pop-up bloqué — autorisez les pop-ups pour télécharger le PDF');
+}
+
 function DocumentEditorModal({ type, activeCId, onClose }) {
   const [familles, setFamilles] = useState([]);
   const [famille_id, setFamId] = useState('');
   const [articles, setArticles] = useState([{ description: '', quantite: 1, prix_unit: 0, tva: 0 }]);
-  const [valide, setValide] = useState(new Date(Date.now()+30*86400000).toISOString().slice(0,10));
+  const [dateDebut, setDateDebut] = useState(new Date().toISOString().slice(0,10));
+  const [dateFin, setDateFin] = useState(new Date(Date.now()+30*86400000).toISOString().slice(0,10));
   useEffect(() => { (async()=>{try{const d=await api('familles'+(activeCId?`?creche_id=${activeCId}`:'')); setFamilles(d.familles);}catch(e){}})(); }, [activeCId]);
   const total = articles.reduce((s,a)=>s+((+a.prix_unit||0)*(+a.quantite||1)),0);
   const addLine = () => setArticles([...articles, { description: '', quantite: 1, prix_unit: 0, tva: 0 }]);
@@ -1668,24 +1802,33 @@ function DocumentEditorModal({ type, activeCId, onClose }) {
   const submit = async () => {
     try {
       const famille = familles.find(f=>f.id===famille_id);
-      const body = { creche_id: activeCId, famille_id, famille: famille?.nom||'', articles, ...(type==='devis'?{valide_jusqu:valide,statut:'brouillon'}:{echeance:valide,mois:new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'})}) };
+      const body = { creche_id: activeCId, famille_id, famille: famille?.nom||'', articles,
+        date_debut: dateDebut, date_fin: dateFin,
+        ...(type==='devis'?{valide_jusqu:dateFin, statut:'en_cours'}:{echeance:dateFin, mois:new Date(dateDebut).toLocaleDateString('fr-FR',{month:'long',year:'numeric'}), statut:'en_cours'})
+      };
       await api(type==='devis'?'devis':'factures', { method: 'POST', body: JSON.stringify(body) });
       toast.success(type==='devis'?'Devis créé':'Facture créée'); onClose();
     } catch(e){ toast.error(e.message); }
   };
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-2xl my-6">
         <div className="flex items-center justify-between mb-4">
           <div><div className="font-extrabold text-xl">{type==='devis'?'Nouveau devis':'Nouvelle facture'}</div><div className="text-xs text-ink-muted">TiMétis · Made in 974</div></div>
           <button onClick={onClose}><X className="w-5 h-5" /></button>
         </div>
         <div className="space-y-3">
-          <select value={famille_id} onChange={e=>setFamId(e.target.value)} className="w-full px-4 py-3 rounded-pill bg-bgsoft outline-none font-semibold text-sm">
-            <option value="">— Choisir une famille —</option>
-            {familles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
-          </select>
-          <input type="date" value={valide} onChange={e=>setValide(e.target.value)} className="w-full px-4 py-3 rounded-pill bg-bgsoft outline-none font-semibold text-sm" />
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Famille (client)</label>
+            <select value={famille_id} onChange={e=>setFamId(e.target.value)} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none font-semibold text-sm">
+              <option value="">— Choisir une famille —</option>
+              {familles.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
+            </select></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">{type==='devis'?'Début de période':'Date d\'émission'}</label>
+              <input type="date" value={dateDebut} onChange={e=>setDateDebut(e.target.value)} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none font-semibold text-sm" /></div>
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">{type==='devis'?'Fin de période / validité':'Échéance de paiement'}</label>
+              <input type="date" value={dateFin} onChange={e=>setDateFin(e.target.value)} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none font-semibold text-sm" /></div>
+          </div>
           <div className="space-y-2">
             <div className="text-xs font-extrabold uppercase tracking-wider text-ink-muted">Articles</div>
             {articles.map((a, i) => (
@@ -1716,20 +1859,27 @@ function AdminEmployes({ activeCId }) {
   const [showAdd, setShowAdd] = useState(false);
   const load = async () => { try{const e=await api('employes'+(activeCId?`?creche_id=${activeCId}`:'')); const p=await api('pointages'+(activeCId?`?creche_id=${activeCId}`:'')); setEmployes(e.employes); setPointages(p.pointages);}catch(e){} };
   useEffect(() => { load(); }, [activeCId]);
+  const del = async (e) => {
+    if (!confirm(`Supprimer définitivement l'employé ${e.prenom} ${e.nom} ?\nCela supprimera également ses pointages et fiches de paie.`)) return;
+    try { await api(`employes/${e.id}`, { method: 'DELETE' }); toast.success('Employé supprimé'); load(); }
+    catch(err){ toast.error(err.message); }
+  };
   return (
     <div className="space-y-4 animate-fade-up">
       <div className="flex justify-end"><button onClick={()=>setShowAdd(true)} className="btn-pill bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Nouvel employé</button></div>
       <div className="bg-white rounded-lg p-5 shadow-softer">
         <div className="font-extrabold text-lg mb-3">Pointages du jour</div>
         <div className="space-y-2">
+          {employes.length === 0 && <div className="text-sm text-ink-muted text-center py-6">Aucun employé enregistré. Créez-en un avec « Nouvel employé ».</div>}
           {employes.map(e => {
             const p = pointages.find(x => x.employe_id === e.id && x.date === new Date().toISOString().slice(0,10));
             return (
               <div key={e.id} className="flex items-center gap-3 p-3 rounded-2xl bg-bgsoft">
                 <Avatar user={e} size={40} />
-                <div className="flex-1 min-w-0"><div className="font-bold truncate-1">{e.prenom} {e.nom}</div><div className="text-xs text-ink-muted truncate-1">{e.email}</div></div>
+                <div className="flex-1 min-w-0"><div className="font-bold truncate-1">{e.prenom} {e.nom}</div><div className="text-xs text-ink-muted truncate-1">{e.email} · {e.poste||'Auxiliaire'}</div></div>
                 {p ? <span className="text-xs font-bold px-3 py-1 rounded-full bg-teal-light text-teal-dark">Pointé {fmtTime(p.heure)}</span>
                    : <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber/20 text-amber">Non pointé</span>}
+                <button onClick={()=>del(e)} title="Supprimer" className="p-2 rounded-full bg-coral/10 text-coral hover:bg-coral hover:text-white transition"><Trash2 className="w-4 h-4" /></button>
               </div>
             );
           })}
@@ -1782,29 +1932,44 @@ function AdminPlanningEmployes({ activeCId }) {
 
       {planning && emp && (
         <>
+          <div className="bg-white rounded-lg p-4 shadow-softer text-xs text-ink-muted">
+            <b className="text-ink-strong">💡 Comment lire ce planning ?</b> — <b>Prévu</b> = heures théoriques du contrat ; <b>Effectif</b> = heures réellement pointées cette semaine ; <b>Prorata</b> = ratio effectif / prévu (100% = contrat respecté) ; <b>Salaire estimé</b> = taux horaire × heures effectives. La grille ci-dessous détaille jour par jour (arrivée → départ prévus vs réels, écart en minutes).
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="bg-white rounded-lg p-4 shadow-softer">
-              <div className="text-[11px] font-extrabold uppercase text-ink-muted">Prévu</div>
+              <div className="text-[11px] font-extrabold uppercase text-ink-muted">Heures prévues</div>
               <div className="text-2xl font-extrabold mt-1">{Math.floor(planning.total_prevu_min/60)}h{String(planning.total_prevu_min%60).padStart(2,'0')}</div>
+              <div className="text-[10px] text-ink-muted mt-0.5">selon contrat hebdo</div>
             </div>
             <div className="bg-white rounded-lg p-4 shadow-softer">
-              <div className="text-[11px] font-extrabold uppercase text-ink-muted">Effectif</div>
+              <div className="text-[11px] font-extrabold uppercase text-ink-muted">Heures effectuées</div>
               <div className="text-2xl font-extrabold text-teal-dark mt-1">{Math.floor(planning.total_effectif_min/60)}h{String(planning.total_effectif_min%60).padStart(2,'0')}</div>
+              <div className="text-[10px] text-ink-muted mt-0.5">pointages réels</div>
             </div>
             <div className="bg-gradient-to-br from-teal to-teal-dark text-white rounded-lg p-4 shadow-soft">
-              <div className="text-[11px] font-extrabold uppercase opacity-80">Prorata</div>
+              <div className="text-[11px] font-extrabold uppercase opacity-80">Prorata contrat</div>
               <div className="text-2xl font-extrabold mt-1">{planning.prorata_pct}%</div>
+              <div className="text-[10px] opacity-80 mt-0.5">effectif ÷ prévu</div>
             </div>
-            {planning.salaire_estime && (
+            {planning.salaire_estime !== undefined && (
               <div className="bg-white rounded-lg p-4 shadow-softer">
                 <div className="text-[11px] font-extrabold uppercase text-ink-muted">Salaire estimé</div>
                 <div className="text-2xl font-extrabold text-violet mt-1">{fmtEur(planning.salaire_estime)}</div>
+                <div className="text-[10px] text-ink-muted mt-0.5">brut · taux × heures</div>
               </div>
             )}
           </div>
 
           <div className="bg-white rounded-lg p-5 shadow-softer overflow-x-auto">
-            <div className="font-extrabold text-lg mb-3">Semaine du {fmtDate(planning.semaine_du)}</div>
+            <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+              <div>
+                <div className="font-extrabold text-lg">Semaine du {fmtDate(planning.semaine_du)}</div>
+                <div className="text-xs text-ink-muted">Chaque colonne = 1 jour · Chiffres = arrivée → départ · Delta = écart entre prévu et réel</div>
+              </div>
+              <div className="flex flex-wrap gap-2 text-[10px]">
+                {Object.entries(statutMeta).map(([k,v]) => <span key={k} className="px-2 py-1 rounded-full font-bold" style={{background:v.bg,color:v.color}}>{v.label}</span>)}
+              </div>
+            </div>
             <div className="min-w-[720px] grid grid-cols-7 gap-2">
               {planning.jours.map((j,i) => {
                 const st = statutMeta[j.statut] || statutMeta.repos;
@@ -1824,7 +1989,7 @@ function AdminPlanningEmployes({ activeCId }) {
                     )}
                     <div className="mt-auto flex items-center justify-between">
                       <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: st.color+'33', color: st.color }}>{st.label}</span>
-                      {j.delta_min !== 0 && j.effectif && <span className="text-[10px] font-extrabold" style={{ color: st.color }}>{j.delta_min>0?'+':''}{j.delta_min}min</span>}
+                      {j.delta_min !== 0 && j.effectif && <span className="text-[10px] font-extrabold" style={{ color: st.color }} title="Écart en minutes (positif = dépassement, négatif = manqué)">{j.delta_min>0?'+':''}{j.delta_min}min</span>}
                     </div>
                   </motion.div>
                 );
@@ -1960,35 +2125,82 @@ function ProMesHoraires({ user }) {
 function AdminPresences({ activeCId }) {
   const [enfants, setEnfants] = useState([]);
   const [selected, setSelected] = useState(null);
-  useEffect(() => { (async()=>{try{const d=await api('enfants'+(activeCId?`?creche_id=${activeCId}`:'')); setEnfants(d.enfants); setSelected(d.enfants[0]?.id);}catch(e){}})(); }, [activeCId]);
+  const [edit, setEdit] = useState(false);
+  const [draft, setDraft] = useState({});
+  const load = async () => {
+    try {const d=await api('enfants'+(activeCId?`?creche_id=${activeCId}`:'')); setEnfants(d.enfants); if (!selected) setSelected(d.enfants[0]?.id);}catch(e){}
+  };
+  useEffect(() => { load(); }, [activeCId]);
   const child = enfants.find(e => e.id === selected);
-  const days = ['Lun','Mar','Mer','Jeu','Ven'];
+  const jours = [['lundi','Lundi'],['mardi','Mardi'],['mercredi','Mercredi'],['jeudi','Jeudi'],['vendredi','Vendredi']];
+  useEffect(() => {
+    if (child) {
+      const def = {}; jours.forEach(([k]) => { def[k] = child.presences_hebdo?.[k] || { present: false, arrivee:'08:00', depart:'17:00' }; });
+      setDraft(def);
+    }
+  }, [selected, child?.id]);
+
+  const setJour = (k, field, v) => setDraft({ ...draft, [k]: { ...(draft[k]||{}), [field]: v } });
+  const save = async () => {
+    try {
+      await api(`enfants/${selected}`, { method: 'PUT', body: JSON.stringify({ presences_hebdo: draft }) });
+      toast.success('Présences hebdo enregistrées'); setEdit(false); load();
+    } catch(e){ toast.error(e.message); }
+  };
+
+  // Calcul heures prévues et prorata basé sur présences réelles cochées
+  const heuresPrevues = jours.reduce((s,[k]) => {
+    const p = draft[k]; if (!p?.present) return s;
+    const [ah,am] = (p.arrivee||'08:00').split(':').map(Number); const [dh,dm] = (p.depart||'17:00').split(':').map(Number);
+    return s + Math.max(0, (dh*60+dm)-(ah*60+am))/60;
+  }, 0);
+  const heuresContrat = child?.contrat_heures || 35;
+  const factureRecalc = child ? (child.mensualite * Math.min(1, heuresPrevues/heuresContrat)) : 0;
+
   return (
     <div className="space-y-4 animate-fade-up">
       <div className="flex gap-2 overflow-x-auto no-scrollbar">
-        {enfants.map(e => <button key={e.id} onClick={()=>setSelected(e.id)} className={`btn-pill text-xs flex-shrink-0 ${selected===e.id?'bg-teal text-white':'bg-white text-ink-muted'}`}>{e.prenom}</button>)}
+        {enfants.map(e => <button key={e.id} onClick={()=>{setSelected(e.id);setEdit(false);}} className={`btn-pill text-xs flex-shrink-0 ${selected===e.id?'bg-teal text-white':'bg-white text-ink-muted'}`}>{e.prenom}</button>)}
       </div>
       {child && (
         <div className="bg-white rounded-lg p-5 shadow-softer">
-          <div className="flex items-center gap-3 mb-4">
-            <Avatar enfant={child} size={48} />
-            <div><div className="font-extrabold text-lg">{child.prenom}</div><div className="text-xs text-ink-muted">Contrat {child.contrat_heures}h/sem · {fmtEur(child.mensualite)}/mois</div></div>
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <div className="flex items-center gap-3"><Avatar enfant={child} size={48} /><div><div className="font-extrabold text-lg">{child.prenom} {child.nom}</div><div className="text-xs text-ink-muted">Contrat {heuresContrat}h/sem · {fmtEur(child.mensualite)}/mois</div></div></div>
+            {!edit ? <button onClick={()=>setEdit(true)} className="btn-pill bg-teal text-white shadow-soft text-xs"><Edit3 className="w-3 h-3" /> Éditer les jours</button>
+                   : <div className="flex gap-2"><button onClick={()=>setEdit(false)} className="btn-pill bg-bgsoft text-ink-muted text-xs">Annuler</button><button onClick={save} className="btn-pill bg-teal text-white shadow-soft text-xs"><Save className="w-3 h-3" /> Enregistrer</button></div>}
           </div>
-          <div className="grid grid-cols-5 gap-2">
-            {days.map((d,i) => (
-              <div key={d} className="rounded-2xl bg-bgsoft p-3 text-center">
-                <div className="text-[10px] font-bold uppercase text-ink-muted">{d}</div>
-                <div className="mt-2 w-8 h-8 mx-auto rounded-full bg-teal/20 text-teal-dark flex items-center justify-center font-extrabold text-xs">{Math.random() > 0.2 ? '✓' : '—'}</div>
-                <div className="text-[10px] mt-1 font-bold text-ink-muted">8h-17h</div>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+            {jours.map(([k,label]) => {
+              const p = draft[k] || { present:false, arrivee:'08:00', depart:'17:00' };
+              return (
+                <div key={k} className={`rounded-2xl p-3 ${p.present?'bg-teal-light':'bg-bgsoft'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-[10px] font-extrabold uppercase text-ink-muted">{label}</div>
+                    {edit ? <input type="checkbox" checked={p.present} onChange={e=>setJour(k,'present',e.target.checked)} className="w-4 h-4 accent-teal" />
+                          : <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-extrabold ${p.present?'bg-teal text-white':'bg-white text-ink-muted'}`}>{p.present?'✓':'—'}</div>}
+                  </div>
+                  {p.present && (
+                    edit ? (
+                      <div className="space-y-1">
+                        <input type="time" value={p.arrivee} onChange={e=>setJour(k,'arrivee',e.target.value)} className="w-full px-2 py-1 rounded-lg bg-white outline-none text-xs font-semibold" />
+                        <input type="time" value={p.depart} onChange={e=>setJour(k,'depart',e.target.value)} className="w-full px-2 py-1 rounded-lg bg-white outline-none text-xs font-semibold" />
+                      </div>
+                    ) : (
+                      <div className="text-[11px] font-bold text-teal-dark">{p.arrivee} → {p.depart}</div>
+                    )
+                  )}
+                </div>
+              );
+            })}
           </div>
-          <div className="mt-4 p-4 rounded-2xl bg-teal-light flex items-center gap-3">
-            <Sparkles className="w-6 h-6 text-teal-dark" />
-            <div><div className="font-extrabold text-teal-dark">Prorata calculé</div><div className="text-xs text-ink-muted">32h / {child.contrat_heures}h · Ajusté à {fmtEur(child.mensualite * 32/child.contrat_heures)}</div></div>
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="p-4 rounded-2xl bg-bgsoft"><div className="text-[10px] font-bold uppercase text-ink-muted">Heures prévues / sem</div><div className="text-2xl font-extrabold mt-1">{heuresPrevues.toFixed(1)}h</div></div>
+            <div className="p-4 rounded-2xl bg-bgsoft"><div className="text-[10px] font-bold uppercase text-ink-muted">Contrat</div><div className="text-2xl font-extrabold mt-1">{heuresContrat}h</div></div>
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-teal to-teal-dark text-white"><div className="text-[10px] font-bold uppercase opacity-80">Facture prévisionnelle</div><div className="text-2xl font-extrabold mt-1">{fmtEur(factureRecalc)}</div><div className="text-[10px] opacity-80">recalculée au prorata</div></div>
           </div>
         </div>
       )}
+      {enfants.length === 0 && <PlaceholderView title="Aucun enfant" icon={Baby} />}
     </div>
   );
 }
@@ -2019,9 +2231,17 @@ function AdminSynthese({ activeCId }) {
 // ===== NOURRITURE / RAPPELS / NEWS / DOCUMENTS =====
 function NourritureView({ activeCId, canEdit }) {
   const [menus, setMenus] = useState([]);
+  const [enfants, setEnfants] = useState([]);
+  const [tags, setTags] = useState([]);
   const [edit, setEdit] = useState(false);
   const [draft, setDraft] = useState(null);
-  const load = async () => { try{const d=await api('nourriture'+(activeCId?`?creche_id=${activeCId}`:'')); setMenus(d.menus);}catch(e){} };
+  const load = async () => {
+    try {
+      const d = await api('nourriture'+(activeCId?`?creche_id=${activeCId}`:'')); setMenus(d.menus);
+      const e = await api('enfants'+(activeCId?`?creche_id=${activeCId}`:'')); setEnfants(e.enfants||[]);
+      const t = await api('tags'+(activeCId?`?creche_id=${activeCId}`:'')); setTags(t.tags||[]);
+    } catch(err){}
+  };
   useEffect(() => { load(); }, [activeCId]);
   const current = menus[0];
 
@@ -2035,9 +2255,39 @@ function NourritureView({ activeCId, canEdit }) {
   };
   const setRepas = (i, k, v) => setDraft({ ...draft, repas: draft.repas.map((r,x)=>x===i?{...r,[k]:v}:r) });
 
+  // Détecter les enfants avec allergies (tags contenant "allerg" ou catégorie "Allergies")
+  const isAllergyTag = (t) => t.categorie === 'Allergies' || /allerg/i.test(t.nom||'');
+  const enfantsAvecAllergies = enfants.map(en => {
+    const allergyTags = tags.filter(t => (en.tags||[]).includes(t.id) && isAllergyTag(t));
+    return { enfant: en, allergies: allergyTags };
+  }).filter(x => x.allergies.length > 0);
+
   return (
     <div className="space-y-4 animate-fade-up">
       {canEdit && !edit && <div className="flex justify-end"><button onClick={startEdit} className="btn-pill bg-teal text-white shadow-soft"><Edit3 className="w-4 h-4" /> {current?'Modifier':'Créer le menu'}</button></div>}
+
+      {/* ---- ALERTE ALLERGIES enfants par enfants ---- */}
+      <div className="bg-white rounded-lg p-5 shadow-softer border-l-4 border-coral">
+        <div className="flex items-center gap-2 mb-3">
+          <AlertTriangle className="w-5 h-5 text-coral" />
+          <div className="font-extrabold text-coral">⚠️ Rappel allergies · à respecter impérativement</div>
+        </div>
+        {enfantsAvecAllergies.length === 0 && <div className="text-sm text-ink-muted italic">Aucun enfant avec allergie déclarée. Ajoutez les allergies via l'onglet "Étiquettes" puis rattachez-les aux enfants.</div>}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+          {enfantsAvecAllergies.map(({enfant, allergies}) => (
+            <div key={enfant.id} className="flex items-center gap-2 p-2 rounded-2xl bg-coral/5 border border-coral/20">
+              <Avatar enfant={enfant} size={36} />
+              <div className="flex-1 min-w-0">
+                <div className="font-extrabold text-sm truncate-1">{enfant.prenom} {enfant.nom}</div>
+                <div className="flex flex-wrap gap-1 mt-0.5">
+                  {allergies.map(a => <span key={a.id} className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{background:a.couleur+'22',color:a.couleur}}>{a.nom}</span>)}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {!current && !edit && <PlaceholderView title="Aucun menu défini" icon={UtensilsCrossed} />}
       {current && !edit && (
         <div className="bg-white rounded-lg p-5 shadow-softer">
@@ -2082,55 +2332,172 @@ function NourritureView({ activeCId, canEdit }) {
 
 function RappelsView({ activeCId, canEdit }) {
   const [items, setItems] = useState([]);
-  const [showAdd, setShowAdd] = useState(false);
+  const [edit, setEdit] = useState(null); // null | 'new' | rappel object
   const load = async () => { try {const d=await api('rappels'+(activeCId?`?creche_id=${activeCId}`:'')); setItems(d.rappels);}catch(e){} };
   useEffect(() => { load(); }, [activeCId]);
+  const togglePin = async (r) => {
+    try { await api(`rappels/${r.id}`, { method: 'PUT', body: JSON.stringify({ pinned: !r.pinned }) }); toast.success(r.pinned?'Désépinglé':'Épinglé'); load(); }
+    catch(e){ toast.error(e.message); }
+  };
+  const notify = async (r) => {
+    // Notification navigateur locale (Web Notifications API)
+    try {
+      if (!('Notification' in window)) return toast.error('Notifications non supportées');
+      if (Notification.permission !== 'granted') { const p = await Notification.requestPermission(); if (p !== 'granted') return toast.error('Permission refusée'); }
+      new Notification('🔔 TiMétis · ' + r.titre, { body: `Échéance : ${fmtDate(r.echeance)} · ${r.cible}`, icon: '/icon.png' });
+      await api(`rappels/${r.id}`, { method: 'PUT', body: JSON.stringify({ notifie_at: new Date() }) });
+      toast.success('Notification envoyée');
+    } catch(e){ toast.error(e.message); }
+  };
+  const del = async (r) => { if (!confirm(`Supprimer l'alerte "${r.titre}" ?`)) return; try { await api(`rappels/${r.id}`, { method: 'DELETE' }); toast.success('Alerte supprimée'); load(); } catch(e){ toast.error(e.message); } };
+  const sorted = [...items].sort((a,b) => (b.pinned?1:0) - (a.pinned?1:0));
   return (
     <div className="space-y-4 animate-fade-up">
-      {canEdit && <div className="flex justify-end"><button onClick={()=>setShowAdd(true)} className="btn-pill bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Nouveau rappel</button></div>}
+      {canEdit && <div className="flex justify-end"><button onClick={()=>setEdit('new')} className="btn-pill bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Nouvelle alerte</button></div>}
       <div className="space-y-2">
-        {items.length === 0 && <PlaceholderView title="Aucun rappel" icon={AlertTriangle} />}
-        {items.map(r => {
+        {items.length === 0 && <PlaceholderView title="Aucune alerte" icon={AlertTriangle} />}
+        {sorted.map(r => {
           const color = r.priorite==='haute'?'#FF6B6B':r.priorite==='moyenne'?'#FFA726':'#66BB6A';
           return (
-            <div key={r.id} className="bg-white rounded-lg p-4 shadow-softer flex items-center gap-3">
+            <div key={r.id} className={`bg-white rounded-lg p-4 shadow-softer flex items-center gap-3 ${r.pinned?'ring-2 ring-coral':''}`}>
+              {r.pinned && <span className="absolute -top-2 -left-2 text-xs bg-coral text-white rounded-full w-6 h-6 flex items-center justify-center">📌</span>}
               <div className="rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: color+'22', width: 42, height: 42 }}><AlertTriangle className="w-5 h-5" style={{ color }} /></div>
               <div className="flex-1 min-w-0">
-                <div className="font-bold truncate-1">{r.titre}</div>
-                <div className="text-xs text-ink-muted">Échéance {fmtDate(r.echeance)} · Cible {r.cible}</div>
+                <div className="font-bold truncate-1 flex items-center gap-2">{r.titre} {r.pinned && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-coral text-white">Épinglé</span>}</div>
+                <div className="text-xs text-ink-muted">Échéance {fmtDate(r.echeance)} · Cible {r.cible}{r.contenu?` · ${r.contenu}`:''}</div>
               </div>
               <span className="text-[10px] font-bold px-2 py-1 rounded-full" style={{ background: color+'22', color }}>{r.priorite}</span>
+              {canEdit && (
+                <div className="flex gap-1">
+                  <button onClick={()=>togglePin(r)} title={r.pinned?'Désépingler':'Épingler'} className={`p-2 rounded-full ${r.pinned?'bg-coral text-white':'bg-bgsoft text-ink-muted'} hover:bg-coral hover:text-white transition`}>📌</button>
+                  <button onClick={()=>notify(r)} title="Envoyer notification" className="p-2 rounded-full bg-bgsoft text-ink-muted hover:bg-teal hover:text-white transition"><Bell className="w-4 h-4" /></button>
+                  <button onClick={()=>setEdit(r)} title="Éditer" className="p-2 rounded-full bg-bgsoft text-ink-muted hover:bg-teal hover:text-white transition"><Edit3 className="w-4 h-4" /></button>
+                  <button onClick={()=>del(r)} title="Supprimer" className="p-2 rounded-full bg-bgsoft text-coral hover:bg-coral hover:text-white transition"><Trash2 className="w-4 h-4" /></button>
+                </div>
+              )}
             </div>
           );
         })}
       </div>
-      {showAdd && <SimpleAddModal title="Nouveau rappel" fields={[{k:'titre',l:'Titre'},{k:'echeance',l:'Échéance',type:'date'},{k:'cible',l:'Cible (admin/pros/parents)'},{k:'priorite',l:'Priorité (haute/moyenne/basse)'}]} onSubmit={async(d)=>{await api('rappels',{method:'POST',body:JSON.stringify({...d,creche_id:activeCId})});}} onClose={()=>{setShowAdd(false);load();}} />}
+      {edit && <RappelEditorModal rappel={edit==='new'?null:edit} activeCId={activeCId} onClose={()=>{setEdit(null);load();}} />}
+    </div>
+  );
+}
+
+function RappelEditorModal({ rappel, activeCId, onClose }) {
+  const [f, setF] = useState(rappel || { titre:'', contenu:'', echeance:new Date().toISOString().slice(0,10), cible:'parents', priorite:'moyenne', pinned:false });
+  const save = async () => {
+    if (!f.titre.trim()) return toast.error('Titre obligatoire');
+    try {
+      if (rappel) await api(`rappels/${rappel.id}`, { method: 'PUT', body: JSON.stringify(f) });
+      else await api('rappels', { method: 'POST', body: JSON.stringify({ ...f, creche_id: activeCId }) });
+      toast.success(rappel?'Alerte mise à jour':'Alerte créée'); onClose();
+    } catch(e){ toast.error(e.message); }
+  };
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
+        <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">{rappel?'Éditer l\'alerte':'Nouvelle alerte'}</div><button onClick={onClose}><X className="w-5 h-5" /></button></div>
+        <div className="space-y-3">
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Titre</label><input value={f.titre} onChange={e=>setF({...f,titre:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Détail / message</label><textarea value={f.contenu||''} onChange={e=>setF({...f,contenu:e.target.value})} rows={3} className="w-full mt-1 px-4 py-2.5 rounded-2xl bg-bgsoft outline-none text-sm font-semibold resize-none" /></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Échéance</label><input type="date" value={f.echeance} onChange={e=>setF({...f,echeance:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Priorité</label>
+              <select value={f.priorite} onChange={e=>setF({...f,priorite:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold">
+                <option value="haute">Haute</option><option value="moyenne">Moyenne</option><option value="basse">Basse</option>
+              </select></div>
+          </div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Cible</label>
+            <select value={f.cible} onChange={e=>setF({...f,cible:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold">
+              <option value="parents">Parents</option><option value="pros">Employés</option><option value="tous">Tous</option><option value="admin">Admin uniquement</option>
+            </select></div>
+          <label className="flex items-center gap-2 p-2 rounded-2xl bg-bgsoft cursor-pointer">
+            <input type="checkbox" checked={!!f.pinned} onChange={e=>setF({...f,pinned:e.target.checked})} className="w-4 h-4 accent-coral" />
+            <span className="text-sm font-semibold">📌 Épingler en haut de liste</span>
+          </label>
+          <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
+        </div>
+      </motion.div>
     </div>
   );
 }
 
 function NewsView({ activeCId, canEdit }) {
   const [items, setItems] = useState([]);
-  const [showAdd, setShowAdd] = useState(false);
+  const [edit, setEdit] = useState(null);
   const load = async () => { try {const d=await api('news'+(activeCId?`?creche_id=${activeCId}`:'')); setItems(d.news);}catch(e){} };
   useEffect(() => { load(); }, [activeCId]);
+  const togglePin = async (n) => { try { await api(`news/${n.id}`, { method: 'PUT', body: JSON.stringify({ pinned: !n.pinned }) }); toast.success(n.pinned?'Désépinglé':'Épinglé'); load(); } catch(e){ toast.error(e.message); } };
+  const notify = async (n) => {
+    try {
+      if (!('Notification' in window)) return toast.error('Notifications non supportées');
+      if (Notification.permission !== 'granted') { const p = await Notification.requestPermission(); if (p !== 'granted') return toast.error('Permission refusée'); }
+      new Notification('📰 TiMétis · ' + n.titre, { body: n.contenu?.slice(0,120) || '', icon: '/icon.png' });
+      await api(`news/${n.id}`, { method: 'PUT', body: JSON.stringify({ notifie_at: new Date() }) });
+      toast.success('Notification envoyée');
+    } catch(e){ toast.error(e.message); }
+  };
+  const del = async (n) => { if (!confirm(`Supprimer la publication "${n.titre}" ?`)) return; try { await api(`news/${n.id}`, { method: 'DELETE' }); toast.success('Publication supprimée'); load(); } catch(e){ toast.error(e.message); } };
+  const sorted = [...items].sort((a,b) => (b.pinned?1:0) - (a.pinned?1:0));
   return (
     <div className="space-y-4 animate-fade-up">
-      {canEdit && <div className="flex justify-end"><button onClick={()=>setShowAdd(true)} className="btn-pill bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Publier</button></div>}
+      {canEdit && <div className="flex justify-end"><button onClick={()=>setEdit('new')} className="btn-pill bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Publier</button></div>}
       <div className="space-y-3">
-        {items.map(n => (
-          <div key={n.id} className={`bg-white rounded-lg p-5 shadow-softer ${n.pinned?'ring-2 ring-teal/30':''}`}>
-            <div className="flex items-center gap-2 mb-2">
+        {items.length === 0 && <PlaceholderView title="Aucune actu" icon={Newspaper} />}
+        {sorted.map(n => (
+          <div key={n.id} className={`bg-white rounded-lg p-5 shadow-softer relative ${n.pinned?'ring-2 ring-teal':''}`}>
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               {n.pinned && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-light text-teal-dark">📌 Épinglé</span>}
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-bgsoft text-ink-muted capitalize">{n.cible}</span>
               <span className="text-xs text-ink-muted ml-auto">{fmtDate(n.created_at)}</span>
             </div>
             <div className="font-extrabold text-lg">{n.titre}</div>
-            <div className="text-sm text-ink-muted mt-1">{n.contenu}</div>
+            <div className="text-sm text-ink-muted mt-1 whitespace-pre-wrap">{n.contenu}</div>
+            {canEdit && (
+              <div className="mt-3 flex gap-2 pt-3 border-t border-bgsoft">
+                <button onClick={()=>togglePin(n)} className={`btn-pill text-xs ${n.pinned?'bg-teal text-white':'bg-bgsoft text-ink-muted'}`}>📌 {n.pinned?'Désépingler':'Épingler'}</button>
+                <button onClick={()=>notify(n)} className="btn-pill text-xs bg-coral text-white"><Bell className="w-3 h-3" /> Notifier</button>
+                <button onClick={()=>setEdit(n)} className="btn-pill text-xs bg-bgsoft text-ink-muted"><Edit3 className="w-3 h-3" /> Éditer</button>
+                <button onClick={()=>del(n)} className="btn-pill text-xs bg-coral/10 text-coral"><Trash2 className="w-3 h-3" /></button>
+              </div>
+            )}
           </div>
         ))}
       </div>
-      {showAdd && <SimpleAddModal title="Publier une news" fields={[{k:'titre',l:'Titre'},{k:'contenu',l:'Contenu'},{k:'cible',l:'Cible (parents/tous)',default:'parents'}]} onSubmit={async(d)=>{await api('news',{method:'POST',body:JSON.stringify({...d,creche_id:activeCId})});}} onClose={()=>{setShowAdd(false);load();}} />}
+      {edit && <NewsEditorModal news={edit==='new'?null:edit} activeCId={activeCId} onClose={()=>{setEdit(null);load();}} />}
+    </div>
+  );
+}
+
+function NewsEditorModal({ news, activeCId, onClose }) {
+  const [f, setF] = useState(news || { titre:'', contenu:'', cible:'parents', pinned:false });
+  const save = async () => {
+    if (!f.titre.trim()) return toast.error('Titre obligatoire');
+    try {
+      if (news) await api(`news/${news.id}`, { method: 'PUT', body: JSON.stringify(f) });
+      else await api('news', { method: 'POST', body: JSON.stringify({ ...f, creche_id: activeCId }) });
+      toast.success(news?'Actu mise à jour':'Actu publiée'); onClose();
+    } catch(e){ toast.error(e.message); }
+  };
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
+        <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">{news?'Éditer l\'actu':'Nouvelle actu'}</div><button onClick={onClose}><X className="w-5 h-5" /></button></div>
+        <div className="space-y-3">
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Titre</label><input value={f.titre} onChange={e=>setF({...f,titre:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Contenu</label><textarea value={f.contenu||''} onChange={e=>setF({...f,contenu:e.target.value})} rows={5} className="w-full mt-1 px-4 py-2.5 rounded-2xl bg-bgsoft outline-none text-sm font-semibold resize-none" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Cible</label>
+            <select value={f.cible} onChange={e=>setF({...f,cible:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold">
+              <option value="parents">Parents</option><option value="pros">Employés</option><option value="tous">Tous</option>
+            </select></div>
+          <label className="flex items-center gap-2 p-2 rounded-2xl bg-bgsoft cursor-pointer">
+            <input type="checkbox" checked={!!f.pinned} onChange={e=>setF({...f,pinned:e.target.checked})} className="w-4 h-4 accent-teal" />
+            <span className="text-sm font-semibold">📌 Épingler en haut</span>
+          </label>
+          <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Publier</button>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -2511,9 +2878,19 @@ function ParentLive({ user }) {
   const counts = { sieste: trans.filter(t=>t.type==='sieste').length, biberon: trans.filter(t=>t.type==='biberon').length, change: trans.filter(t=>t.type==='change').length };
   return (
     <div className="space-y-4 animate-fade-up">
-      {enfants.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto no-scrollbar">
-          {enfants.map(e => <button key={e.id} onClick={()=>setSelected(e.id)} className={`flex items-center gap-2 px-3 py-2 rounded-pill text-sm font-bold flex-shrink-0 ${selected===e.id?'bg-teal text-white shadow-soft':'bg-white text-ink-muted'}`}><Avatar enfant={e} size={28} /> {e.prenom}</button>)}
+      {enfants.length > 0 && (
+        <div className="bg-white rounded-lg p-3 shadow-softer">
+          <div className="text-[10px] font-extrabold uppercase tracking-wider text-ink-muted mb-2 px-1">
+            {enfants.length > 1 ? `Mes enfants (${enfants.length}) — cliquez pour changer` : 'Mon enfant'}
+          </div>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar">
+            {enfants.map(e => (
+              <button key={e.id} onClick={()=>setSelected(e.id)} className={`flex items-center gap-2 px-3 py-2 rounded-pill text-sm font-bold flex-shrink-0 transition ${selected===e.id?'bg-teal text-white shadow-soft':'bg-bgsoft text-ink-muted hover:bg-teal-light hover:text-teal-dark'}`}>
+                <Avatar enfant={e} size={28} /> {e.prenom}
+                {selected===e.id && <span className="text-[10px] bg-white/25 px-1.5 rounded-full">actif</span>}
+              </button>
+            ))}
+          </div>
         </div>
       )}
       {child && <ChildHeaderCard enfant={child} />}
@@ -3363,7 +3740,7 @@ function App() {
       <main className="flex-1 min-w-0">
         <TopBar user={user} onLogout={logout} onMenu={()=>setMenuOpen(true)} title={titleMap[view] || ''}
           activeCreche={activeCreche} creches={creches} onSelectCreche={setActiveCId} />
-        <div className="px-4 md:px-8 pt-4 pb-8 relative z-10">{renderView()}</div>
+        <div className="px-4 md:px-8 pt-4 pb-8 relative">{renderView()}</div>
       </main>
     </div>
   );
