@@ -372,7 +372,7 @@ function GoogleSignInBlock({ onLogged }) {
         client_id: clientId,
         callback: async (resp) => {
           try {
-            const r = await fetch(process.env.NEXT_PUBLIC_BASE_URL + '/api/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: resp.credential }) });
+            const r = await fetch(window.location.origin + '/api/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: resp.credential }) });
             if (!r.ok) { const e = await r.json(); throw new Error(e.error||'Erreur Google'); }
             const d = await r.json();
             toast.success(`Bienvenue ${d.user.prenom} !`);
