@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Home, Users, BarChart3, Calendar, FileText, MessageCircle, Settings,
@@ -107,7 +108,7 @@ function AvatarUploadModal({ enfant, onClose, onSaved }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center p-4">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md">
         <div className="flex items-center justify-between mb-4">
           <div><div className="font-extrabold text-lg">Photo de {enfant.prenom}</div><div className="text-xs text-ink-muted">Glisser une image ou choisir une couleur</div></div>
@@ -135,7 +136,7 @@ function AvatarUploadModal({ enfant, onClose, onSaved }) {
         </div>
         <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft mt-5"><Save className="w-4 h-4" /> Enregistrer</button>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
@@ -829,7 +830,7 @@ function SuperClientEditor({ client, onClose }) {
     } catch(e){ toast.error(e.message); }
   };
   return (
-    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
         <div className="flex items-center justify-between mb-4">
           <div><div className="font-extrabold text-lg">Éditer client</div><div className="text-xs text-ink-muted">{client.email}</div></div>
@@ -864,7 +865,7 @@ function SuperClientEditor({ client, onClose }) {
           <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
         </div>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
@@ -994,7 +995,7 @@ function SuperDocCreate({ type, clients, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-lg my-6">
         <div className="flex items-center justify-between mb-4">
           <div><div className="font-extrabold text-lg">Nouveau {type==='devis'?'devis':'facture'} SaaS</div><div className="text-xs text-ink-muted">Envoi direct par email au client</div></div>
@@ -1051,7 +1052,7 @@ function SuperDocCreate({ type, clients, onClose }) {
           </div>
         </div>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
@@ -1283,7 +1284,7 @@ function EnfantEditorModal({ enfant, tags, onClose }) {
     } catch(e){ toast.error(e.message); }
   };
   return (
-    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-lg my-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3"><Avatar enfant={enfant} size={44} /><div><div className="font-extrabold text-lg">Éditer {enfant.prenom}</div><div className="text-xs text-ink-muted">Profil complet</div></div></div>
@@ -1319,7 +1320,7 @@ function EnfantEditorModal({ enfant, tags, onClose }) {
           <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
         </div>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
@@ -1340,7 +1341,7 @@ function FicheSanteModal({ enfant, onClose, onSaved }) {
   const setCU = (i, k, v) => setF({...f, contacts_urgence: f.contacts_urgence.map((c,x)=>x===i?{...c,[k]:v}:c)});
   const addCU = () => setF({...f, contacts_urgence: [...f.contacts_urgence, {nom:'',tel:'',lien:''}]});
   return (
-    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-lg my-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3"><Heart className="w-6 h-6 text-coral" /><div><div className="font-extrabold text-lg">Fiche santé de {enfant.prenom}</div><div className="text-xs text-ink-muted">Confidentiel</div></div></div>
@@ -1371,7 +1372,7 @@ function FicheSanteModal({ enfant, onClose, onSaved }) {
           <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
         </div>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
@@ -1384,7 +1385,7 @@ function AddChildModal({ activeCId, onClose }) {
     catch(e){ toast.error(e.message); }
   };
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center p-4">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md">
         <div className="flex items-center justify-between mb-4">
           <div className="font-extrabold text-lg">Nouvel enfant</div>
@@ -1407,7 +1408,7 @@ function AddChildModal({ activeCId, onClose }) {
           <button className="btn-pill w-full bg-teal text-white shadow-soft">Créer</button>
         </form>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
@@ -1481,7 +1482,7 @@ function FamilleEditor({ famille, enfantsAll, activeCId, onClose }) {
     try { await api(`familles/${famille.id}`, { method: 'DELETE' }); toast.success('Foyer supprimé'); onClose(); } catch(e){ toast.error(e.message); }
   };
   return (
-    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
         <div className="flex items-center justify-between mb-4">
           <div><div className="font-extrabold text-lg">{famille?'Éditer le foyer':'Nouveau foyer'}</div><div className="text-xs text-ink-muted">Coordonnées & enfants rattachés</div></div>
@@ -1526,7 +1527,7 @@ function FamilleEditor({ famille, enfantsAll, activeCId, onClose }) {
           </div>
         </div>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
@@ -1610,7 +1611,7 @@ function TagEditorModal({ tag, activeCId, onClose }) {
     } catch(e){ toast.error(e.message); }
   };
   return (
-    <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center p-4">
       <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="font-extrabold text-lg">{tag?'Éditer l\'étiquette':'Nouvelle étiquette'}</div>
@@ -1636,7 +1637,7 @@ function TagEditorModal({ tag, activeCId, onClose }) {
           <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
         </div>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
@@ -1644,7 +1645,7 @@ function SimpleAddModal({ title, fields, onSubmit, onClose }) {
   const [f, setF] = useState(() => Object.fromEntries(fields.map(x=>[x.k, x.default||''])));
   const submit = async (e) => { e.preventDefault(); try { await onSubmit(f); toast.success('Créé'); onClose(); } catch(e){ toast.error(e.message); } };
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center p-4">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md">
         <div className="flex items-center justify-between mb-4">
           <div className="font-extrabold text-lg">{title}</div>
@@ -1657,7 +1658,7 @@ function SimpleAddModal({ title, fields, onSubmit, onClose }) {
           <button className="btn-pill w-full bg-teal text-white shadow-soft">Créer</button>
         </form>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
@@ -1879,7 +1880,7 @@ function DocumentEditorModal({ type, activeCId, onClose }) {
     } catch(e){ toast.error(e.message); }
   };
   return (
-    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-2xl my-6">
         <div className="flex items-center justify-between mb-4">
           <div><div className="font-extrabold text-xl">{type==='devis'?'Nouveau devis':'Nouvelle facture'}</div><div className="text-xs text-ink-muted">TiMétis · Made in 974</div></div>
@@ -1916,7 +1917,7 @@ function DocumentEditorModal({ type, activeCId, onClose }) {
           <button onClick={submit} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
         </div>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
@@ -2098,7 +2099,7 @@ function ContratEditorModal({ employe, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-xl my-6">
         <div className="flex items-center justify-between mb-4">
           <div><div className="font-extrabold text-lg">Contrat de {employe.prenom} {employe.nom}</div><div className="text-xs text-ink-muted">Horaires hebdomadaires · taux horaire</div></div>
@@ -2131,7 +2132,7 @@ function ContratEditorModal({ employe, onClose }) {
         </div>
         <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft mt-4"><Save className="w-4 h-4" /> Enregistrer</button>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
@@ -2473,7 +2474,7 @@ function RappelEditorModal({ rappel, activeCId, onClose }) {
     } catch(e){ toast.error(e.message); }
   };
   return (
-    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
       <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
         <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">{rappel?'Éditer l\'alerte':'Nouvelle alerte'}</div><button onClick={onClose}><X className="w-5 h-5" /></button></div>
         <div className="space-y-3">
@@ -2497,7 +2498,7 @@ function RappelEditorModal({ rappel, activeCId, onClose }) {
           <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
         </div>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
@@ -2559,7 +2560,7 @@ function NewsEditorModal({ news, activeCId, onClose }) {
     } catch(e){ toast.error(e.message); }
   };
   return (
-    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
       <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
         <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">{news?'Éditer l\'actu':'Nouvelle actu'}</div><button onClick={onClose}><X className="w-5 h-5" /></button></div>
         <div className="space-y-3">
@@ -2576,7 +2577,7 @@ function NewsEditorModal({ news, activeCId, onClose }) {
           <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Publier</button>
         </div>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
@@ -2756,7 +2757,7 @@ function ThreadedMessagerie({ user }) {
       </div>
 
       {showNew && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+        (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center p-4">
           <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md">
             <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">Nouvelle conversation</div><button onClick={()=>setShowNew(false)}><X className="w-5 h-5" /></button></div>
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
@@ -2772,7 +2773,7 @@ function ThreadedMessagerie({ user }) {
               ))}
             </div>
           </motion.div>
-        </div>
+        </div>, document.body):null)
       )}
     </div>
   );
@@ -2902,7 +2903,7 @@ function QuickForm({ type, child, onClose, onSubmit }) {
   const [titre, setTitre] = useState(meta.label);
   const [detail, setDetail] = useState('');
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center p-4">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-end md:items-center justify-center p-4">
       <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md">
         <div className="flex items-center gap-3 mb-4">
           <div className="rounded-xl flex items-center justify-center" style={{ background: meta.bg, width: 42, height: 42 }}><meta.icon className="w-5 h-5" style={{ color: meta.color }} /></div>
@@ -2917,7 +2918,7 @@ function QuickForm({ type, child, onClose, onSubmit }) {
           <button onClick={()=>onSubmit(type, titre, detail)} className="btn-pill w-full bg-teal text-white shadow-soft"><CheckCircle2 className="w-4 h-4" /> Enregistrer</button>
         </div>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
@@ -3038,7 +3039,7 @@ function TacheEditorModal({ tache, date, onClose }) {
   };
   const RAPPELS = [{v:0,l:'Aucun'},{v:5,l:'5 min avant'},{v:15,l:'15 min avant'},{v:30,l:'30 min avant'},{v:60,l:'1 heure avant'},{v:1440,l:'1 jour avant'}];
   return (
-    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
       <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
         <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">{tache?'Éditer la tâche':'Nouvelle tâche'}</div><button onClick={onClose}><X className="w-5 h-5" /></button></div>
         <div className="space-y-3">
@@ -3065,7 +3066,7 @@ function TacheEditorModal({ tache, date, onClose }) {
           <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
         </div>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
@@ -3193,7 +3194,7 @@ function ParentQuickAlerts({ enfant }) {
 
       <AnimatePresence>
         {open && activeAlert && (
-          <div className="fixed inset-0 bg-black/40 z-[80] flex items-end md:items-center justify-center p-4">
+          (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-end md:items-center justify-center p-4">
             <motion.div initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
               className="bg-white rounded-lg p-6 w-full max-w-md">
               <div className="flex items-center gap-3 mb-4">
@@ -3222,7 +3223,7 @@ function ParentQuickAlerts({ enfant }) {
                 {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Send className="w-4 h-4" /> Envoyer l'alerte</>}
               </button>
             </motion.div>
-          </div>
+          </div>, document.body):null)
         )}
       </AnimatePresence>
     </>
@@ -3650,7 +3651,7 @@ function EmployePayslipsDrawer({ employe, fiches, activeCId, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/50 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg w-full max-w-lg my-6 shadow-soft">
         {/* Header */}
         <div className="p-5 border-b border-bgsoft flex items-center gap-3">
@@ -3719,7 +3720,7 @@ function EmployePayslipsDrawer({ employe, fiches, activeCId, onClose }) {
           </div>
         </div>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
@@ -4045,7 +4046,7 @@ function ParentPhotos() {
         </div>
       )}
       {openAlbum && (
-        <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 overflow-y-auto" onClick={()=>setOpenAlbum(null)}>
+        (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 overflow-y-auto" onClick={()=>setOpenAlbum(null)}>
           <div onClick={e=>e.stopPropagation()} className="bg-white rounded-lg p-5 w-full max-w-3xl my-6 max-h-[90vh] overflow-y-auto scrollbar-thin">
             <div className="flex items-center justify-between mb-3"><div><div className="font-extrabold text-lg">{openAlbum.nom}</div><div className="text-xs text-ink-muted">{openAlbum.theme || 'Album'} · {fmtDate(openAlbum.date||openAlbum.created_at)}</div></div><button onClick={()=>setOpenAlbum(null)}><X className="w-5 h-5" /></button></div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -4057,7 +4058,7 @@ function ParentPhotos() {
               {(openAlbum.medias||[]).length === 0 && <div className="col-span-full text-center text-ink-muted text-sm py-8">Album vide pour l'instant.</div>}
             </div>
           </div>
-        </div>
+        </div>, document.body):null)
       )}
     </div>
   );
@@ -4109,7 +4110,7 @@ function AlbumsView({ activeCId, user }) {
       </div>
       {edit && <AlbumEditorModal album={edit==='new'?null:edit} enfants={enfants} activeCId={activeCId} onClose={()=>{setEdit(null);load();}} />}
       {open && (
-        <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 overflow-y-auto" onClick={()=>setOpen(null)}>
+        (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 overflow-y-auto" onClick={()=>setOpen(null)}>
           <div onClick={e=>e.stopPropagation()} className="bg-white rounded-lg p-5 w-full max-w-3xl my-6 max-h-[90vh] overflow-y-auto scrollbar-thin">
             <div className="flex items-center justify-between mb-3"><div className="font-extrabold text-lg">{open.nom}</div><button onClick={()=>setOpen(null)}><X className="w-5 h-5" /></button></div>
             <MediaUploader folder={`albums/${open.id}`} onUpload={(m)=>onUploadTo(open.id, m)} />
@@ -4121,7 +4122,7 @@ function AlbumsView({ activeCId, user }) {
               ))}
             </div>
           </div>
-        </div>
+        </div>, document.body):null)
       )}
     </div>
   );
@@ -4139,7 +4140,7 @@ function AlbumEditorModal({ album, enfants, activeCId, onClose }) {
     } catch(e){ toast.error(e.message); }
   };
   return (
-    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
       <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
         <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">{album?'Éditer l\'album':'Nouvel album'}</div><button onClick={onClose}><X className="w-5 h-5" /></button></div>
         <div className="space-y-3">
@@ -4160,7 +4161,7 @@ function AlbumEditorModal({ album, enfants, activeCId, onClose }) {
           <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
         </div>
       </motion.div>
-    </div>
+    </div>, document.body):null)
   );
 }
 
