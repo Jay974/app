@@ -108,8 +108,8 @@ function AvatarUploadModal({ enfant, onClose, onSaved }) {
   };
 
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center p-4">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
         <div className="flex items-center justify-between mb-4">
           <div><div className="font-extrabold text-lg">Photo de {enfant.prenom}</div><div className="text-xs text-ink-muted">Glisser une image ou choisir une couleur</div></div>
           <button onClick={onClose}><X className="w-5 h-5" /></button>
@@ -830,8 +830,8 @@ function SuperClientEditor({ client, onClose }) {
     } catch(e){ toast.error(e.message); }
   };
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
         <div className="flex items-center justify-between mb-4">
           <div><div className="font-extrabold text-lg">Éditer client</div><div className="text-xs text-ink-muted">{client.email}</div></div>
           <button onClick={onClose}><X className="w-5 h-5" /></button>
@@ -995,8 +995,8 @@ function SuperDocCreate({ type, clients, onClose }) {
   };
 
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-lg my-6">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-lg my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
         <div className="flex items-center justify-between mb-4">
           <div><div className="font-extrabold text-lg">Nouveau {type==='devis'?'devis':'facture'} SaaS</div><div className="text-xs text-ink-muted">Envoi direct par email au client</div></div>
           <button onClick={onClose}><X className="w-5 h-5" /></button>
@@ -1284,8 +1284,8 @@ function EnfantEditorModal({ enfant, tags, onClose }) {
     } catch(e){ toast.error(e.message); }
   };
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-lg my-6">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-lg my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3"><Avatar enfant={enfant} size={44} /><div><div className="font-extrabold text-lg">Éditer {enfant.prenom}</div><div className="text-xs text-ink-muted">Profil complet</div></div></div>
           <button onClick={onClose}><X className="w-5 h-5" /></button>
@@ -1341,8 +1341,8 @@ function FicheSanteModal({ enfant, onClose, onSaved }) {
   const setCU = (i, k, v) => setF({...f, contacts_urgence: f.contacts_urgence.map((c,x)=>x===i?{...c,[k]:v}:c)});
   const addCU = () => setF({...f, contacts_urgence: [...f.contacts_urgence, {nom:'',tel:'',lien:''}]});
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-lg my-6">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-lg my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3"><Heart className="w-6 h-6 text-coral" /><div><div className="font-extrabold text-lg">Fiche santé de {enfant.prenom}</div><div className="text-xs text-ink-muted">Confidentiel</div></div></div>
           <button onClick={onClose}><X className="w-5 h-5" /></button>
@@ -1385,8 +1385,8 @@ function AddChildModal({ activeCId, onClose }) {
     catch(e){ toast.error(e.message); }
   };
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center p-4">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
         <div className="flex items-center justify-between mb-4">
           <div className="font-extrabold text-lg">Nouvel enfant</div>
           <button onClick={onClose}><X className="w-5 h-5" /></button>
@@ -1482,8 +1482,8 @@ function FamilleEditor({ famille, enfantsAll, activeCId, onClose }) {
     try { await api(`familles/${famille.id}`, { method: 'DELETE' }); toast.success('Foyer supprimé'); onClose(); } catch(e){ toast.error(e.message); }
   };
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
         <div className="flex items-center justify-between mb-4">
           <div><div className="font-extrabold text-lg">{famille?'Éditer le foyer':'Nouveau foyer'}</div><div className="text-xs text-ink-muted">Coordonnées & enfants rattachés</div></div>
           <button onClick={onClose}><X className="w-5 h-5" /></button>
@@ -1611,8 +1611,8 @@ function TagEditorModal({ tag, activeCId, onClose }) {
     } catch(e){ toast.error(e.message); }
   };
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center p-4">
-      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-sm">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4">
+      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-sm my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
         <div className="flex items-center justify-between mb-4">
           <div className="font-extrabold text-lg">{tag?'Éditer l\'étiquette':'Nouvelle étiquette'}</div>
           <button onClick={onClose}><X className="w-5 h-5" /></button>
@@ -1645,8 +1645,8 @@ function SimpleAddModal({ title, fields, onSubmit, onClose }) {
   const [f, setF] = useState(() => Object.fromEntries(fields.map(x=>[x.k, x.default||''])));
   const submit = async (e) => { e.preventDefault(); try { await onSubmit(f); toast.success('Créé'); onClose(); } catch(e){ toast.error(e.message); } };
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center p-4">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
         <div className="flex items-center justify-between mb-4">
           <div className="font-extrabold text-lg">{title}</div>
           <button onClick={onClose}><X className="w-5 h-5" /></button>
@@ -1880,7 +1880,7 @@ function DocumentEditorModal({ type, activeCId, onClose }) {
     } catch(e){ toast.error(e.message); }
   };
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-2xl my-6">
         <div className="flex items-center justify-between mb-4">
           <div><div className="font-extrabold text-xl">{type==='devis'?'Nouveau devis':'Nouvelle facture'}</div><div className="text-xs text-ink-muted">TiMétis · Made in 974</div></div>
@@ -2099,8 +2099,8 @@ function ContratEditorModal({ employe, onClose }) {
   };
 
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-xl my-6">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-xl my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
         <div className="flex items-center justify-between mb-4">
           <div><div className="font-extrabold text-lg">Contrat de {employe.prenom} {employe.nom}</div><div className="text-xs text-ink-muted">Horaires hebdomadaires · taux horaire</div></div>
           <button onClick={onClose}><X className="w-5 h-5" /></button>
@@ -2474,8 +2474,8 @@ function RappelEditorModal({ rappel, activeCId, onClose }) {
     } catch(e){ toast.error(e.message); }
   };
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
-      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
         <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">{rappel?'Éditer l\'alerte':'Nouvelle alerte'}</div><button onClick={onClose}><X className="w-5 h-5" /></button></div>
         <div className="space-y-3">
           <div><label className="text-xs font-extrabold uppercase text-ink-muted">Titre</label><input value={f.titre} onChange={e=>setF({...f,titre:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
@@ -2560,8 +2560,8 @@ function NewsEditorModal({ news, activeCId, onClose }) {
     } catch(e){ toast.error(e.message); }
   };
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
-      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
         <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">{news?'Éditer l\'actu':'Nouvelle actu'}</div><button onClick={onClose}><X className="w-5 h-5" /></button></div>
         <div className="space-y-3">
           <div><label className="text-xs font-extrabold uppercase text-ink-muted">Titre</label><input value={f.titre} onChange={e=>setF({...f,titre:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
@@ -2757,8 +2757,8 @@ function ThreadedMessagerie({ user }) {
       </div>
 
       {showNew && (
-        (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-center justify-center p-4">
-          <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md">
+        (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4">
+          <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
             <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">Nouvelle conversation</div><button onClick={()=>setShowNew(false)}><X className="w-5 h-5" /></button></div>
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {parents.map(p => (
@@ -2903,8 +2903,8 @@ function QuickForm({ type, child, onClose, onSubmit }) {
   const [titre, setTitre] = useState(meta.label);
   const [detail, setDetail] = useState('');
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-end md:items-center justify-center p-4">
-      <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-end md:items-start justify-center p-4">
+      <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="bg-white rounded-lg p-6 w-full max-w-md my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
         <div className="flex items-center gap-3 mb-4">
           <div className="rounded-xl flex items-center justify-center" style={{ background: meta.bg, width: 42, height: 42 }}><meta.icon className="w-5 h-5" style={{ color: meta.color }} /></div>
           <div className="flex-1"><div className="font-extrabold">{meta.label} · {child.prenom}</div><div className="text-xs text-ink-muted">Saisie rapide</div></div>
@@ -3039,8 +3039,8 @@ function TacheEditorModal({ tache, date, onClose }) {
   };
   const RAPPELS = [{v:0,l:'Aucun'},{v:5,l:'5 min avant'},{v:15,l:'15 min avant'},{v:30,l:'30 min avant'},{v:60,l:'1 heure avant'},{v:1440,l:'1 jour avant'}];
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
-      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
         <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">{tache?'Éditer la tâche':'Nouvelle tâche'}</div><button onClick={onClose}><X className="w-5 h-5" /></button></div>
         <div className="space-y-3">
           <div><label className="text-xs font-extrabold uppercase text-ink-muted">Tâche à faire</label>
@@ -3194,9 +3194,9 @@ function ParentQuickAlerts({ enfant }) {
 
       <AnimatePresence>
         {open && activeAlert && (
-          (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-end md:items-center justify-center p-4">
+          (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-end md:items-start justify-center p-4">
             <motion.div initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
-              className="bg-white rounded-lg p-6 w-full max-w-md">
+              className="bg-white rounded-lg p-6 w-full max-w-md my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: activeAlert.bg }}>
                   <activeAlert.icon className="w-6 h-6" style={{ color: activeAlert.color }} />
@@ -3651,7 +3651,7 @@ function EmployePayslipsDrawer({ employe, fiches, activeCId, onClose }) {
   };
 
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/50 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/50 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
       <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-lg w-full max-w-lg my-6 shadow-soft">
         {/* Header */}
         <div className="p-5 border-b border-bgsoft flex items-center gap-3">
@@ -4140,8 +4140,8 @@ function AlbumEditorModal({ album, enfants, activeCId, onClose }) {
     } catch(e){ toast.error(e.message); }
   };
   return (
-    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start md:items-center justify-center p-4 overflow-y-auto">
-      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
         <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">{album?'Éditer l\'album':'Nouvel album'}</div><button onClick={onClose}><X className="w-5 h-5" /></button></div>
         <div className="space-y-3">
           <div><label className="text-xs font-extrabold uppercase text-ink-muted">Nom</label><input value={f.nom} onChange={e=>setF({...f,nom:e.target.value})} placeholder="Ex : Sortie parc du 15/07" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
