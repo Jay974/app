@@ -4,12 +4,36 @@ import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import webpush from 'web-push';
+import { OAuth2Client } from 'google-auth-library';
 
 export const runtime = 'nodejs';
 
 const MONGO_URL = process.env.MONGO_URL;
 const DB_NAME = process.env.DB_NAME && process.env.DB_NAME !== 'your_database_name' ? process.env.DB_NAME : 'timetis';
 const JWT_SECRET = process.env.JWT_SECRET || 'timetis-dev-secret-974';
+
+// ---- Web Push VAPID ----
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  try {
+    webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:contact@timetis.re', process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
+  } catch(e){ console.warn('VAPID init warn', e.message); }
+}
+
+// ---- Google OAuth client ----
+const googleClient = process.env.GOOGLE_CLIENT_ID ? new OAuth2Client(process.env.GOOGLE_CLIENT_ID) : null;
+
+// ---- Helper: envoyer push à des users ----
+async function sendPushToUsers(db, userIds, payload) {
+  if (!process.env.VAPID_PRIVATE_KEY) return;
+  const subs = await db.collection('push_subscriptions').find({ user_id: { $in: userIds } }).toArray();
+  const notif = JSON.stringify(payload);
+  const results = await Promise.allSettled(subs.map(s => webpush.sendNotification(s.subscription, notif).catch(async (e) => {
+    if (e.statusCode === 404 || e.statusCode === 410) { await db.collection('push_subscriptions').deleteOne({ _id: s._id }); }
+    throw e;
+  })));
+  return results;
+}
 
 let cachedClient = null;
 async function getDb() {
@@ -281,8 +305,47 @@ async function handle(request, params) {
     }});
   }
 
-  if (route === 'auth/register' && method === 'POST') {
-    const { email, password, prenom, nom, role, creche_nom, creche_ville } = await request.json();
+  // ---- Google Sign-In (parents self-register) ----
+  if (route === 'auth/google' && method === 'POST') {
+    if (!googleClient) return err('Google Sign-In non configuré (GOOGLE_CLIENT_ID manquant)', 501);
+    const { credential } = await request.json();
+    if (!credential) return err('Missing credential', 400);
+    let payload;
+    try {
+      const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: process.env.GOOGLE_CLIENT_ID });
+      payload = ticket.getPayload();
+    } catch(e) { return err('Token Google invalide', 401); }
+    if (!payload?.sub || !payload.email || !payload.email_verified) return err('Compte Google non vérifié', 401);
+    const email = payload.email.toLowerCase().trim();
+    let user = await db.collection('users').findOne({ google_sub: payload.sub });
+    if (!user) user = await db.collection('users').findOne({ email });
+    if (!user) {
+      // Auto-création parent (pending assignment)
+      const cre = await db.collection('creches').findOne({});
+      user = {
+        id: uuidv4(), email, google_sub: payload.sub,
+        role: 'parent', prenom: payload.given_name || payload.name?.split(' ')[0] || 'Parent',
+        nom: payload.family_name || payload.name?.split(' ').slice(1).join(' ') || '',
+        avatar_url: payload.picture || null,
+        creche_id: cre?.id || null,
+        status: 'pending_assignment',
+        created_via: 'google', created_at: new Date()
+      };
+      await db.collection('users').insertOne(user);
+    } else if (!user.google_sub) {
+      await db.collection('users').updateOne({ id: user.id }, { $set: { google_sub: payload.sub, avatar_url: user.avatar_url || payload.picture } });
+      user.google_sub = payload.sub;
+    }
+    const token = signToken(user);
+    return json({ token, user: {
+      id: user.id, email: user.email, role: user.role, prenom: user.prenom, nom: user.nom,
+      creche_ids: user.creche_ids || (user.creche_id ? [user.creche_id] : []),
+      creche_id: user.creche_id, avatar_url: user.avatar_url,
+      subscription: user.subscription || null,
+    }});
+  }
+
+  if (route === 'auth/register' && method === 'POST') {    const { email, password, prenom, nom, role, creche_nom, creche_ville } = await request.json();
     if (!email || !password || !prenom || !nom) return err('Champs manquants');
     const exists = await db.collection('users').findOne({ email: email.toLowerCase().trim() });
     if (exists) return err('Email déjà utilisé', 409);
@@ -806,6 +869,19 @@ async function handle(request, params) {
     const b = await request.json();
     const media = { url: b.url, type: b.type || 'image', added_by: user.id, added_at: new Date() };
     await db.collection('albums').updateOne({ id: path[1] }, { $push: { medias: media } });
+    // Push aux parents des enfants concernés (ou tous si pas d'enfants_ids)
+    try {
+      const album = await db.collection('albums').findOne({ id: path[1] });
+      let targetIds = [];
+      if (album?.enfants_ids?.length > 0) {
+        const enfants = await db.collection('enfants').find({ id: { $in: album.enfants_ids } }).toArray();
+        targetIds = enfants.flatMap(e => e.parent_ids || []);
+      } else if (album?.creche_id) {
+        const parents = await db.collection('users').find({ creche_id: album.creche_id, role: 'parent' }).toArray();
+        targetIds = parents.map(u=>u.id);
+      }
+      if (targetIds.length > 0) await sendPushToUsers(db, targetIds, { title: `📸 Nouvelle photo · ${album.nom}`, body: 'Un nouveau souvenir vient d\'être ajouté à l\'album', icon: '/icon.png', tag: 'album-'+album.id, url: '/' });
+    } catch(e){}
     return json({ ok: true });
   }
 
@@ -949,10 +1025,49 @@ async function handle(request, params) {
     const list = await db.collection('rappels').find(q).sort({ echeance: 1 }).toArray();
     return json({ rappels: clean(list) });
   }
+  // ---- WEB PUSH VAPID ----
+  if (route === 'push/vapid-key' && method === 'GET') {
+    return json({ publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || process.env.VAPID_PUBLIC_KEY || null });
+  }
+  if (route === 'push/subscribe' && method === 'POST') {
+    const b = await request.json();
+    if (!b.subscription?.endpoint) return err('Subscription invalide', 400);
+    const sub = { id: uuidv4(), user_id: user.id, user_role: user.role, subscription: b.subscription, ua: b.ua||null, created_at: new Date() };
+    // upsert par endpoint
+    await db.collection('push_subscriptions').updateOne(
+      { 'subscription.endpoint': b.subscription.endpoint },
+      { $set: sub },
+      { upsert: true }
+    );
+    return json({ ok: true });
+  }
+  if (route === 'push/unsubscribe' && method === 'POST') {
+    const b = await request.json();
+    if (b.endpoint) await db.collection('push_subscriptions').deleteOne({ 'subscription.endpoint': b.endpoint });
+    else await db.collection('push_subscriptions').deleteMany({ user_id: user.id });
+    return json({ ok: true });
+  }
+  if (route === 'push/test' && method === 'POST') {
+    // Envoie un push de test à l'utilisateur connecté
+    await sendPushToUsers(db, [user.id], { title: '🔔 TiMétis · Test push', body: 'Les notifications push fonctionnent parfaitement !', icon: '/icon.png', tag: 'test' });
+    return json({ ok: true });
+  }
+
+  // ---- DELETE DOCUMENTS (admin) ----
+  if (route.startsWith('documents/') && path.length === 2 && method === 'DELETE' && user.role === 'admin') {
+    await db.collection('documents').deleteOne({ id: path[1] });
+    return json({ ok: true });
+  }
+
   if (route === 'rappels' && method === 'POST' && (user.role === 'admin' || user.role === 'pro')) {
     const b = await request.json();
-    const r = { id: uuidv4(), creche_id: b.creche_id||activeCId||user.creche_id, titre: b.titre, echeance: b.echeance, cible: b.cible||'admin', enfant_id: b.enfant_id||null, statut: 'actif', priorite: b.priorite||'moyenne', created_at: new Date() };
+    const r = { id: uuidv4(), creche_id: b.creche_id||activeCId||user.creche_id, titre: b.titre, contenu: b.contenu||'', echeance: b.echeance, cible: b.cible||'admin', enfant_id: b.enfant_id||null, statut: 'actif', priorite: b.priorite||'moyenne', pinned: b.pinned||false, created_at: new Date() };
     await db.collection('rappels').insertOne(r);
+    // Push notification
+    try {
+      const targets = await db.collection('users').find({ creche_id: r.creche_id, role: r.cible==='parents'?'parent':(r.cible==='pros'?'pro':(r.cible==='tous'?{ $in:['parent','pro','admin'] }:'admin')) }).toArray();
+      await sendPushToUsers(db, targets.map(u=>u.id), { title: `🔔 ${r.titre}`, body: `Échéance ${r.echeance}${r.contenu?' · '+r.contenu.slice(0,80):''}`, icon: '/icon.png', tag: 'rappel-'+r.id, url: '/' });
+    } catch(e){}
     return json({ rappel: r });
   }
   if (route.startsWith('rappels/') && path.length === 2 && method === 'PUT') {
@@ -973,6 +1088,10 @@ async function handle(request, params) {
     const b = await request.json();
     const n = { id: uuidv4(), creche_id: b.creche_id||activeCId, titre: b.titre, contenu: b.contenu, image_url: b.image_url||null, cible: b.cible||'parents', pinned: b.pinned||false, created_at: new Date() };
     await db.collection('news').insertOne(n);
+    try {
+      const targets = await db.collection('users').find({ creche_id: n.creche_id, role: n.cible==='parents'?'parent':(n.cible==='pros'?'pro':{ $in:['parent','pro','admin'] }) }).toArray();
+      await sendPushToUsers(db, targets.map(u=>u.id), { title: `📰 ${n.titre}`, body: (n.contenu||'').slice(0,120), icon: '/icon.png', tag: 'news-'+n.id, url: '/' });
+    } catch(e){}
     return json({ news: n });
   }
 
@@ -1197,6 +1316,10 @@ async function handle(request, params) {
       note: b.note||'',
       created_at: new Date() };
     await db.collection('fiches_paie').insertOne(f);
+    // Push à l'employé concerné
+    try {
+      await sendPushToUsers(db, [b.employe_id], { title: `💼 Nouveau bulletin de salaire`, body: `Votre fiche de paie « ${b.periode} » vient d'être déposée`, icon: '/icon.png', tag: 'paie-'+f.id, url: '/' });
+    } catch(e){}
     return json({ fiche: f });
   }
   if (route.startsWith('fiches-paie/') && path.length === 2 && method === 'DELETE' && user.role === 'admin') {

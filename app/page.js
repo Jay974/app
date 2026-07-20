@@ -182,7 +182,7 @@ function TopBar({ user, onLogout, onMenu, title, activeCreche, creches, onSelect
               </AnimatePresence>
             </div>
           )}
-          <button className="p-2 rounded-full bg-white/15 active:scale-95 relative">
+          <button onClick={async ()=>{ const r=await registerPush(); if(r.ok){ await api('push/test',{method:'POST'}); toast.success('Notifications activées ! (test envoyé)'); } else { toast.error(r.reason==='denied'?'Permission refusée dans le navigateur':(r.reason==='unsupported'?'Navigateur non compatible':'Erreur : '+r.reason)); } }} title="Activer les notifications push" className="p-2 rounded-full bg-white/15 active:scale-95 relative">
             <Bell className="w-5 h-5" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-coral" />
           </button>
@@ -360,6 +360,68 @@ function Sidebar({ user, view, setView, open, setOpen }) {
 }
 
 // ===== LOGIN =====
+// ===== GOOGLE SIGN-IN + WEB PUSH HELPERS =====
+function GoogleSignInBlock({ onLogged }) {
+  const btnRef = useRef(null);
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  useEffect(() => {
+    if (!clientId) return;
+    const init = () => {
+      if (!window.google?.accounts?.id || !btnRef.current) return;
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async (resp) => {
+          try {
+            const r = await fetch(process.env.NEXT_PUBLIC_BASE_URL + '/api/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential: resp.credential }) });
+            if (!r.ok) { const e = await r.json(); throw new Error(e.error||'Erreur Google'); }
+            const d = await r.json();
+            toast.success(`Bienvenue ${d.user.prenom} !`);
+            onLogged(d.token, d.user);
+          } catch(e){ toast.error(e.message); }
+        },
+      });
+      window.google.accounts.id.renderButton(btnRef.current, { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', width: 280, locale: 'fr' });
+    };
+    if (window.google?.accounts?.id) init();
+    else {
+      const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.defer = true;
+      s.onload = init; document.head.appendChild(s);
+    }
+  }, [clientId]);
+  if (!clientId) return null;
+  return (
+    <div className="mt-4 flex flex-col items-center">
+      <div className="text-[10px] font-extrabold uppercase tracking-wider text-ink-muted mb-2">Ou pour les parents · inscription instantanée</div>
+      <div ref={btnRef} />
+      <div className="text-[10px] text-ink-muted mt-1">Auto-création · en attente d'assignation à une crèche</div>
+    </div>
+  );
+}
+
+async function registerPush() {
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return { ok:false, reason:'unsupported' };
+    const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+    if (perm !== 'granted') return { ok:false, reason:'denied' };
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const r = await api('push/vapid-key'); if (!r.publicKey) return { ok:false, reason:'no-vapid' };
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(r.publicKey) });
+    }
+    await api('push/subscribe', { method: 'POST', body: JSON.stringify({ subscription: sub.toJSON(), ua: navigator.userAgent }) });
+    return { ok:true };
+  } catch(e){ return { ok:false, reason: e.message }; }
+}
+function urlB64ToUint8(b64) {
+  const pad = '='.repeat((4 - b64.length%4)%4);
+  const s = (b64+pad).replace(/-/g,'+').replace(/_/g,'/');
+  const raw = atob(s); const arr = new Uint8Array(raw.length);
+  for (let i=0;i<raw.length;i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
 function LoginView({ onAuth }) {
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
@@ -448,6 +510,9 @@ function LoginView({ onAuth }) {
         <button onClick={() => setMode(mode === 'login' ? 'register' : 'login')} className="text-sm text-teal-dark font-bold mt-4 hover:underline">
           {mode === 'login' ? "Pas de compte ? Créer une crèche" : 'Déjà inscrit ? Se connecter'}
         </button>
+
+        <GoogleSignInBlock onLogged={(t,u) => { localStorage.setItem('tk_token', t); localStorage.setItem('tk_user', JSON.stringify(u)); if (onAuth) onAuth(t, u); else window.location.reload(); }} />
+
         <div className="mt-5 pt-5 border-t border-bgsoft">
           <div className="text-[11px] font-extrabold uppercase tracking-wider text-ink-muted mb-3">Comptes démo</div>
           <div className="grid grid-cols-2 gap-2">
@@ -2523,18 +2588,33 @@ function DocumentsView({ activeCId, canEdit }) {
     try { await api('documents', { method: 'POST', body: JSON.stringify({ titre: media.url.split('/').pop(), type: media.format, url: media.url, cible: 'tous', taille: media.bytes, creche_id: activeCId }) }); toast.success('Document ajouté'); load(); }
     catch(e){ toast.error(e.message); }
   };
+  const del = async (d) => {
+    if (!confirm(`Supprimer le document "${d.titre}" ?`)) return;
+    try { await api(`documents/${d.id}`, { method: 'DELETE' }); toast.success('Document supprimé'); load(); }
+    catch(e){ toast.error(e.message); }
+  };
+  const download = (d) => {
+    // Ouvre un onglet pour téléchargement direct (le navigateur gère PDF/image/vidéo)
+    if (!d.url) return toast.error('URL du fichier introuvable');
+    const a = document.createElement('a'); a.href = d.url; a.download = d.titre || 'document'; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  };
   return (
     <div className="space-y-4 animate-fade-up">
+      <div className="bg-white rounded-lg p-3 shadow-softer text-xs text-ink-muted">📁 Espace documents partagés · Cliquez sur « Télécharger » pour récupérer le fichier (PDF ou tout format). {canEdit ? 'En tant qu\'employeur, vous pouvez déposer et supprimer.' : 'Seul l\'employeur peut ajouter ou supprimer.'}</div>
       {canEdit && <div className="flex justify-end"><MediaUploader folder="documents" onUpload={onUpload} /></div>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {items.length === 0 && <div className="col-span-full"><PlaceholderView title="Aucun document partagé" icon={FileText} /></div>}
         {items.map(d => (
-          <a key={d.id} href={d.url||'#'} target="_blank" rel="noopener noreferrer" className="bg-white rounded-lg p-4 shadow-softer flex items-center gap-3 hover:shadow-soft hover:-translate-y-0.5 transition-all">
-            <div className="w-10 h-10 rounded-xl bg-teal-light flex items-center justify-center"><FileText className="w-5 h-5 text-teal" /></div>
+          <div key={d.id} className="bg-white rounded-lg p-4 shadow-softer flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-teal-light flex items-center justify-center flex-shrink-0"><FileText className="w-5 h-5 text-teal" /></div>
             <div className="flex-1 min-w-0">
               <div className="font-bold truncate-1">{d.titre}</div>
-              <div className="text-xs text-ink-muted">{Math.round((d.taille||0)/1024)} Ko · {d.cible}</div>
+              <div className="text-xs text-ink-muted truncate-1">{Math.round((d.taille||0)/1024)} Ko · {d.cible} · {fmtDate(d.created_at)}</div>
             </div>
-          </a>
+            <button onClick={()=>download(d)} className="btn-pill bg-teal text-white text-xs shadow-soft"><Download className="w-3 h-3" /> Télécharger</button>
+            {canEdit && <button onClick={()=>del(d)} className="btn-pill bg-coral/10 text-coral text-xs"><Trash2 className="w-3 h-3" /></button>}
+          </div>
         ))}
       </div>
     </div>
@@ -3185,23 +3265,77 @@ function ParentReservations() {
 
 function ParentFactures() {
   const [factures, setFactures] = useState([]);
-  useEffect(() => { (async()=>{try{const f=await api('factures'); setFactures(f.factures);}catch(e){}})(); }, []);
+  const [me, setMe] = useState(null);
+  useEffect(() => { (async()=>{try{const f=await api('factures'); setFactures(f.factures); const m=await api('auth/me'); setMe(m.user);}catch(e){}})(); }, []);
+  const total_a_regler = factures.filter(f=>f.statut==='en_attente' || f.statut==='en_cours').reduce((s,f)=>s+(f.total_ttc||f.montant||0),0);
+  const totalPayeAnnee = factures.filter(f=>f.statut==='payee' && new Date(f.created_at).getFullYear() === new Date().getFullYear()).reduce((s,f)=>s+(f.total_ttc||f.montant||0),0);
+
+  const downloadPDF = (f) => generateDocPDF(f, 'facture');
+  const exportCAF = () => {
+    // Export CAF : format récapitulatif annuel pour attestation crédit d'impôt / CAF
+    const y = new Date().getFullYear();
+    const payees = factures.filter(f=>f.statut==='payee' && new Date(f.created_at).getFullYear() === y);
+    const total = payees.reduce((s,f)=>s+(f.total_ttc||f.montant||0),0);
+    const lignes = payees.map(f => `<tr><td>${f.numero||'—'}</td><td>${f.mois||fmtDate(f.created_at)}</td><td>${fmtDate(f.paid_at||f.created_at)}</td><td style="text-align:right"><b>${(f.total_ttc||f.montant||0).toFixed(2)} €</b></td></tr>`).join('');
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Attestation CAF ${y}</title>
+      <style>
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:40px;color:#2D3748;max-width:800px;margin:auto;}
+        header{border-bottom:3px solid #3ECDB5;padding-bottom:20px;margin-bottom:30px;display:flex;justify-content:space-between;}
+        .brand{color:#3ECDB5;font-weight:900;font-size:28px;}.brand small{display:block;font-size:11px;color:#718096;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-top:4px;}
+        h1{color:#2D3748;font-size:22px;}
+        .box{background:#F5F7F9;padding:20px;border-radius:12px;margin:20px 0;}
+        table{width:100%;border-collapse:collapse;margin:20px 0;}
+        th{background:#3ECDB5;color:white;padding:10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:1px;}
+        th:last-child{text-align:right;}
+        td{padding:10px;border-bottom:1px solid #E2E8F0;font-size:13px;}
+        .total{background:#E6F9F5;padding:20px;border-radius:12px;text-align:right;font-size:16px;margin-top:20px;}
+        .total b{font-size:28px;color:#3ECDB5;}
+        footer{margin-top:60px;padding-top:20px;border-top:1px solid #E2E8F0;font-size:11px;color:#718096;text-align:center;}
+        .info{font-size:13px;line-height:1.6;}
+        @media print { body { padding: 20px; } }
+      </style></head><body>
+      <header><div><div class="brand">TiMétis<small>Made in 974 · Attestation fiscale</small></div></div><div style="text-align:right;font-size:12px;color:#718096;"><b>Année</b> ${y}<br/>Édité le ${new Date().toLocaleDateString('fr-FR')}</div></header>
+      <h1>Attestation de règlements — Frais de garde ${y}</h1>
+      <div class="box info">
+        <b style="color:#3ECDB5;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Bénéficiaire</b>
+        <div style="font-size:16px;font-weight:900;margin-top:5px;">${me?.prenom||''} ${me?.nom||''}</div>
+        <div style="color:#718096;">${me?.email||''}</div>
+      </div>
+      <p class="info">Nous certifions que la personne susnommée a réglé à TiMétis les sommes suivantes, correspondant aux frais de garde d'enfant au cours de l'année ${y}. Ce document peut être utilisé pour la déclaration à la CAF et pour bénéficier du crédit d'impôt pour frais de garde d'enfant.</p>
+      <table>
+        <thead><tr><th>N° facture</th><th>Période</th><th>Date paiement</th><th>Montant</th></tr></thead>
+        <tbody>${lignes || '<tr><td colspan="4" style="text-align:center;color:#718096;padding:30px;">Aucun règlement enregistré pour '+y+'.</td></tr>'}</tbody>
+      </table>
+      <div class="total">Total versé en ${y} : <b>${total.toFixed(2)} €</b></div>
+      <footer>Document généré automatiquement · TiMétis · Made in 974 🌺<br/>Ce récapitulatif ne remplace pas une attestation fiscale officielle mais tient lieu de justificatif de paiement.</footer>
+      <script>window.onload=()=>{window.print();setTimeout(()=>window.close(),500);};</script></body></html>`;
+    const w = window.open('', '_blank', 'width=800,height=900');
+    if (w) { w.document.write(html); w.document.close(); }
+    else toast.error('Pop-up bloqué — autorisez les pop-ups');
+  };
+
   return (
     <div className="space-y-4 animate-fade-up">
       <div className="bg-gradient-to-br from-teal to-teal-dark text-white rounded-lg p-6 shadow-soft">
         <div className="text-[11px] font-extrabold uppercase tracking-wider opacity-80">Total à régler</div>
-        <div className="text-4xl font-extrabold mt-2">{fmtEur(factures.filter(f=>f.statut==='en_attente').reduce((s,f)=>s+f.montant,0))}</div>
-        <button className="btn-pill bg-white text-teal-dark shadow-soft mt-3">Payer maintenant</button>
+        <div className="text-4xl font-extrabold mt-2">{fmtEur(total_a_regler)}</div>
+        <div className="text-xs opacity-80 mt-2">Payé en {new Date().getFullYear()} : <b>{fmtEur(totalPayeAnnee)}</b></div>
       </div>
       <div className="bg-white rounded-lg p-5 shadow-softer">
-        <div className="flex items-center justify-between mb-3"><div className="font-extrabold text-lg">Mes factures</div><button className="btn-pill bg-teal-light text-teal-dark text-xs"><FileText className="w-3 h-3" /> Export CAF</button></div>
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+          <div className="font-extrabold text-lg">Mes factures</div>
+          <button onClick={exportCAF} className="btn-pill bg-teal-light text-teal-dark text-xs" title={`Attestation ${new Date().getFullYear()} pour la CAF / crédit d'impôt`}><FileText className="w-3 h-3" /> Export CAF · Attestation {new Date().getFullYear()}</button>
+        </div>
+        <div className="text-xs text-ink-muted mb-3">💡 « Export CAF » génère un récapitulatif annuel des règlements pour votre déclaration.</div>
         <div className="space-y-2">
+          {factures.length === 0 && <div className="text-center text-ink-muted text-sm py-8">Aucune facture pour l'instant.</div>}
           {factures.map(f => (
-            <div key={f.id} className="flex items-center gap-3 p-3 rounded-2xl bg-bgsoft">
-              <div className="w-10 h-10 rounded-xl bg-teal-light flex items-center justify-center"><FileText className="w-5 h-5 text-teal" /></div>
-              <div className="flex-1 min-w-0"><div className="font-bold truncate-1">{f.numero||'F-—'}</div><div className="text-xs text-ink-muted">{f.mois}</div></div>
-              <div className="font-extrabold">{fmtEur(f.montant)}</div>
-              <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${f.statut==='payee'?'bg-teal-light text-teal-dark':'bg-amber/20 text-amber'}`}>{f.statut==='payee'?'Payée':'En attente'}</span>
+            <div key={f.id} className="flex items-center gap-3 p-3 rounded-2xl bg-bgsoft flex-wrap">
+              <div className="w-10 h-10 rounded-xl bg-teal-light flex items-center justify-center flex-shrink-0"><FileText className="w-5 h-5 text-teal" /></div>
+              <div className="flex-1 min-w-0"><div className="font-bold truncate-1">{f.numero||'F-—'}</div><div className="text-xs text-ink-muted">{f.mois || fmtDate(f.created_at)}</div></div>
+              <div className="font-extrabold">{fmtEur(f.total_ttc||f.montant)}</div>
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${f.statut==='payee'?'bg-teal-light text-teal-dark':'bg-amber/20 text-amber'}`}>{f.statut==='payee'?'Payée':(f.statut==='en_cours'?'En cours':'En attente')}</span>
+              <button onClick={()=>downloadPDF(f)} className="btn-pill bg-teal text-white text-xs shadow-soft"><Download className="w-3 h-3" /> PDF</button>
             </div>
           ))}
         </div>
@@ -3749,6 +3883,10 @@ function App() {
     if (!user) return;
     if (user.role === 'admin' || user.role === 'super_admin') {
       (async()=>{try{const d=await api('creches'); setCreches(d.creches); if (!activeCId && d.creches[0]) setActiveCId(d.creches[0].id);}catch(e){}})();
+    }
+    // Auto-inscription push (silencieuse - demande permission au premier click)
+    if (typeof window !== 'undefined' && Notification?.permission === 'granted') {
+      registerPush().catch(()=>{});
     }
   }, [user]);
 
