@@ -726,6 +726,145 @@ async function handle(request, params) {
     return json({ message: one(m) });
   }
 
+  // ---- TACHES PRO (calendrier + rappels) ----
+  if (route === 'taches-pro' && method === 'GET' && (user.role === 'pro' || user.role === 'admin')) {
+    const url = new URL(request.url);
+    const date = url.searchParams.get('date'); // YYYY-MM-DD
+    const from = url.searchParams.get('from'); // YYYY-MM-DD (range)
+    const to = url.searchParams.get('to');
+    const q = user.role === 'pro' ? { employe_id: user.id } : { creche_id: { $in: activeCId?[activeCId]:(user.creche_ids||[]) } };
+    if (date) q.date = date;
+    if (from && to) q.date = { $gte: from, $lte: to };
+    const list = await db.collection('taches_pro').find(q).sort({ date: 1, created_at: 1 }).toArray();
+    return json({ taches: clean(list) });
+  }
+  if (route === 'taches-pro' && method === 'POST' && user.role === 'pro') {
+    const b = await request.json();
+    const t = { id: uuidv4(), employe_id: user.id, creche_id: user.creche_id,
+      label: b.label, quantite: +b.quantite || 1, unite: b.unite || '',
+      date: b.date || todayKey(),
+      heure_rappel: b.heure_rappel || null,
+      rappel_avant_min: b.rappel_avant_min ?? null,
+      done: false, done_at: null,
+      created_at: new Date() };
+    await db.collection('taches_pro').insertOne(t);
+    return json({ tache: t });
+  }
+  if (route.startsWith('taches-pro/') && path.length === 2 && method === 'PUT' && user.role === 'pro') {
+    const b = await request.json(); delete b._id; delete b.id;
+    const tache = await db.collection('taches_pro').findOne({ id: path[1] });
+    if (!tache || tache.employe_id !== user.id) return err('Accès refusé', 403);
+    if (b.done === true && !tache.done) b.done_at = new Date();
+    if (b.done === false) b.done_at = null;
+    await db.collection('taches_pro').updateOne({ id: path[1] }, { $set: b });
+    const fresh = await db.collection('taches_pro').findOne({ id: path[1] });
+    return json({ tache: one(fresh) });
+  }
+  if (route.startsWith('taches-pro/') && path.length === 2 && method === 'DELETE' && user.role === 'pro') {
+    const tache = await db.collection('taches_pro').findOne({ id: path[1] });
+    if (!tache || tache.employe_id !== user.id) return err('Accès refusé', 403);
+    await db.collection('taches_pro').deleteOne({ id: path[1] });
+    return json({ ok: true });
+  }
+
+  // ---- ALBUMS PHOTO ----
+  if (route === 'albums' && method === 'GET') {
+    let q = {};
+    if (user.role === 'admin') q.creche_id = { $in: activeCId?[activeCId]:(user.creche_ids||[]) };
+    else if (user.role === 'pro') q.creche_id = user.creche_id;
+    else if (user.role === 'parent') {
+      // Parent voit uniquement les albums concernant ses enfants
+      const enfants = await db.collection('enfants').find({ parent_ids: user.id }).toArray();
+      const ids = enfants.map(e=>e.id);
+      q.$or = [{ enfants_ids: { $in: ids } }, { enfants_ids: { $size: 0 } }, { enfants_ids: { $exists: false } }];
+      q.creche_id = { $in: enfants.map(e=>e.creche_id) };
+    }
+    const list = await db.collection('albums').find(q).sort({ created_at: -1 }).toArray();
+    return json({ albums: clean(list) });
+  }
+  if (route === 'albums' && method === 'POST' && (user.role === 'admin' || user.role === 'pro')) {
+    const b = await request.json();
+    const a = { id: uuidv4(), creche_id: b.creche_id||activeCId||user.creche_id,
+      nom: b.nom, theme: b.theme || '', date: b.date || todayKey(),
+      enfants_ids: b.enfants_ids || [], // vide = concerne toute la crèche
+      medias: b.medias || [], // [{url, type, added_by, added_at}]
+      created_by: user.id, created_at: new Date() };
+    await db.collection('albums').insertOne(a);
+    return json({ album: a });
+  }
+  if (route.startsWith('albums/') && path.length === 2 && method === 'PUT' && (user.role === 'admin' || user.role === 'pro')) {
+    const b = await request.json(); delete b._id; delete b.id;
+    await db.collection('albums').updateOne({ id: path[1] }, { $set: b });
+    const fresh = await db.collection('albums').findOne({ id: path[1] });
+    return json({ album: one(fresh) });
+  }
+  if (route.startsWith('albums/') && path.length === 2 && method === 'DELETE' && (user.role === 'admin' || user.role === 'pro')) {
+    await db.collection('albums').deleteOne({ id: path[1] });
+    return json({ ok: true });
+  }
+  if (route.startsWith('albums/') && path.length === 3 && path[2] === 'medias' && method === 'POST' && (user.role === 'admin' || user.role === 'pro')) {
+    const b = await request.json();
+    const media = { url: b.url, type: b.type || 'image', added_by: user.id, added_at: new Date() };
+    await db.collection('albums').updateOne({ id: path[1] }, { $push: { medias: media } });
+    return json({ ok: true });
+  }
+
+  // ---- PARENT : photos centralisées (albums + chat) ----
+  if (route === 'parent/photos' && method === 'GET' && user.role === 'parent') {
+    const enfants = await db.collection('enfants').find({ parent_ids: user.id }).toArray();
+    const enfantsIds = enfants.map(e=>e.id);
+    const crecheIds = enfants.map(e=>e.creche_id);
+    // Albums
+    const albums = await db.collection('albums').find({
+      creche_id: { $in: crecheIds },
+      $or: [{ enfants_ids: { $in: enfantsIds } }, { enfants_ids: { $size: 0 } }, { enfants_ids: { $exists: false } }]
+    }).sort({ created_at: -1 }).toArray();
+    // Threads du parent
+    const threads = await db.collection('threads').find({ participants: user.id }).toArray();
+    const threadIds = threads.map(t=>t.id);
+    // Messages avec média
+    const msgs = await db.collection('thread_messages').find({ thread_id: { $in: threadIds }, media: { $ne: null } }).sort({ created_at: -1 }).limit(200).toArray();
+    return json({ albums: clean(albums), chat_medias: msgs.map(m => ({ url: m.media, type: m.media_type||'image', from_nom: m.from_nom, created_at: m.created_at })) });
+  }
+
+  // ---- RESERVATIONS ENFANTS (planning mensuel) ----
+  if (route === 'reservations' && method === 'GET') {
+    const url = new URL(request.url);
+    const enfant_id = url.searchParams.get('enfant_id');
+    const month = url.searchParams.get('month'); // YYYY-MM
+    const q = {};
+    if (enfant_id) q.enfant_id = enfant_id;
+    if (month) q.date = { $regex: `^${month}` };
+    if (user.role === 'admin') q.creche_id = { $in: activeCId?[activeCId]:(user.creche_ids||[]) };
+    else if (user.role === 'parent') {
+      const enfants = await db.collection('enfants').find({ parent_ids: user.id }).toArray();
+      const ids = enfants.map(e=>e.id);
+      q.enfant_id = enfant_id && ids.includes(enfant_id) ? enfant_id : { $in: ids };
+    }
+    const list = await db.collection('reservations').find(q).sort({ date: 1 }).toArray();
+    return json({ reservations: clean(list) });
+  }
+  if (route === 'reservations' && method === 'POST' && (user.role === 'admin' || user.role === 'parent')) {
+    const b = await request.json();
+    // upsert par (enfant_id, date)
+    const r = { id: uuidv4(), enfant_id: b.enfant_id, creche_id: b.creche_id||activeCId,
+      date: b.date, present: b.present !== false,
+      arrivee: b.arrivee || '08:00', depart: b.depart || '17:00',
+      absent_raison: b.absent_raison || null,
+      created_by: user.id, created_at: new Date() };
+    await db.collection('reservations').updateOne({ enfant_id: b.enfant_id, date: b.date }, { $set: r }, { upsert: true });
+    return json({ reservation: r });
+  }
+  if (route.startsWith('reservations/') && path.length === 2 && method === 'PUT') {
+    const b = await request.json(); delete b._id; delete b.id;
+    await db.collection('reservations').updateOne({ id: path[1] }, { $set: b });
+    return json({ ok: true });
+  }
+  if (route.startsWith('reservations/') && path.length === 2 && method === 'DELETE') {
+    await db.collection('reservations').deleteOne({ id: path[1] });
+    return json({ ok: true });
+  }
+
   // ---- ALERTES RAPIDES PARENT ----
   if (route === 'parent/alertes' && method === 'GET' && (user.role === 'admin' || user.role === 'pro')) {
     const cid = activeCId || user.creche_id;

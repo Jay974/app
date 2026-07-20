@@ -243,6 +243,7 @@ function Sidebar({ user, view, setView, open, setOpen }) {
       { key: 'admin/groupes', label: 'Sections', icon: Layers },
       { key: 'admin/tags', label: 'Étiquettes', icon: TagIcon },
       { key: 'admin/presences', label: 'Présences hebdo', icon: ClipboardList },
+      { key: 'admin/reservations', label: 'Réservations · Planning', icon: Calendar },
       { key: 'admin/synthese', label: 'Bilan hebdo', icon: FileCheck },
       { key: 'admin/nourriture', label: 'Restauration', icon: UtensilsCrossed },
       { key: 'admin/rappels', label: 'Alertes', icon: AlertTriangle },
@@ -259,6 +260,7 @@ function Sidebar({ user, view, setView, open, setOpen }) {
       { key: 'admin/statistiques', label: 'Statistiques', icon: BarChart3 },
       { key: 'admin/administration', label: 'Administration', icon: Settings },
       { key: 'admin/rgpd', label: 'RGPD & conditions', icon: ShieldCheck },
+      { key: 'admin/albums', label: 'Albums photos', icon: ImageIcon },
       { key: 'admin/messagerie', label: 'Discussions', icon: MessageCircle },
       { key: 'admin/alarme', label: 'Sécurité incendie', icon: AlertTriangle },
       { key: 'admin/abonnement', label: 'Abonnement', icon: CreditCard },
@@ -277,6 +279,7 @@ function Sidebar({ user, view, setView, open, setOpen }) {
       { key: 'pro/documents', label: 'Espace docs', icon: FileText },
       { key: 'pro/news', label: 'Actus', icon: Newspaper },
       { key: 'pro/taches', label: 'Mes tâches', icon: CheckCircle2 },
+      { key: 'pro/albums', label: 'Albums photos', icon: ImageIcon },
       { key: 'pro/feedback', label: 'Envoyer un avis', icon: Star },
     ],
     parent: [
@@ -2207,14 +2210,24 @@ function AdminPresences({ activeCId }) {
 
 function AdminSynthese({ activeCId }) {
   const [enfants, setEnfants] = useState([]);
-  useEffect(() => { (async()=>{try{const d=await api('enfants'+(activeCId?`?creche_id=${activeCId}`:'')); setEnfants(d.enfants);}catch(e){}})(); }, [activeCId]);
+  const [tags, setTags] = useState([]);
+  useEffect(() => { (async()=>{try{
+    const d=await api('enfants'+(activeCId?`?creche_id=${activeCId}`:'')); setEnfants(d.enfants);
+    const t=await api('tags'+(activeCId?`?creche_id=${activeCId}`:'')); setTags(t.tags||[]);
+  }catch(e){}})(); }, [activeCId]);
   return (
     <div className="space-y-4 animate-fade-up">
-      {enfants.map(e => (
+      <div className="text-xs text-ink-muted bg-white rounded-lg p-3 shadow-softer">📄 Cliquez sur « PDF » pour télécharger un bilan hebdomadaire prêt à imprimer et à partager avec les parents.</div>
+      {enfants.map(e => {
+        const eTags = tags.filter(t => (e.tags||[]).includes(t.id));
+        return (
         <div key={e.id} className="bg-white rounded-lg p-5 shadow-softer">
-          <div className="flex items-center gap-3 mb-3">
-            <Avatar enfant={e} size={40} />
-            <div><div className="font-extrabold">{e.prenom}</div><div className="text-xs text-ink-muted">{e.groupe} · Semaine {new Date().getWeek?.()||new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</div></div>
+          <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+            <div className="flex items-center gap-3">
+              <Avatar enfant={e} size={40} />
+              <div><div className="font-extrabold">{e.prenom}</div><div className="text-xs text-ink-muted">{e.groupe} · Semaine {new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</div></div>
+            </div>
+            <button onClick={()=>generateBilanHebdoPDF(e, null, eTags)} className="btn-pill bg-teal text-white shadow-soft text-xs"><Download className="w-3 h-3" /> PDF Bilan</button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="p-3 rounded-2xl bg-sky/10"><div className="text-[10px] font-bold uppercase text-sky">Sieste</div><div className="text-lg font-extrabold">8h32</div></div>
@@ -2223,7 +2236,7 @@ function AdminSynthese({ activeCId }) {
             <div className="p-3 rounded-2xl bg-violet/10"><div className="text-[10px] font-bold uppercase text-violet">Activités</div><div className="text-lg font-extrabold">7</div></div>
           </div>
         </div>
-      ))}
+      );})}
     </div>
   );
 }
@@ -2829,29 +2842,149 @@ function QuickForm({ type, child, onClose, onSubmit }) {
 }
 
 function ProTaches() {
-  const [tasks, setTasks] = useState([
-    { id:1, label:'Désinfecter les tables', done: true },
-    { id:2, label:'Préparer les couches', done: true },
-    { id:3, label:'Ranger les jouets', done: false },
-    { id:4, label:'Préparer le goûter', done: false },
-    { id:5, label:'Mettre à jour transmissions', done: false },
-  ]);
+  const [tasks, setTasks] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0,10));
+  const [showAdd, setShowAdd] = useState(false);
+  const [edit, setEdit] = useState(null);
+  const [reminderInterval, setReminderInterval] = useState(null);
+
+  const load = async () => {
+    try { const d = await api(`taches-pro?date=${selectedDate}`); setTasks(d.taches||[]); } catch(e){}
+  };
+  useEffect(() => { load(); }, [selectedDate]);
+
+  // Système de rappels : check toutes les 30s si un rappel est dû
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') { Notification.requestPermission(); }
+    const check = async () => {
+      try {
+        const now = new Date();
+        const nowKey = now.toISOString().slice(0,10);
+        const d = await api(`taches-pro?date=${nowKey}`);
+        (d.taches||[]).forEach(t => {
+          if (t.done || t.notifie || !t.heure_rappel) return;
+          const [h,m] = t.heure_rappel.split(':').map(Number);
+          const rappelDate = new Date(t.date+'T'+t.heure_rappel);
+          const avantMs = (t.rappel_avant_min||0) * 60 * 1000;
+          const alertMoment = rappelDate.getTime() - avantMs;
+          if (now.getTime() >= alertMoment && now.getTime() <= alertMoment + 60000) {
+            if (Notification.permission === 'granted') {
+              new Notification(`⏰ ${t.label}`, { body: `Tâche prévue à ${t.heure_rappel}${t.quantite>1?` · ${t.quantite}${t.unite?' '+t.unite:''}`:''}` });
+            }
+            toast.info(`⏰ Rappel : ${t.label} à ${t.heure_rappel}`);
+            api(`taches-pro/${t.id}`, { method: 'PUT', body: JSON.stringify({ notifie: true }) }).catch(()=>{});
+          }
+        });
+      } catch(e){}
+    };
+    const it = setInterval(check, 30000);
+    check();
+    setReminderInterval(it);
+    return () => clearInterval(it);
+  }, []);
+
+  const toggle = async (t) => {
+    try { await api(`taches-pro/${t.id}`, { method: 'PUT', body: JSON.stringify({ done: !t.done }) }); load(); }
+    catch(e){ toast.error(e.message); }
+  };
+  const del = async (t) => { if (!confirm('Supprimer cette tâche ?')) return; try { await api(`taches-pro/${t.id}`, { method: 'DELETE' }); toast.success('Supprimée'); load(); } catch(e){ toast.error(e.message); } };
   const done = tasks.filter(t=>t.done).length;
+
+  // Calendrier 14 prochains jours
+  const days = Array.from({length:14}, (_,i) => { const d = new Date(); d.setDate(d.getDate()+i); return d; });
+
   return (
     <div className="space-y-4 animate-fade-up">
       <div className="bg-gradient-to-br from-violet to-[#6B4FD8] text-white rounded-lg p-6 shadow-soft">
-        <div className="text-[11px] font-extrabold uppercase tracking-wider opacity-80">Mes tâches</div>
-        <div className="text-3xl font-extrabold mt-1">{done} / {tasks.length}</div>
-        <div className="mt-3 h-2 rounded-full bg-white/20"><motion.div initial={{ width:0 }} animate={{ width: `${(done/tasks.length)*100}%` }} className="h-full bg-white rounded-full" /></div>
+        <div className="flex items-center justify-between mb-2">
+          <div><div className="text-[11px] font-extrabold uppercase tracking-wider opacity-80">Tâches du {fmtDate(selectedDate)}</div><div className="text-3xl font-extrabold mt-1">{done} / {tasks.length}</div></div>
+          <button onClick={()=>setShowAdd(true)} className="btn-pill bg-white text-violet shadow-soft"><Plus className="w-4 h-4" /> Nouvelle tâche</button>
+        </div>
+        <div className="h-2 rounded-full bg-white/20"><motion.div initial={{ width:0 }} animate={{ width: `${tasks.length?(done/tasks.length)*100:0}%` }} className="h-full bg-white rounded-full" /></div>
       </div>
+
+      {/* Calendrier 14j horizontal */}
+      <div className="bg-white rounded-lg p-3 shadow-softer overflow-x-auto scrollbar-thin">
+        <div className="text-xs font-extrabold uppercase text-ink-muted mb-2 px-1">Planning · programmez à l'avance</div>
+        <div className="flex gap-2">
+          {days.map(d => {
+            const dstr = d.toISOString().slice(0,10);
+            const active = dstr === selectedDate;
+            const isToday = dstr === new Date().toISOString().slice(0,10);
+            return (
+              <button key={dstr} onClick={()=>setSelectedDate(dstr)} className={`flex-shrink-0 rounded-2xl p-3 min-w-[70px] transition ${active?'bg-teal text-white shadow-soft':'bg-bgsoft text-ink-muted hover:bg-teal-light hover:text-teal-dark'}`}>
+                <div className="text-[10px] font-bold uppercase">{d.toLocaleDateString('fr-FR',{weekday:'short'})}</div>
+                <div className="text-xl font-extrabold">{d.getDate()}</div>
+                <div className="text-[10px]">{d.toLocaleDateString('fr-FR',{month:'short'})}</div>
+                {isToday && <div className={`text-[9px] font-bold mt-0.5 ${active?'text-white':'text-coral'}`}>Aujourd'hui</div>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="bg-white rounded-lg p-4 shadow-softer space-y-2">
+        {tasks.length === 0 && <div className="text-sm text-ink-muted text-center py-8">Aucune tâche pour cette date.<br/>Ajoutez-en une avec « Nouvelle tâche ».</div>}
         {tasks.map(t => (
-          <button key={t.id} onClick={()=>setTasks(tasks.map(x=>x.id===t.id?{...x,done:!x.done}:x))} className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all ${t.done?'bg-teal-light':'bg-bgsoft hover:bg-teal-light/50'}`}>
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${t.done?'bg-teal text-white':'border-2 border-ink-muted'}`}>{t.done && <CheckCircle2 className="w-4 h-4" />}</div>
-            <span className={`font-bold text-sm ${t.done?'line-through text-ink-muted':''}`}>{t.label}</span>
-          </button>
+          <div key={t.id} className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all ${t.done?'bg-teal-light':'bg-bgsoft'}`}>
+            <button onClick={()=>toggle(t)} className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${t.done?'bg-teal text-white':'border-2 border-ink-muted'}`}>{t.done && <CheckCircle2 className="w-4 h-4" />}</button>
+            <div className="flex-1 min-w-0" onClick={()=>toggle(t)}>
+              <div className={`font-bold text-sm ${t.done?'line-through text-ink-muted':''}`}>{t.label} {t.quantite>1 && <span className="text-xs text-violet font-extrabold">· ×{t.quantite}{t.unite?' '+t.unite:''}</span>}</div>
+              {t.heure_rappel && <div className="text-[11px] text-ink-muted">⏰ {t.heure_rappel}{t.rappel_avant_min?` · rappel ${t.rappel_avant_min} min avant`:''}</div>}
+            </div>
+            <div className="flex gap-1">
+              <button onClick={()=>setEdit(t)} className="p-2 rounded-full bg-white text-ink-muted hover:bg-teal hover:text-white transition"><Edit3 className="w-3 h-3" /></button>
+              <button onClick={()=>del(t)} className="p-2 rounded-full bg-white text-coral hover:bg-coral hover:text-white transition"><Trash2 className="w-3 h-3" /></button>
+            </div>
+          </div>
         ))}
       </div>
+      {showAdd && <TacheEditorModal date={selectedDate} onClose={()=>{setShowAdd(false);load();}} />}
+      {edit && <TacheEditorModal tache={edit} onClose={()=>{setEdit(null);load();}} />}
+    </div>
+  );
+}
+
+function TacheEditorModal({ tache, date, onClose }) {
+  const todayISO = () => new Date().toISOString().slice(0,10);
+  const [f, setF] = useState(tache || { label:'', quantite:1, unite:'', date: date||todayISO(), heure_rappel:'', rappel_avant_min:0 });
+  const save = async () => {
+    if (!f.label.trim()) return toast.error('Décrivez la tâche');
+    try {
+      if (tache) await api(`taches-pro/${tache.id}`, { method: 'PUT', body: JSON.stringify(f) });
+      else await api('taches-pro', { method: 'POST', body: JSON.stringify(f) });
+      toast.success(tache?'Tâche mise à jour':'Tâche ajoutée'); onClose();
+    } catch(e){ toast.error(e.message); }
+  };
+  const RAPPELS = [{v:0,l:'Aucun'},{v:5,l:'5 min avant'},{v:15,l:'15 min avant'},{v:30,l:'30 min avant'},{v:60,l:'1 heure avant'},{v:1440,l:'1 jour avant'}];
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
+        <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">{tache?'Éditer la tâche':'Nouvelle tâche'}</div><button onClick={onClose}><X className="w-5 h-5" /></button></div>
+        <div className="space-y-3">
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Tâche à faire</label>
+            <input value={f.label} onChange={e=>setF({...f,label:e.target.value})} placeholder="Ex : Préparer 5 biberons" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Quantité</label>
+              <input type="number" min="1" value={f.quantite} onChange={e=>setF({...f,quantite:+e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Unité (opt.)</label>
+              <input value={f.unite} onChange={e=>setF({...f,unite:e.target.value})} placeholder="biberons, couches…" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          </div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Date</label>
+            <input type="date" value={f.date} onChange={e=>setF({...f,date:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Heure prévue (optionnelle)</label>
+            <input type="time" value={f.heure_rappel||''} onChange={e=>setF({...f,heure_rappel:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          {f.heure_rappel && (
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Rappel programmé</label>
+              <select value={f.rappel_avant_min||0} onChange={e=>setF({...f,rappel_avant_min:+e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold">
+                {RAPPELS.map(r => <option key={r.v} value={r.v}>{r.l}</option>)}
+              </select>
+              <div className="text-[11px] text-ink-muted mt-1">🔔 Vous recevrez une notification navigateur à l'heure programmée.</div>
+            </div>
+          )}
+          <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -3028,25 +3161,6 @@ function ParentJournal() {
     <div className="space-y-4 animate-fade-up">
       {child && <ChildHeaderCard enfant={child} />}
       <div className="activity-grid">{ACTIVITY_TYPES.map(t => { const last = lastByType[t]; return <ActivityCard key={t} type={t} done={!!last} lastTime={last?fmtTime(last.heure):null} onClick={()=>{}} />; })}</div>
-    </div>
-  );
-}
-
-function ParentPhotos() {
-  const photos = [
-    'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=400',
-    'https://images.unsplash.com/photo-1519689680058-324335c77eba?w=400',
-    'https://images.unsplash.com/photo-1518991669955-9c7e78ec80a4?w=400',
-    'https://images.unsplash.com/photo-1607453998774-d533f65dac99?w=400',
-    'https://images.unsplash.com/photo-1542037104857-ffbb0b9155fb?w=400',
-    'https://images.unsplash.com/photo-1503944168849-8bf86b95eb1c?w=400',
-  ];
-  return (
-    <div className="space-y-4 animate-fade-up">
-      <div className="bg-white rounded-lg p-5 shadow-softer"><div className="font-extrabold text-lg mb-1">Album photos</div><div className="text-xs text-ink-muted">Sécurisé 🌺</div></div>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        {photos.map((p, i) => <motion.div key={i} initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ delay: i*0.05 }} className="aspect-square rounded-lg overflow-hidden shadow-softer hover:shadow-soft hover:-translate-y-1 transition-all cursor-pointer"><img src={p} alt="" className="w-full h-full object-cover" /></motion.div>)}
-      </div>
     </div>
   );
 }
@@ -3692,6 +3806,8 @@ function App() {
       case 'admin/groupes': return <AdminGroupes activeCId={activeCId} />;
       case 'admin/tags': return <AdminTags activeCId={activeCId} />;
       case 'admin/presences': return <AdminPresences activeCId={activeCId} />;
+      case 'admin/reservations': return <AdminReservations activeCId={activeCId} />;
+      case 'admin/albums': return <AlbumsView activeCId={activeCId} user={user} />;
       case 'admin/synthese': return <AdminSynthese activeCId={activeCId} />;
       case 'admin/nourriture': return <NourritureView activeCId={activeCId} canEdit={canEdit} />;
       case 'admin/rappels': return <RappelsView activeCId={activeCId} canEdit={canEdit} />;
@@ -3719,6 +3835,7 @@ function App() {
       case 'pro/documents': return <DocumentsView activeCId={user.creche_id} canEdit />;
       case 'pro/news': return <NewsView activeCId={user.creche_id} canEdit={false} />;
       case 'pro/taches': return <ProTaches />;
+      case 'pro/albums': return <AlbumsView activeCId={user.creche_id} user={user} />;
       case 'pro/feedback': return <FeedbackForm user={user} />;
       case 'parent/live': return <ParentLive user={user} />;
       case 'parent/journal': return <ParentJournal />;
@@ -3744,6 +3861,305 @@ function App() {
       </main>
     </div>
   );
+}
+
+function ParentPhotos() {
+  const [data, setData] = useState({ albums: [], chat_medias: [] });
+  const [tab, setTab] = useState('albums');
+  const [openAlbum, setOpenAlbum] = useState(null);
+  useEffect(() => { (async()=>{try{const d = await api('parent/photos'); setData(d);}catch(e){}})(); }, []);
+  return (
+    <div className="space-y-4 animate-fade-up">
+      <div className="bg-white rounded-lg p-4 shadow-softer flex items-center gap-3">
+        <ImageIcon className="w-8 h-8 text-teal" />
+        <div className="flex-1"><div className="font-extrabold text-lg">Album photos</div><div className="text-xs text-ink-muted">Sécurisé 🌺 · vos souvenirs de la crèche</div></div>
+        <span className="text-[10px] font-bold px-2 py-1 rounded-full bg-teal-light text-teal-dark">{(data.albums||[]).length} albums · {(data.chat_medias||[]).length} médias</span>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={()=>setTab('albums')} className={`btn-pill text-sm ${tab==='albums'?'bg-teal text-white shadow-soft':'bg-white text-ink-muted'}`}>📸 Albums ({(data.albums||[]).length})</button>
+        <button onClick={()=>setTab('chat')} className={`btn-pill text-sm ${tab==='chat'?'bg-teal text-white shadow-soft':'bg-white text-ink-muted'}`}>💬 Depuis les discussions ({(data.chat_medias||[]).length})</button>
+      </div>
+      {tab === 'albums' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {(data.albums||[]).length === 0 && <div className="col-span-full"><PlaceholderView title="Aucun album pour l'instant" icon={ImageIcon} subtitle="Vos éducateurs et l'employeur créent des albums (sorties, thèmes…). Vous serez notifié à chaque ajout." /></div>}
+          {(data.albums||[]).map(a => (
+            <button key={a.id} onClick={()=>setOpenAlbum(a)} className="bg-white rounded-lg overflow-hidden shadow-softer hover:shadow-soft hover:-translate-y-1 transition text-left">
+              <div className="aspect-video bg-bgsoft relative">
+                {a.medias?.[0] ? <img src={a.medias[0].url} alt="" className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-ink-muted"><ImageIcon className="w-10 h-10 opacity-40" /></div>}
+                <div className="absolute top-2 right-2 bg-white/90 text-teal-dark text-[10px] font-bold px-2 py-1 rounded-full">{(a.medias||[]).length} médias</div>
+              </div>
+              <div className="p-3"><div className="font-extrabold truncate-1">{a.nom}</div><div className="text-xs text-ink-muted">{a.theme || 'Album'} · {fmtDate(a.date||a.created_at)}</div></div>
+            </button>
+          ))}
+        </div>
+      )}
+      {tab === 'chat' && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {(data.chat_medias||[]).length === 0 && <div className="col-span-full text-center text-ink-muted text-sm py-8">Aucun média partagé via les discussions.</div>}
+          {(data.chat_medias||[]).map((m,i) => (
+            <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="aspect-square rounded-lg overflow-hidden shadow-softer relative group">
+              {m.type==='video' ? <video src={m.url} className="w-full h-full object-cover" /> : <img src={m.url} alt="" className="w-full h-full object-cover" />}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 text-white text-[10px] font-bold opacity-0 group-hover:opacity-100 transition">
+                <div>{m.from_nom}</div><div>{fmtDate(m.created_at)}</div>
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+      {openAlbum && (
+        <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 overflow-y-auto" onClick={()=>setOpenAlbum(null)}>
+          <div onClick={e=>e.stopPropagation()} className="bg-white rounded-lg p-5 w-full max-w-3xl my-6 max-h-[90vh] overflow-y-auto scrollbar-thin">
+            <div className="flex items-center justify-between mb-3"><div><div className="font-extrabold text-lg">{openAlbum.nom}</div><div className="text-xs text-ink-muted">{openAlbum.theme || 'Album'} · {fmtDate(openAlbum.date||openAlbum.created_at)}</div></div><button onClick={()=>setOpenAlbum(null)}><X className="w-5 h-5" /></button></div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {(openAlbum.medias||[]).map((m,i) => (
+                <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="aspect-square rounded-lg overflow-hidden shadow-softer">
+                  {m.type==='video' ? <video src={m.url} controls className="w-full h-full object-cover" /> : <img src={m.url} alt="" className="w-full h-full object-cover" />}
+                </a>
+              ))}
+              {(openAlbum.medias||[]).length === 0 && <div className="col-span-full text-center text-ink-muted text-sm py-8">Album vide pour l'instant.</div>}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AlbumsView({ activeCId, user }) {
+  const [albums, setAlbums] = useState([]);
+  const [enfants, setEnfants] = useState([]);
+  const [edit, setEdit] = useState(null);
+  const [open, setOpen] = useState(null);
+  const load = async () => {
+    try {
+      const a = await api('albums'+(activeCId?`?creche_id=${activeCId}`:'')); setAlbums(a.albums||[]);
+      const e = await api('enfants'+(activeCId?`?creche_id=${activeCId}`:'')); setEnfants(e.enfants||[]);
+    } catch(err){}
+  };
+  useEffect(() => { load(); }, [activeCId]);
+  const del = async (a) => { if (!confirm(`Supprimer l'album "${a.nom}" ?`)) return; try { await api(`albums/${a.id}`, { method: 'DELETE' }); toast.success('Album supprimé'); load(); } catch(e){ toast.error(e.message); } };
+  const onUploadTo = async (albumId, media) => {
+    try { await api(`albums/${albumId}/medias`, { method: 'POST', body: JSON.stringify({ url: media.url, type: media.format?.startsWith('video')?'video':'image' }) }); toast.success('Média ajouté'); load(); }
+    catch(e){ toast.error(e.message); }
+  };
+  return (
+    <div className="space-y-4 animate-fade-up">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="text-xs text-ink-muted">Créez des albums thématiques (sortie parc, atelier peinture, anniversaires…) et ajoutez photos/vidéos. Les parents concernés reçoivent une notification.</div>
+        <button onClick={()=>setEdit('new')} className="btn-pill bg-teal text-white shadow-soft"><Plus className="w-4 h-4" /> Nouvel album</button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {albums.length === 0 && <div className="col-span-full"><PlaceholderView title="Aucun album" icon={ImageIcon} subtitle="Créez votre premier album" /></div>}
+        {albums.map(a => (
+          <div key={a.id} className="bg-white rounded-lg overflow-hidden shadow-softer">
+            <button onClick={()=>setOpen(a)} className="w-full aspect-video bg-bgsoft relative">
+              {a.medias?.[0] ? <img src={a.medias[0].url} alt="" className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-ink-muted"><ImageIcon className="w-10 h-10 opacity-40" /></div>}
+              <div className="absolute top-2 right-2 bg-white/90 text-teal-dark text-[10px] font-bold px-2 py-1 rounded-full">{(a.medias||[]).length} médias</div>
+            </button>
+            <div className="p-3">
+              <div className="font-extrabold truncate-1">{a.nom}</div>
+              <div className="text-xs text-ink-muted truncate-1">{a.theme || 'Album'} · {fmtDate(a.date||a.created_at)}</div>
+              {a.enfants_ids?.length > 0 && <div className="text-[10px] text-ink-muted mt-1">👶 {a.enfants_ids.length} enfant{a.enfants_ids.length>1?'s':''} concerné{a.enfants_ids.length>1?'s':''}</div>}
+              <div className="mt-2 flex gap-1">
+                <MediaUploader folder={`albums/${a.id}`} onUpload={(m)=>onUploadTo(a.id, m)} />
+                <button onClick={()=>setEdit(a)} className="btn-pill bg-bgsoft text-ink-muted text-xs"><Edit3 className="w-3 h-3" /></button>
+                <button onClick={()=>del(a)} className="btn-pill bg-coral/10 text-coral text-xs"><Trash2 className="w-3 h-3" /></button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {edit && <AlbumEditorModal album={edit==='new'?null:edit} enfants={enfants} activeCId={activeCId} onClose={()=>{setEdit(null);load();}} />}
+      {open && (
+        <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 overflow-y-auto" onClick={()=>setOpen(null)}>
+          <div onClick={e=>e.stopPropagation()} className="bg-white rounded-lg p-5 w-full max-w-3xl my-6 max-h-[90vh] overflow-y-auto scrollbar-thin">
+            <div className="flex items-center justify-between mb-3"><div className="font-extrabold text-lg">{open.nom}</div><button onClick={()=>setOpen(null)}><X className="w-5 h-5" /></button></div>
+            <MediaUploader folder={`albums/${open.id}`} onUpload={(m)=>onUploadTo(open.id, m)} />
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-3">
+              {(open.medias||[]).map((m,i) => (
+                <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="aspect-square rounded-lg overflow-hidden shadow-softer">
+                  {m.type==='video' ? <video src={m.url} controls className="w-full h-full object-cover" /> : <img src={m.url} alt="" className="w-full h-full object-cover" />}
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AlbumEditorModal({ album, enfants, activeCId, onClose }) {
+  const [f, setF] = useState(album || { nom:'', theme:'', date: new Date().toISOString().slice(0,10), enfants_ids: [] });
+  const toggle = (id) => { const cur = f.enfants_ids || []; setF({ ...f, enfants_ids: cur.includes(id) ? cur.filter(x=>x!==id) : [...cur, id] }); };
+  const save = async () => {
+    if (!f.nom.trim()) return toast.error('Nommez l\'album');
+    try {
+      if (album) await api(`albums/${album.id}`, { method: 'PUT', body: JSON.stringify(f) });
+      else await api('albums', { method: 'POST', body: JSON.stringify({ ...f, creche_id: activeCId }) });
+      toast.success(album?'Album mis à jour':'Album créé'); onClose();
+    } catch(e){ toast.error(e.message); }
+  };
+  return (
+    <div className="fixed inset-0 bg-black/40 z-[70] flex items-start md:items-center justify-center p-4 overflow-y-auto">
+      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6">
+        <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">{album?'Éditer l\'album':'Nouvel album'}</div><button onClick={onClose}><X className="w-5 h-5" /></button></div>
+        <div className="space-y-3">
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Nom</label><input value={f.nom} onChange={e=>setF({...f,nom:e.target.value})} placeholder="Ex : Sortie parc du 15/07" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Thème</label><input value={f.theme||''} onChange={e=>setF({...f,theme:e.target.value})} placeholder="Sortie, atelier, anniversaire…" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Date</label><input type="date" value={f.date} onChange={e=>setF({...f,date:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div>
+            <div className="flex items-center justify-between"><label className="text-xs font-extrabold uppercase text-ink-muted">Enfants concernés (optionnel)</label><span className="text-xs text-ink-muted">{(f.enfants_ids||[]).length} sélectionnés</span></div>
+            <div className="mt-2 bg-bgsoft rounded-2xl p-2 max-h-40 overflow-y-auto space-y-1">
+              {enfants.map(en => {
+                const checked = (f.enfants_ids||[]).includes(en.id);
+                return <label key={en.id} className={`flex items-center gap-2 p-2 rounded-xl cursor-pointer ${checked?'bg-teal text-white':'bg-white'}`}><input type="checkbox" checked={checked} onChange={()=>toggle(en.id)} className="w-4 h-4 accent-teal-dark" /><span className="text-sm font-semibold">{en.prenom} {en.nom}</span></label>;
+              })}
+              {enfants.length === 0 && <div className="text-xs text-ink-muted p-2 italic">Aucun enfant enregistré.</div>}
+            </div>
+            <div className="text-[11px] text-ink-muted mt-1">Vide = album visible par toutes les familles</div>
+          </div>
+          <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Enregistrer</button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ===== ADMIN RÉSERVATIONS (planning mensuel) =====
+function AdminReservations({ activeCId }) {
+  const [enfants, setEnfants] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [month, setMonth] = useState(new Date().toISOString().slice(0,7)); // YYYY-MM
+  const [reservations, setReservations] = useState([]);
+  const load = async () => {
+    try {
+      const e = await api('enfants'+(activeCId?`?creche_id=${activeCId}`:'')); setEnfants(e.enfants); if (!selected) setSelected(e.enfants[0]?.id);
+    } catch(err){}
+  };
+  const loadRes = async () => {
+    if (!selected) return;
+    try { const r = await api(`reservations?enfant_id=${selected}&month=${month}`); setReservations(r.reservations||[]); } catch(e){}
+  };
+  useEffect(() => { load(); }, [activeCId]);
+  useEffect(() => { loadRes(); }, [selected, month]);
+
+  const child = enfants.find(e => e.id === selected);
+  const [y, m] = month.split('-').map(Number);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const firstDay = new Date(y, m-1, 1).getDay(); // 0=Sun
+  const offset = firstDay === 0 ? 6 : firstDay - 1; // aligner lundi
+
+  const toggleDay = async (dstr) => {
+    if (!child) return;
+    const existing = reservations.find(r => r.date === dstr);
+    try {
+      const arrivee = existing?.arrivee || (child.presences_hebdo?.[getJourFr(dstr)]?.arrivee) || '08:00';
+      const depart = existing?.depart || (child.presences_hebdo?.[getJourFr(dstr)]?.depart) || '17:00';
+      const present = !existing?.present;
+      await api('reservations', { method: 'POST', body: JSON.stringify({ enfant_id: child.id, creche_id: activeCId, date: dstr, present, arrivee, depart }) });
+      loadRes();
+    } catch(e){ toast.error(e.message); }
+  };
+
+  // Calcul du prévisionnel de facture
+  const nbJoursPrevus = reservations.filter(r=>r.present).length;
+  const heuresMois = reservations.filter(r=>r.present).reduce((s,r) => {
+    const [ah,am] = (r.arrivee||'08:00').split(':').map(Number); const [dh,dm] = (r.depart||'17:00').split(':').map(Number);
+    return s + Math.max(0, (dh*60+dm)-(ah*60+am))/60;
+  }, 0);
+  const heuresContratMensuel = (child?.contrat_heures||35) * 4.33;
+  const factureMois = child ? (child.mensualite * Math.min(1, heuresMois/heuresContratMensuel)) : 0;
+
+  return (
+    <div className="space-y-4 animate-fade-up">
+      <div className="bg-white rounded-lg p-4 shadow-softer">
+        <div className="text-xs text-ink-muted mb-2">📅 Planifiez les jours & horaires de présence prévus par mois. La facture est recalculée automatiquement au prorata (les jours non cochés = absence = déduction).</div>
+      </div>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          {enfants.map(e => <button key={e.id} onClick={()=>setSelected(e.id)} className={`btn-pill text-xs flex-shrink-0 ${selected===e.id?'bg-teal text-white':'bg-white text-ink-muted'}`}><Avatar enfant={e} size={22} /> {e.prenom}</button>)}
+        </div>
+        <input type="month" value={month} onChange={e=>setMonth(e.target.value)} className="px-3 py-2 rounded-pill bg-white outline-none text-sm font-semibold shadow-softer" />
+      </div>
+      {child && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="bg-white rounded-lg p-4 shadow-softer"><div className="text-[11px] font-extrabold uppercase text-ink-muted">Jours prévus</div><div className="text-2xl font-extrabold mt-1">{nbJoursPrevus}</div></div>
+            <div className="bg-white rounded-lg p-4 shadow-softer"><div className="text-[11px] font-extrabold uppercase text-ink-muted">Heures prévues</div><div className="text-2xl font-extrabold mt-1">{heuresMois.toFixed(0)}h</div><div className="text-[10px] text-ink-muted">sur {heuresContratMensuel.toFixed(0)}h contrat mensuel</div></div>
+            <div className="bg-gradient-to-br from-teal to-teal-dark text-white rounded-lg p-4 shadow-soft"><div className="text-[11px] font-extrabold uppercase opacity-80">Facture prévisionnelle</div><div className="text-2xl font-extrabold mt-1">{fmtEur(factureMois)}</div><div className="text-[10px] opacity-80">recalculée au prorata</div></div>
+          </div>
+          <div className="bg-white rounded-lg p-4 shadow-softer">
+            <div className="text-xs font-extrabold uppercase text-ink-muted mb-2">Cliquez sur un jour pour cocher/décocher la présence</div>
+            <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-ink-muted mb-1">
+              {['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(d => <div key={d}>{d}</div>)}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({length: offset}, (_,i) => <div key={'sp'+i} />)}
+              {Array.from({length: daysInMonth}, (_,i) => {
+                const day = i+1;
+                const dstr = `${month}-${String(day).padStart(2,'0')}`;
+                const r = reservations.find(x => x.date === dstr);
+                const isWknd = [0,6].includes(new Date(y, m-1, day).getDay());
+                return (
+                  <button key={dstr} onClick={()=>toggleDay(dstr)} className={`aspect-square rounded-2xl p-1 transition ${r?.present?'bg-teal text-white shadow-soft':isWknd?'bg-bgsoft/40 text-ink-muted':'bg-bgsoft text-ink-muted hover:bg-teal-light hover:text-teal-dark'}`}>
+                    <div className="text-sm font-extrabold">{day}</div>
+                    {r?.present && <div className="text-[8px] font-bold">{r.arrivee}→{r.depart}</div>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+function getJourFr(dstr) { const d = new Date(dstr); const j = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi']; return j[d.getDay()]; }
+
+// ===== Bilan hebdo PDF generation =====
+function generateBilanHebdoPDF(enfant, stats, tags) {
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Bilan hebdo — ${enfant.prenom} ${enfant.nom}</title>
+    <style>
+      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:40px;color:#2D3748;max-width:800px;margin:auto;}
+      header{border-bottom:3px solid #3ECDB5;padding-bottom:20px;margin-bottom:30px;display:flex;justify-content:space-between;align-items:flex-start;}
+      .brand{color:#3ECDB5;font-weight:900;font-size:28px;}.brand small{display:block;font-size:11px;color:#718096;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-top:4px;}
+      h1{color:#2D3748;font-size:24px;margin:0;}
+      .child{display:flex;gap:15px;align-items:center;margin-bottom:20px;background:#F5F7F9;padding:15px;border-radius:16px;}
+      .child-info b{display:block;font-size:11px;color:#3ECDB5;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;}
+      .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0;}
+      .stat{padding:15px;border-radius:12px;text-align:center;}
+      .stat b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+      .stat .val{font-size:22px;font-weight:900;}
+      .tags{display:flex;flex-wrap:wrap;gap:6px;margin:15px 0;}
+      .tag{padding:4px 10px;border-radius:999px;font-weight:700;font-size:11px;}
+      footer{margin-top:60px;padding-top:20px;border-top:1px solid #E2E8F0;font-size:11px;color:#718096;text-align:center;}
+      @media print { body { padding: 20px; } }
+    </style></head><body>
+    <header><div><div class="brand">TiMétis<small>Made in 974 · Bilan hebdomadaire</small></div></div><div style="text-align:right;font-size:12px;color:#718096;"><b>Semaine du</b><br/>${new Date().toLocaleDateString('fr-FR')}</div></header>
+    <h1>Bilan hebdomadaire</h1>
+    <div class="child">
+      <div style="width:60px;height:60px;border-radius:50%;background:#3ECDB5;color:white;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;">${(enfant.prenom||'?').charAt(0)}${(enfant.nom||'?').charAt(0)}</div>
+      <div class="child-info"><b>Enfant</b><div style="font-size:20px;font-weight:900;">${enfant.prenom} ${enfant.nom}</div><div style="font-size:12px;color:#718096;">Section ${enfant.groupe||'—'} · Contrat ${enfant.contrat_heures||35}h/sem</div></div>
+    </div>
+    ${tags && tags.length > 0 ? `<div class="tags">${tags.map(t=>`<span class="tag" style="background:${t.couleur}22;color:${t.couleur};">${t.nom}</span>`).join('')}</div>` : ''}
+    <div class="grid">
+      <div class="stat" style="background:#E3F2FD;color:#42A5F5"><b>Sieste</b><div class="val">${stats?.sieste||'8h30'}</div></div>
+      <div class="stat" style="background:#FFE9E9;color:#FF6B6B"><b>Biberons</b><div class="val">${stats?.biberons||14}</div></div>
+      <div class="stat" style="background:#E8F5E9;color:#66BB6A"><b>Changes</b><div class="val">${stats?.changes||18}</div></div>
+      <div class="stat" style="background:#EFEAFF;color:#8B6BE8"><b>Activités</b><div class="val">${stats?.activites||7}</div></div>
+    </div>
+    <h2 style="color:#3ECDB5;font-size:14px;text-transform:uppercase;letter-spacing:1px;margin-top:30px;">Observations de la semaine</h2>
+    <div style="background:#F5F7F9;padding:20px;border-radius:12px;font-size:13px;line-height:1.6;">
+      <p>${enfant.prenom} a passé une belle semaine à la crèche. Éveil, socialisation et petits moments doux au programme. Toute l'équipe est ravie de partager ces bilans avec vous.</p>
+      <p style="color:#718096;font-size:11px;font-style:italic;">📝 Cet espace peut être personnalisé par l'équipe éducative.</p>
+    </div>
+    <footer>TiMétis · Solution locale de gestion de crèche · Made in 974 🌺<br/>Bilan édité automatiquement — Merci pour votre confiance.</footer>
+    <script>window.onload=()=>{window.print();setTimeout(()=>window.close(),500);};</script>
+    </body></html>`;
+  const w = window.open('', '_blank', 'width=800,height=900');
+  if (w) { w.document.write(html); w.document.close(); }
+  else toast.error('Pop-up bloqué — autorisez les pop-ups');
 }
 
 export default App;
