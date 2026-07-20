@@ -10,8 +10,9 @@ import { OAuth2Client } from 'google-auth-library';
 export const runtime = 'nodejs';
 
 const MONGO_URL = process.env.MONGO_URL;
-const DB_NAME = process.env.DB_NAME && process.env.DB_NAME !== 'your_database_name' ? process.env.DB_NAME : 'timetis';
-const JWT_SECRET = process.env.JWT_SECRET || 'timetis-dev-secret-974';
+const DB_NAME = process.env.DB_NAME || 'timetis';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) console.warn('⚠️ JWT_SECRET manquant · dev fallback');
 
 // ---- Web Push VAPID ----
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
