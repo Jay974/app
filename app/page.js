@@ -13,7 +13,7 @@ import {
   Newspaper, AlertTriangle, Award, FileCheck, Layers, Tag as TagIcon,
   UtensilsCrossed, Package, Video, Paperclip, Trash2, Edit3, Save, Copy,
   Building2, CreditCard, ShieldCheck, Zap, Star, MessageSquare, User,
-  Check, Download
+  Check, Download, UserPlus, Key, Link as LinkIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -231,6 +231,7 @@ function Sidebar({ user, view, setView, open, setOpen }) {
     super_admin: [
       { key: 'super/dashboard', label: 'Cockpit', icon: BarChart3 },
       { key: 'super/clients', label: 'Mes clients', icon: Users },
+      { key: 'super/onboard', label: 'Onboarding client', icon: UserPlus, highlight: true },
       { key: 'super/prospects', label: 'Pré-inscriptions crèches', icon: UserCheck },
       { key: 'super/factures', label: 'Devis & factures', icon: FileText },
       { key: 'super/feedbacks', label: 'Avis & suggestions', icon: MessageSquare },
@@ -261,6 +262,7 @@ function Sidebar({ user, view, setView, open, setOpen }) {
       { key: 'admin/statistiques', label: 'Statistiques', icon: BarChart3 },
       { key: 'admin/administration', label: 'Administration', icon: Settings },
       { key: 'admin/creches', label: 'Mes crèches', icon: Building2, highlight: true },
+      { key: 'admin/invitations', label: 'Invitations parents', icon: UserPlus, highlight: true },
       { key: 'admin/rgpd', label: 'RGPD & conditions', icon: ShieldCheck },
       { key: 'admin/albums', label: 'Albums photos', icon: ImageIcon },
       { key: 'admin/messagerie', label: 'Discussions', icon: MessageCircle },
@@ -3868,8 +3870,42 @@ function App() {
   const [activeCId, setActiveCId] = useState(null);
 
   useEffect(() => {
-    const stored = typeof window !== 'undefined' ? localStorage.getItem('tk_user') : null;
-    const token = typeof window !== 'undefined' ? localStorage.getItem('tk_token') : null;
+    // Vérifier magic link ?code=XXXX dans l'URL (auto-login super admin ou invitation)
+    if (typeof window === 'undefined') { setBootLoaded(true); return; }
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    if (code && window.location.pathname.startsWith('/join')) {
+      (async () => {
+        try {
+          const r = await fetch(window.location.origin + '/api/invitations/code/' + code);
+          if (r.ok) {
+            const info = await r.json();
+            if (info.type === 'magic_link') {
+              // Auto-login direct
+              const login = await fetch(window.location.origin + '/api/auth/magic-login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ code }) });
+              if (login.ok) {
+                const d = await login.json();
+                localStorage.setItem('tk_token', d.token);
+                localStorage.setItem('tk_user', JSON.stringify(d.user));
+                toast.success(`Bienvenue ${d.user.prenom} !`);
+                window.history.replaceState({}, '', '/');
+                setUser(d.user); setView(defaultViewFor(d.user.role));
+                if (d.user.role === 'admin' && d.user.creche_ids?.length) setActiveCId(d.user.creche_ids[0]);
+                setBootLoaded(true); return;
+              }
+            } else if (info.type === 'invitation') {
+              // Stocker pour l'écran d'inscription
+              sessionStorage.setItem('tk_invitation', JSON.stringify({ ...info, code }));
+              toast.info(`Invitation valide pour la crèche « ${info.creche?.nom} »`);
+            }
+          } else {
+            toast.error('Lien invalide ou expiré');
+          }
+        } catch(e){ toast.error(e.message); }
+      })();
+    }
+    const stored = localStorage.getItem('tk_user');
+    const token = localStorage.getItem('tk_token');
     if (stored && token) {
       try {
         const u = JSON.parse(stored);
@@ -3930,6 +3966,7 @@ function App() {
     switch (view) {
       case 'super/dashboard': return <SuperDashboard />;
       case 'super/clients': return <SuperClients />;
+      case 'super/onboard': return <SuperOnboardClient />;
       case 'super/prospects': return <SuperProspects />;
       case 'super/factures': return <SuperDevisFactures />;
       case 'super/feedbacks': return <SuperFeedbacks />;
@@ -3940,7 +3977,8 @@ function App() {
       case 'admin/notifications': return <NotificationsView activeCId={activeCId} canSend />;
       case 'admin/statistiques': return <StatistiquesView activeCId={activeCId} />;
       case 'admin/administration': return <AdministrationHub setView={setView} />;
-      case 'admin/creches': return <AdminCrechesView user={user} activeCId={activeCId} setActiveCId={setActiveCId} setCreches={setCreches} />;;
+      case 'admin/creches': return <AdminCrechesView user={user} activeCId={activeCId} setActiveCId={setActiveCId} setCreches={setCreches} />;
+      case 'admin/invitations': return <AdminInvitations activeCId={activeCId} />;;
       case 'admin/rgpd': return <RGPDView />;
       case 'admin/enfants': return <AdminEnfants activeCId={activeCId} />;
       case 'admin/familles': return <AdminFamilles activeCId={activeCId} />;
@@ -4451,6 +4489,253 @@ function CrecheEditorModal({ creche, nbCreches, onClose }) {
             </div>
           )}
           <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> {creche?'Enregistrer':'Créer & activer'}</button>
+        </div>
+      </motion.div>
+    </div>, document.body):null)
+  );
+}
+
+function SuperOnboardClient() {
+  const [showAdd, setShowAdd] = useState(false);
+  const [lastResult, setLastResult] = useState(null); // {credentials, magic_link_code, email_body}
+  const [clients, setClients] = useState([]);
+  const load = async () => { try { const c = await api('super/clients'); setClients(c.clients||[]); } catch(e){} };
+  useEffect(() => { load(); }, []);
+
+  return (
+    <div className="space-y-4 animate-fade-up">
+      <div className="bg-gradient-to-br from-violet to-[#6B4FD8] text-white rounded-lg p-5 shadow-soft">
+        <div className="text-[11px] font-extrabold uppercase tracking-wider opacity-80">Onboarding client</div>
+        <div className="text-2xl font-extrabold mt-1">Créer un compte crèche · lien magique</div>
+        <div className="text-xs opacity-90 mt-2">Créez le compte du client, sa 1ʳᵉ crèche et récupérez un lien direct + mot de passe temporaire à lui envoyer.</div>
+        <button onClick={()=>setShowAdd(true)} className="mt-3 btn-pill bg-white text-violet shadow-soft"><UserPlus className="w-4 h-4" /> Créer un client</button>
+      </div>
+
+      {lastResult && (
+        <div className="bg-white rounded-lg p-5 shadow-softer border-l-4 border-teal">
+          <div className="flex items-center gap-2 mb-3"><Check className="w-5 h-5 text-teal" /><div className="font-extrabold text-lg">✅ Client créé · Copiez ces infos</div></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="p-3 rounded-2xl bg-bgsoft">
+              <div className="text-[10px] font-bold uppercase text-ink-muted mb-1">Email</div>
+              <div className="font-mono text-sm font-bold">{lastResult.credentials.email}</div>
+              <button onClick={()=>{navigator.clipboard.writeText(lastResult.credentials.email); toast.success('Copié');}} className="mt-1 text-[10px] font-bold text-teal-dark hover:underline">Copier</button>
+            </div>
+            <div className="p-3 rounded-2xl bg-bgsoft">
+              <div className="text-[10px] font-bold uppercase text-ink-muted mb-1">Mot de passe temporaire</div>
+              <div className="font-mono text-sm font-bold">{lastResult.credentials.password_temp}</div>
+              <button onClick={()=>{navigator.clipboard.writeText(lastResult.credentials.password_temp); toast.success('Copié');}} className="mt-1 text-[10px] font-bold text-teal-dark hover:underline">Copier</button>
+            </div>
+          </div>
+          <div className="mt-3 p-3 rounded-2xl bg-teal-light">
+            <div className="text-[10px] font-bold uppercase text-teal-dark mb-1">🔗 Lien magique (auto-connexion, valable 30 jours)</div>
+            <div className="font-mono text-xs break-all">{window.location.origin}/join?code={lastResult.magic_link_code}</div>
+            <div className="mt-2 flex gap-2 flex-wrap">
+              <button onClick={()=>{navigator.clipboard.writeText(window.location.origin+'/join?code='+lastResult.magic_link_code); toast.success('Lien copié');}} className="btn-pill bg-teal text-white text-xs shadow-soft"><Copy className="w-3 h-3" /> Copier le lien</button>
+              <button onClick={()=>{
+                const subject = encodeURIComponent('Bienvenue sur TiMétis · Vos accès');
+                const body = encodeURIComponent(lastResult.email_body.replace('https://timetis.re', window.location.origin));
+                window.location.href = `mailto:${lastResult.credentials.email}?subject=${subject}&body=${body}`;
+              }} className="btn-pill bg-coral text-white text-xs shadow-soft"><Send className="w-3 h-3" /> Envoyer par email</button>
+              <button onClick={()=>setLastResult(null)} className="btn-pill bg-bgsoft text-ink-muted text-xs">Fermer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-lg p-5 shadow-softer">
+        <div className="font-extrabold text-lg mb-3">Clients récents ({clients.length})</div>
+        <div className="space-y-2">
+          {clients.length === 0 && <div className="text-sm text-ink-muted text-center py-6">Aucun client encore créé.</div>}
+          {clients.slice(0, 10).map(c => (
+            <div key={c.id} className="flex items-center gap-3 p-3 rounded-2xl bg-bgsoft">
+              <Avatar user={c} size={36} />
+              <div className="flex-1 min-w-0">
+                <div className="font-bold truncate-1">{c.prenom} {c.nom}</div>
+                <div className="text-xs text-ink-muted truncate-1">{c.email} · {c.creches?.length||0} crèche(s)</div>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${c.subscription?.status==='active'?'bg-teal-light text-teal-dark':'bg-amber/20 text-amber'}`}>{c.subscription?.status||'inactif'}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {showAdd && <SuperOnboardModal onClose={()=>{setShowAdd(false); load();}} onCreated={(r)=>{setLastResult(r); setShowAdd(false); load();}} />}
+    </div>
+  );
+}
+
+function SuperOnboardModal({ onClose, onCreated }) {
+  const [f, setF] = useState({ prenom:'', nom:'', email:'', tel:'', notes:'', creche_nom:'', creche_ville:'', creche_adresse:'', creche_capacite:20, creche_tel:'' });
+  const submit = async () => {
+    if (!f.email || !f.prenom || !f.creche_nom) return toast.error('Prénom, email et nom de crèche obligatoires');
+    try {
+      const r = await api('super/onboard-client', { method: 'POST', body: JSON.stringify({ ...f, app_url: window.location.origin }) });
+      toast.success('Client créé avec succès !'); onCreated(r);
+    } catch(e){ toast.error(e.message); }
+  };
+  return (
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/50 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-lg my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="font-extrabold text-lg">Onboarder un nouveau client</div>
+            <div className="text-xs text-ink-muted">Compte admin + 1ʳᵉ crèche + magic link auto</div>
+          </div>
+          <button onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+        <div className="space-y-3">
+          <div className="text-[10px] font-extrabold uppercase text-violet mt-2">👤 Contact client (admin employeur)</div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Prénom</label><input value={f.prenom} onChange={e=>setF({...f,prenom:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Nom</label><input value={f.nom} onChange={e=>setF({...f,nom:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          </div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Email</label><input type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="admin@creche.re" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Téléphone</label><input value={f.tel} onChange={e=>setF({...f,tel:e.target.value})} placeholder="0692 …" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+
+          <div className="text-[10px] font-extrabold uppercase text-teal-dark mt-4">🏢 1ʳᵉ crèche</div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Nom de la crèche</label><input value={f.creche_nom} onChange={e=>setF({...f,creche_nom:e.target.value})} placeholder="Les P'tits Bouts · Saint-Denis" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Ville</label><input value={f.creche_ville} onChange={e=>setF({...f,creche_ville:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Capacité</label><input type="number" value={f.creche_capacite} onChange={e=>setF({...f,creche_capacite:+e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          </div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Adresse</label><input value={f.creche_adresse} onChange={e=>setF({...f,creche_adresse:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Notes admin (interne)</label><textarea value={f.notes} onChange={e=>setF({...f,notes:e.target.value})} rows={2} className="w-full mt-1 px-4 py-2.5 rounded-2xl bg-bgsoft outline-none text-sm font-semibold resize-none" /></div>
+
+          <button onClick={submit} className="btn-pill w-full bg-violet text-white shadow-soft"><UserPlus className="w-4 h-4" /> Créer le client & générer le lien</button>
+        </div>
+      </motion.div>
+    </div>, document.body):null)
+  );
+}
+
+function AdminInvitations({ activeCId }) {
+  const [invitations, setInvitations] = useState([]);
+  const [enfants, setEnfants] = useState([]);
+  const [pending, setPending] = useState([]);
+  const [crecheCode, setCrecheCode] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [lastLink, setLastLink] = useState(null);
+  const load = async () => {
+    try {
+      const inv = await api('invitations'); setInvitations(inv.invitations||[]);
+      const en = await api('enfants'+(activeCId?`?creche_id=${activeCId}`:'')); setEnfants(en.enfants||[]);
+      const cc = await api('admin/creche-code'); setCrecheCode(cc);
+      const pp = await api('admin/pending-parents'); setPending(pp.parents||[]);
+    } catch(e){}
+  };
+  useEffect(() => { load(); }, [activeCId]);
+  const regenCode = async () => { if (!confirm('Régénérer le code crèche ? L\'ancien code sera invalidé.')) return; try { const r = await api('admin/creche-code/regen', { method: 'POST' }); setCrecheCode({ ...crecheCode, code: r.code }); toast.success('Nouveau code : '+r.code); } catch(e){ toast.error(e.message); } };
+  const delInv = async (inv) => { if (!confirm(`Supprimer l'invitation pour ${inv.email} ?`)) return; try { await api(`invitations/${inv.id}`, { method: 'DELETE' }); toast.success('Supprimée'); load(); } catch(e){ toast.error(e.message); } };
+  const claim = async (p) => {
+    const enfantSelect = prompt(`Rattacher ${p.prenom} ${p.nom} à cette crèche.\nRéclamez ce parent en tapant l'ID d'un de vos enfants ou laissez vide :`);
+    try { await api('admin/claim-parent', { method: 'POST', body: JSON.stringify({ parent_id: p.id, creche_id: activeCId, enfant_id: enfantSelect || null }) }); toast.success('Parent rattaché'); load(); } catch(e){ toast.error(e.message); }
+  };
+  return (
+    <div className="space-y-4 animate-fade-up">
+      {/* Code crèche pour auto-inscription */}
+      {crecheCode && (
+        <div className="bg-gradient-to-br from-teal to-teal-dark text-white rounded-lg p-5 shadow-soft">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <div className="text-[11px] font-extrabold uppercase tracking-wider opacity-80">Code crèche · auto-inscription publique</div>
+              <div className="text-4xl font-extrabold mt-1 tracking-widest font-mono">{crecheCode.code}</div>
+              <div className="text-xs opacity-90 mt-1">Partagez ce code aux parents · ils l'entrent lors de l'inscription publique</div>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={()=>{navigator.clipboard.writeText(crecheCode.code); toast.success('Copié');}} className="btn-pill bg-white/15 text-white text-xs"><Copy className="w-3 h-3" /> Copier</button>
+              <button onClick={regenCode} className="btn-pill bg-white/15 text-white text-xs">🔄 Régénérer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invitations directes */}
+      <div className="bg-white rounded-lg p-5 shadow-softer">
+        <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+          <div>
+            <div className="font-extrabold text-lg">Invitations · lien direct par email</div>
+            <div className="text-xs text-ink-muted">Rattachement automatique à la crèche + un enfant précis</div>
+          </div>
+          <button onClick={()=>setShowAdd(true)} className="btn-pill bg-teal text-white shadow-soft"><UserPlus className="w-4 h-4" /> Nouvelle invitation</button>
+        </div>
+        {lastLink && (
+          <div className="mb-3 p-3 rounded-2xl bg-teal-light">
+            <div className="text-[10px] font-bold uppercase text-teal-dark mb-1">🔗 Lien à envoyer</div>
+            <div className="font-mono text-xs break-all">{lastLink.link}</div>
+            <div className="mt-2 flex gap-2 flex-wrap">
+              <button onClick={()=>{navigator.clipboard.writeText(lastLink.link); toast.success('Copié');}} className="btn-pill bg-teal text-white text-xs shadow-soft"><Copy className="w-3 h-3" /> Copier</button>
+              <button onClick={()=>{
+                const subject = encodeURIComponent('Invitation TiMétis');
+                const body = encodeURIComponent(lastLink.email_body.replace('https://timetis.re', window.location.origin));
+                window.location.href = `mailto:${lastLink.invitation.email}?subject=${subject}&body=${body}`;
+              }} className="btn-pill bg-coral text-white text-xs shadow-soft"><Send className="w-3 h-3" /> Envoyer par mail</button>
+              <button onClick={()=>setLastLink(null)} className="btn-pill bg-bgsoft text-ink-muted text-xs">Fermer</button>
+            </div>
+          </div>
+        )}
+        <div className="space-y-2">
+          {invitations.length === 0 && <div className="text-sm text-ink-muted text-center py-6">Aucune invitation envoyée.</div>}
+          {invitations.map(inv => (
+            <div key={inv.id} className="flex items-center gap-3 p-3 rounded-2xl bg-bgsoft flex-wrap">
+              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0"><UserPlus className="w-5 h-5 text-teal" /></div>
+              <div className="flex-1 min-w-0"><div className="font-bold truncate-1">{inv.email}</div><div className="text-xs text-ink-muted">Code {inv.code} · {inv.role} · créée {fmtDate(inv.created_at)}</div></div>
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${inv.status==='accepted'?'bg-teal-light text-teal-dark':'bg-amber/20 text-amber'}`}>{inv.status==='accepted'?'Acceptée':'En attente'}</span>
+              <button onClick={()=>delInv(inv)} className="btn-pill bg-coral/10 text-coral text-xs"><Trash2 className="w-3 h-3" /></button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Parents en attente d'assignation */}
+      {pending.length > 0 && (
+        <div className="bg-white rounded-lg p-5 shadow-softer border-l-4 border-coral">
+          <div className="font-extrabold text-lg mb-3 flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-coral" /> Parents auto-inscrits en attente ({pending.length})</div>
+          <div className="text-xs text-ink-muted mb-3">Ces parents se sont inscrits publiquement (Google ou classique) sans code. Réclamez-les pour les rattacher à votre crèche.</div>
+          <div className="space-y-2">
+            {pending.map(p => (
+              <div key={p.id} className="flex items-center gap-3 p-3 rounded-2xl bg-bgsoft">
+                <Avatar user={p} size={36} />
+                <div className="flex-1 min-w-0"><div className="font-bold truncate-1">{p.prenom} {p.nom}</div><div className="text-xs text-ink-muted">{p.email} · inscrit {fmtDate(p.created_at)}</div></div>
+                <button onClick={()=>claim(p)} className="btn-pill bg-teal text-white text-xs shadow-soft"><Check className="w-3 h-3" /> Réclamer</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showAdd && <InvitationEditorModal enfants={enfants} activeCId={activeCId} onClose={()=>setShowAdd(false)} onCreated={(l)=>{setLastLink(l); setShowAdd(false); load();}} />}
+    </div>
+  );
+}
+
+function InvitationEditorModal({ enfants, activeCId, onClose, onCreated }) {
+  const [f, setF] = useState({ email:'', role:'parent', enfant_id:'' });
+  const submit = async () => {
+    if (!f.email) return toast.error('Email obligatoire');
+    try {
+      const r = await api('invitations', { method: 'POST', body: JSON.stringify({ ...f, creche_id: activeCId, app_url: window.location.origin }) });
+      toast.success('Invitation créée'); onCreated(r);
+    } catch(e){ toast.error(e.message); }
+  };
+  return (
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
+        <div className="flex items-center justify-between mb-4"><div className="font-extrabold text-lg">Nouvelle invitation</div><button onClick={onClose}><X className="w-5 h-5" /></button></div>
+        <div className="space-y-3">
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Email invité</label><input type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Rôle</label>
+            <select value={f.role} onChange={e=>setF({...f,role:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold">
+              <option value="parent">Parent</option><option value="pro">Employé (pro)</option>
+            </select></div>
+          {f.role === 'parent' && (
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Rattacher à un enfant (optionnel)</label>
+              <select value={f.enfant_id} onChange={e=>setF({...f,enfant_id:e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold">
+                <option value="">— Aucun (à faire manuellement) —</option>
+                {enfants.map(en => <option key={en.id} value={en.id}>{en.prenom} {en.nom}</option>)}
+              </select></div>
+          )}
+          <button onClick={submit} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> Créer & obtenir le lien</button>
         </div>
       </motion.div>
     </div>, document.body):null)

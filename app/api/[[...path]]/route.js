@@ -346,6 +346,98 @@ async function handle(request, params) {
     }});
   }
 
+  // ---- PUBLIC : Vérifier une invitation par code ----
+  if (route.startsWith('invitations/code/') && path.length === 3 && method === 'GET') {
+    const code = path[2].toUpperCase();
+    // Chercher soit invitation, soit magic_link
+    let inv = await db.collection('invitations').findOne({ code, status: 'pending' });
+    if (inv) {
+      if (inv.expires_at && new Date(inv.expires_at) < new Date()) return err('Invitation expirée', 410);
+      const creche = await db.collection('creches').findOne({ id: inv.creche_id });
+      return json({ type: 'invitation', role: inv.role, email: inv.email, creche: { id: creche?.id, nom: creche?.nom, ville: creche?.ville } });
+    }
+    const ml = await db.collection('magic_links').findOne({ code });
+    if (ml) {
+      if (ml.expires_at && new Date(ml.expires_at) < new Date()) return err('Lien expiré', 410);
+      const u = await db.collection('users').findOne({ id: ml.user_id });
+      if (!u) return err('Utilisateur introuvable', 404);
+      return json({ type: 'magic_link', user: { id: u.id, email: u.email, prenom: u.prenom, role: u.role } });
+    }
+    return err('Code invalide', 404);
+  }
+
+  // ---- PUBLIC : Auto-login via magic link ----
+  if (route === 'auth/magic-login' && method === 'POST') {
+    const { code } = await request.json();
+    const ml = await db.collection('magic_links').findOne({ code });
+    if (!ml) return err('Code invalide', 404);
+    if (ml.expires_at && new Date(ml.expires_at) < new Date()) return err('Lien expiré', 410);
+    const u = await db.collection('users').findOne({ id: ml.user_id });
+    if (!u) return err('Utilisateur introuvable', 404);
+    const token = signToken(u);
+    // Marque le magic link comme utilisé (mais reste valide jusqu'à expiration)
+    await db.collection('magic_links').updateOne({ code }, { $set: { last_used: new Date() } });
+    return json({ token, user: {
+      id: u.id, email: u.email, role: u.role, prenom: u.prenom, nom: u.nom,
+      creche_ids: u.creche_ids || (u.creche_id ? [u.creche_id] : []),
+      creche_id: u.creche_id, avatar_url: u.avatar_url,
+      subscription: u.subscription || null, must_change_password: u.must_change_password || false,
+    }});
+  }
+
+  // ---- PUBLIC : Accepter une invitation (parent/pro) ----
+  if (route === 'auth/join' && method === 'POST') {
+    const b = await request.json();
+    const code = (b.code||'').toUpperCase();
+    const inv = await db.collection('invitations').findOne({ code, status: 'pending' });
+    if (!inv) return err('Invitation invalide ou déjà utilisée', 404);
+    if (inv.expires_at && new Date(inv.expires_at) < new Date()) return err('Invitation expirée', 410);
+    // Vérifier email correspond (si fourni)
+    const email = (b.email||inv.email||'').toLowerCase();
+    let user = await db.collection('users').findOne({ email });
+    if (user) {
+      // Rattacher à la crèche + enfant
+      const upd = { creche_id: inv.creche_id, status: 'active' };
+      if (!user.creche_ids?.includes(inv.creche_id)) upd.creche_ids = [...(user.creche_ids||[]), inv.creche_id];
+      await db.collection('users').updateOne({ id: user.id }, { $set: upd });
+      if (inv.enfant_id && inv.role === 'parent') {
+        await db.collection('enfants').updateOne({ id: inv.enfant_id }, { $addToSet: { parent_ids: user.id } });
+      }
+    } else {
+      // Créer nouveau compte
+      if (!b.password || b.password.length < 6) return err('Mot de passe requis (6+ caractères)', 400);
+      const hash = await bcrypt.hash(b.password, 10);
+      user = { id: uuidv4(), email, password: hash, role: inv.role,
+        prenom: b.prenom || '', nom: b.nom || '',
+        creche_id: inv.creche_id, creche_ids: [inv.creche_id],
+        status: 'active', created_via: 'invitation', created_at: new Date() };
+      await db.collection('users').insertOne(user);
+      if (inv.enfant_id && inv.role === 'parent') {
+        await db.collection('enfants').updateOne({ id: inv.enfant_id }, { $addToSet: { parent_ids: user.id } });
+      }
+    }
+    await db.collection('invitations').updateOne({ id: inv.id }, { $set: { status: 'accepted', accepted_at: new Date(), accepted_by: user.id } });
+    const token = signToken(user);
+    return json({ token, user: { id: user.id, email: user.email, role: user.role, prenom: user.prenom, nom: user.nom, creche_ids: user.creche_ids, creche_id: user.creche_id, avatar_url: user.avatar_url } });
+  }
+
+  // ---- PUBLIC : Auto-inscription parent via code crèche (6 chiffres) ----
+  if (route === 'auth/join-creche' && method === 'POST') {
+    const b = await request.json();
+    if (!b.creche_code || !b.email || !b.password || !b.prenom) return err('Champs manquants', 400);
+    const c = await db.collection('creches').findOne({ access_code: b.creche_code });
+    if (!c) return err('Code crèche invalide', 404);
+    const existing = await db.collection('users').findOne({ email: b.email.toLowerCase() });
+    if (existing) return err('Un compte existe déjà avec cet email', 400);
+    const hash = await bcrypt.hash(b.password, 10);
+    const user = { id: uuidv4(), email: b.email.toLowerCase(), password: hash, role: 'parent',
+      prenom: b.prenom, nom: b.nom||'', creche_id: c.id, creche_ids: [c.id],
+      status: 'active', created_via: 'creche_code', created_at: new Date() };
+    await db.collection('users').insertOne(user);
+    const token = signToken(user);
+    return json({ token, user: { id: user.id, email: user.email, role: user.role, prenom: user.prenom, nom: user.nom, creche_ids: user.creche_ids, creche_id: user.creche_id } });
+  }
+
   if (route === 'auth/register' && method === 'POST') {    const { email, password, prenom, nom, role, creche_nom, creche_ville } = await request.json();
     if (!email || !password || !prenom || !nom) return err('Champs manquants');
     const exists = await db.collection('users').findOne({ email: email.toLowerCase().trim() });
@@ -1448,7 +1540,104 @@ async function handle(request, params) {
     }});
   }
 
-  // ---- SUPER ADMIN — DEVIS & FACTURES SAAS ----
+  // ---- SUPER ADMIN : ONBOARD CLIENT (crée admin + 1ʳᵉ crèche + magic link) ----
+  if (route === 'super/onboard-client' && method === 'POST' && user.role === 'super_admin') {
+    const b = await request.json();
+    if (!b.email || !b.prenom || !b.creche_nom) return err('Email, prénom et nom de crèche obligatoires', 400);
+    const existing = await db.collection('users').findOne({ email: b.email.toLowerCase() });
+    if (existing) return err('Un compte existe déjà avec cet email', 400);
+    // Génère password aléatoire 12 char
+    const tempPassword = crypto.randomBytes(9).toString('base64').replace(/[+/=]/g,'').slice(0,12);
+    const hash = await bcrypt.hash(tempPassword, 10);
+    // Crée crèche
+    const creche = { id: uuidv4(), nom: b.creche_nom, ville: b.creche_ville||'', region: 'La Réunion',
+      slug: b.creche_nom.toLowerCase().replace(/\s+/g,'-'), adresse: b.creche_adresse||'',
+      capacite: b.creche_capacite||20, tel: b.creche_tel||'', email: b.creche_email||b.email,
+      horaires: '7h30 - 18h30', created_at: new Date() };
+    // Crée admin user
+    const adminUser = { id: uuidv4(), email: b.email.toLowerCase(), password: hash, role: 'admin',
+      prenom: b.prenom, nom: b.nom||'', tel: b.tel||'',
+      creche_id: creche.id, creche_ids: [creche.id],
+      subscription: { status: 'active', plan: 'timetis-79', created_via: 'super_admin' },
+      plan_prix: 79, notes_admin: b.notes||'', must_change_password: true,
+      onboarded_by: user.id, created_at: new Date() };
+    creche.owner_id = adminUser.id;
+    await db.collection('creches').insertOne(creche);
+    await db.collection('users').insertOne(adminUser);
+    // Génère magic link code
+    const code = crypto.randomBytes(12).toString('base64').replace(/[+/=]/g,'').slice(0,16);
+    await db.collection('magic_links').insertOne({ id: uuidv4(), code, user_id: adminUser.id, expires_at: new Date(Date.now()+30*86400000), created_at: new Date() });
+    return json({
+      client: { id: adminUser.id, email: adminUser.email, prenom: adminUser.prenom, nom: adminUser.nom, creche: { id: creche.id, nom: creche.nom } },
+      credentials: { email: adminUser.email, password_temp: tempPassword },
+      magic_link_code: code,
+      email_body: `Bonjour ${adminUser.prenom},\n\nBienvenue sur TiMétis, votre nouvelle solution de gestion de crèche 🌺.\n\nVotre crèche « ${creche.nom} » est prête ! Voici vos identifiants :\n\n• Email : ${adminUser.email}\n• Mot de passe temporaire : ${tempPassword}\n\n🔗 Lien de connexion direct : ${b.app_url||'https://timetis.re'}/join?code=${code}\n\nCe lien vous connecte automatiquement. Nous vous conseillons de changer le mot de passe dès la première connexion.\n\nCordialement,\nL'équipe TiMétis · Made in 974`
+    });
+  }
+
+  // ---- INVITATIONS PARENTS/PROS (par admin) ----
+  if (route === 'invitations' && method === 'GET' && (user.role === 'admin' || user.role === 'super_admin')) {
+    const q = user.role === 'super_admin' ? {} : { creche_id: { $in: user.creche_ids||[] } };
+    const list = await db.collection('invitations').find(q).sort({ created_at: -1 }).toArray();
+    return json({ invitations: clean(list) });
+  }
+  if (route === 'invitations' && method === 'POST' && user.role === 'admin') {
+    const b = await request.json();
+    if (!b.email) return err('Email obligatoire', 400);
+    const code = crypto.randomBytes(6).toString('base64').replace(/[+/=]/g,'').slice(0,8).toUpperCase();
+    const inv = { id: uuidv4(), code, email: b.email.toLowerCase(),
+      role: b.role || 'parent', creche_id: b.creche_id || activeCId || user.creche_id,
+      enfant_id: b.enfant_id || null, invited_by: user.id,
+      status: 'pending', expires_at: new Date(Date.now()+30*86400000),
+      created_at: new Date() };
+    await db.collection('invitations').insertOne(inv);
+    const creche = await db.collection('creches').findOne({ id: inv.creche_id });
+    return json({
+      invitation: inv,
+      link: `${b.app_url||''}/join?code=${code}`,
+      email_body: `Bonjour,\n\nVous avez été invité(e) à rejoindre la crèche « ${creche?.nom||'—'} » sur TiMétis 🌺.\n\n🔗 Lien d'inscription : ${b.app_url||'https://timetis.re'}/join?code=${code}\n\nCe lien vous rattachera automatiquement à votre crèche. Vous pourrez ensuite créer votre mot de passe ou vous connecter avec Google.\n\nCode d'invitation : ${code}\n\nÀ bientôt !\nL'équipe TiMétis · Made in 974`
+    });
+  }
+  if (route.startsWith('invitations/') && path.length === 2 && method === 'DELETE' && (user.role === 'admin' || user.role === 'super_admin')) {
+    await db.collection('invitations').deleteOne({ id: path[1] });
+    return json({ ok: true });
+  }
+
+  // ---- CRECHE CODE (parent auto-signup fallback) ----
+  if (route === 'admin/creche-code' && method === 'GET' && user.role === 'admin') {
+    const cid = activeCId || user.creche_id;
+    let c = await db.collection('creches').findOne({ id: cid });
+    if (!c.access_code) {
+      c.access_code = String(Math.floor(100000 + Math.random()*900000));
+      await db.collection('creches').updateOne({ id: cid }, { $set: { access_code: c.access_code } });
+    }
+    return json({ code: c.access_code, creche: { id: c.id, nom: c.nom } });
+  }
+  if (route === 'admin/creche-code/regen' && method === 'POST' && user.role === 'admin') {
+    const cid = activeCId || user.creche_id;
+    const nouveau = String(Math.floor(100000 + Math.random()*900000));
+    await db.collection('creches').updateOne({ id: cid }, { $set: { access_code: nouveau } });
+    return json({ code: nouveau });
+  }
+
+  // ---- PARENTS EN ATTENTE (admin claim) ----
+  if (route === 'admin/pending-parents' && method === 'GET' && user.role === 'admin') {
+    const list = await db.collection('users').find({ role: 'parent', status: 'pending_assignment' }).sort({ created_at: -1 }).toArray();
+    return json({ parents: clean(list) });
+  }
+  if (route === 'admin/claim-parent' && method === 'POST' && user.role === 'admin') {
+    const b = await request.json();
+    const p = await db.collection('users').findOne({ id: b.parent_id, role: 'parent' });
+    if (!p) return err('Parent introuvable', 404);
+    const cid = b.creche_id || activeCId || user.creche_id;
+    if (!(user.creche_ids||[]).includes(cid)) return err('Cette crèche ne vous appartient pas', 403);
+    await db.collection('users').updateOne({ id: p.id }, { $set: { creche_id: cid, status: 'active' } });
+    if (b.enfant_id) {
+      await db.collection('enfants').updateOne({ id: b.enfant_id }, { $addToSet: { parent_ids: p.id } });
+    }
+    return json({ ok: true });
+  }
+
   if ((route === 'super/devis' || route === 'super/factures') && method === 'GET' && user.role === 'super_admin') {
     const type = route === 'super/devis' ? 'devis' : 'facture';
     const list = await db.collection('saas_docs').find({ type }).sort({ created_at: -1 }).toArray();
