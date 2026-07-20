@@ -431,11 +431,49 @@ async function handle(request, params) {
 
   if (route === 'creches' && method === 'POST' && user.role === 'admin') {
     const b = await request.json();
-    const c = { id: uuidv4(), owner_id: user.id, nom: b.nom, ville: b.ville, region: 'La Réunion',
-      slug: (b.nom||'creche').toLowerCase().replace(/\s+/g,'-'), adresse: b.adresse||'', capacite: b.capacite||20, created_at: new Date() };
+    if (!b.nom) return err('Nom obligatoire', 400);
+    const owned = await db.collection('creches').countDocuments({ owner_id: user.id });
+    const c = { id: uuidv4(), owner_id: user.id, nom: b.nom, ville: b.ville||'', region: 'La Réunion',
+      slug: (b.nom||'creche').toLowerCase().replace(/\s+/g,'-'), adresse: b.adresse||'',
+      capacite: b.capacite||20, tel: b.tel||'', email: b.email||'', horaires: b.horaires||'',
+      created_at: new Date() };
     await db.collection('creches').insertOne(c);
     await db.collection('users').updateOne({ id: user.id }, { $addToSet: { creche_ids: c.id } });
-    return json({ creche: c });
+    // Facturation SaaS : supplément 40€/crèche au-delà de la 1ʳᵉ
+    const nb_supplements = owned; // owned = crèches déjà avant celle-ci → celle-ci est la (owned+1)ᵉ
+    const supplement = nb_supplements * 40;
+    return json({ creche: c, billing: { base_ht: 79, supplement_ht: supplement, total_ht: 79 + supplement, nb_creches: owned + 1, note: `Facturation mensuelle : 79€ (1ʳᵉ crèche) + ${nb_supplements}×40€ = ${79+supplement}€ HT` } });
+  }
+  if (route.startsWith('creches/') && path.length === 2 && method === 'PUT' && user.role === 'admin') {
+    const b = await request.json();
+    const c = await db.collection('creches').findOne({ id: path[1] });
+    if (!c) return err('Crèche introuvable', 404);
+    if (c.owner_id !== user.id) return err('Accès refusé', 403);
+    const allowed = ['nom','ville','adresse','capacite','tel','email','horaires'];
+    const upd = {};
+    for (const k of allowed) if (b[k] !== undefined) upd[k] = b[k];
+    if (upd.nom) upd.slug = upd.nom.toLowerCase().replace(/\s+/g,'-');
+    await db.collection('creches').updateOne({ id: path[1] }, { $set: upd });
+    const fresh = await db.collection('creches').findOne({ id: path[1] });
+    return json({ creche: one(fresh) });
+  }
+  if (route.startsWith('creches/') && path.length === 2 && method === 'DELETE' && user.role === 'admin') {
+    const c = await db.collection('creches').findOne({ id: path[1] });
+    if (!c) return err('Crèche introuvable', 404);
+    if (c.owner_id !== user.id) return err('Accès refusé', 403);
+    // Vérifier qu'il reste au moins 1 crèche
+    const total = await db.collection('creches').countDocuments({ owner_id: user.id });
+    if (total <= 1) return err('Impossible de supprimer votre unique crèche', 400);
+    // Vérifier qu'il n'y a plus d'enfants
+    const nbEnfants = await db.collection('enfants').countDocuments({ creche_id: path[1] });
+    if (nbEnfants > 0) return err(`Impossible : ${nbEnfants} enfant(s) sont encore rattaché(s) à cette crèche. Transférez-les d'abord.`, 400);
+    await db.collection('creches').deleteOne({ id: path[1] });
+    await db.collection('users').updateOne({ id: user.id }, { $pull: { creche_ids: path[1] } });
+    // Nettoyage: employés et données rattachées à cette crèche → mark as archived (garde intégrité)
+    await db.collection('users').updateMany({ creche_id: path[1], role: 'pro' }, { $set: { archived: true } });
+    const remaining = await db.collection('creches').countDocuments({ owner_id: user.id });
+    const supplement = (remaining - 1) * 40;
+    return json({ ok: true, billing: { base_ht: 79, supplement_ht: supplement, total_ht: 79 + supplement, nb_creches: remaining, note: `Nouvelle facturation : 79€ + ${remaining-1}×40€ = ${79+supplement}€ HT` } });
   }
 
   // ---- ENFANTS ----

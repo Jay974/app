@@ -260,6 +260,7 @@ function Sidebar({ user, view, setView, open, setOpen }) {
       { key: 'admin/notifications', label: 'Notifications', icon: Bell },
       { key: 'admin/statistiques', label: 'Statistiques', icon: BarChart3 },
       { key: 'admin/administration', label: 'Administration', icon: Settings },
+      { key: 'admin/creches', label: 'Mes crèches', icon: Building2, highlight: true },
       { key: 'admin/rgpd', label: 'RGPD & conditions', icon: ShieldCheck },
       { key: 'admin/albums', label: 'Albums photos', icon: ImageIcon },
       { key: 'admin/messagerie', label: 'Discussions', icon: MessageCircle },
@@ -3939,6 +3940,7 @@ function App() {
       case 'admin/notifications': return <NotificationsView activeCId={activeCId} canSend />;
       case 'admin/statistiques': return <StatistiquesView activeCId={activeCId} />;
       case 'admin/administration': return <AdministrationHub setView={setView} />;
+      case 'admin/creches': return <AdminCrechesView user={user} activeCId={activeCId} setActiveCId={setActiveCId} setCreches={setCreches} />;;
       case 'admin/rgpd': return <RGPDView />;
       case 'admin/enfants': return <AdminEnfants activeCId={activeCId} />;
       case 'admin/familles': return <AdminFamilles activeCId={activeCId} />;
@@ -4299,6 +4301,160 @@ function generateBilanHebdoPDF(enfant, stats, tags) {
   const w = window.open('', '_blank', 'width=800,height=900');
   if (w) { w.document.write(html); w.document.close(); }
   else toast.error('Pop-up bloqué — autorisez les pop-ups');
+}
+
+function AdminCrechesView({ user, activeCId, setActiveCId, setCreches }) {
+  const [items, setItems] = useState([]);
+  const [edit, setEdit] = useState(null);
+  const [add, setAdd] = useState(false);
+  const [billing, setBilling] = useState(null);
+
+  const load = async () => {
+    try {
+      const d = await api('creches');
+      setItems(d.creches || []);
+      setCreches?.(d.creches || []);
+      // Calcul facturation actuelle
+      const n = (d.creches||[]).length;
+      const supp = Math.max(0, n-1) * 40;
+      setBilling({ base_ht: 79, supplement_ht: supp, total_ht: 79 + supp, nb_creches: n });
+    } catch(e){ toast.error(e.message); }
+  };
+  useEffect(() => { load(); }, []);
+
+  const del = async (c) => {
+    if (items.length <= 1) return toast.error('Impossible : gardez au moins 1 crèche');
+    if (!confirm(`Supprimer la crèche « ${c.nom} » ?\n\n⚠️ Vérifiez que plus aucun enfant n'y est rattaché.\n💰 Votre facturation passera de ${79+(items.length-1)*40}€ à ${79+(items.length-2)*40}€ HT / mois.`)) return;
+    try {
+      const r = await api(`creches/${c.id}`, { method: 'DELETE' });
+      toast.success('Crèche supprimée');
+      if (activeCId === c.id) setActiveCId?.(items.find(x=>x.id!==c.id)?.id);
+      load();
+      if (r.billing) toast.info(r.billing.note);
+    } catch(e){ toast.error(e.message); }
+  };
+
+  return (
+    <div className="space-y-4 animate-fade-up">
+      {/* Rappel facturation SaaS */}
+      {billing && (
+        <div className="bg-gradient-to-br from-teal to-teal-dark text-white rounded-lg p-5 shadow-soft">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <div className="text-[11px] font-extrabold uppercase tracking-wider opacity-80">Facturation TiMétis</div>
+              <div className="text-3xl font-extrabold mt-1">{billing.total_ht}€ <span className="text-base opacity-80 font-bold">HT / mois</span></div>
+              <div className="text-xs opacity-80 mt-1">79€ (1ʳᵉ crèche) + {billing.nb_creches-1} × 40€ supplémentaires</div>
+            </div>
+            <div className="bg-white/15 px-4 py-3 rounded-2xl text-center">
+              <div className="text-[10px] font-bold uppercase opacity-80">Crèches actives</div>
+              <div className="text-3xl font-extrabold">{billing.nb_creches}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-lg p-4 shadow-softer text-xs text-ink-muted">
+        📢 <b className="text-ink-strong">Facturation automatique :</b> chaque crèche supplémentaire ajoute 40€ HT/mois à votre abonnement. La 1ʳᵉ est incluse dans le plan de base à 79€. Vous pouvez créer/modifier/supprimer autant de crèches que nécessaire.
+      </div>
+
+      <div className="flex justify-end">
+        <button onClick={()=>setAdd(true)} className="btn-pill bg-coral text-white shadow-soft">
+          <Plus className="w-4 h-4" /> Ajouter une crèche <span className="text-[10px] opacity-90 ml-1">(+40€ HT/mois)</span>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {items.length === 0 && <div className="col-span-full"><PlaceholderView title="Aucune crèche" icon={Building2} subtitle="Créez votre première crèche" /></div>}
+        {items.map((c, i) => (
+          <div key={c.id} className={`bg-white rounded-lg p-5 shadow-softer relative ${activeCId===c.id?'ring-2 ring-teal':''}`}>
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-12 h-12 rounded-2xl bg-teal-light flex items-center justify-center flex-shrink-0"><Building2 className="w-6 h-6 text-teal-dark" /></div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-extrabold text-lg truncate-1">{c.nom}</div>
+                  <div className="text-xs text-ink-muted truncate-1">{c.adresse || c.ville || '—'}</div>
+                </div>
+              </div>
+              {i === 0 && <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-teal-light text-teal-dark">INCLUSE</span>}
+              {i > 0 && <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-coral/20 text-coral">+40€/mois</span>}
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-xs pt-3 border-t border-bgsoft">
+              <div><div className="text-ink-muted">Capacité</div><div className="font-bold">{c.capacite||'—'}</div></div>
+              <div><div className="text-ink-muted">Tél</div><div className="font-bold truncate-1">{c.tel||'—'}</div></div>
+              <div><div className="text-ink-muted">Statut</div><div className="font-bold text-teal-dark">Actif</div></div>
+            </div>
+            <div className="mt-3 flex gap-2 flex-wrap">
+              {activeCId !== c.id && <button onClick={()=>{setActiveCId?.(c.id); toast.success(`Crèche active : ${c.nom}`);}} className="btn-pill bg-teal-light text-teal-dark text-xs">Activer</button>}
+              {activeCId === c.id && <span className="btn-pill bg-teal text-white text-xs shadow-soft"><CheckCircle2 className="w-3 h-3" /> Active</span>}
+              <button onClick={()=>setEdit(c)} className="btn-pill bg-bgsoft text-ink-muted text-xs"><Edit3 className="w-3 h-3" /> Éditer</button>
+              {items.length > 1 && <button onClick={()=>del(c)} className="btn-pill bg-coral/10 text-coral text-xs"><Trash2 className="w-3 h-3" /></button>}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {(add || edit) && <CrecheEditorModal creche={edit} nbCreches={items.length} onClose={()=>{setAdd(false); setEdit(null); load();}} />}
+    </div>
+  );
+}
+
+function CrecheEditorModal({ creche, nbCreches, onClose }) {
+  const [f, setF] = useState(creche || { nom:'', ville:'', adresse:'', capacite:20, tel:'', email:'', horaires:'7h30 - 18h30' });
+  const save = async () => {
+    if (!f.nom.trim()) return toast.error('Nom obligatoire');
+    try {
+      if (creche) {
+        await api(`creches/${creche.id}`, { method: 'PUT', body: JSON.stringify(f) });
+        toast.success('Crèche mise à jour');
+      } else {
+        const r = await api('creches', { method: 'POST', body: JSON.stringify(f) });
+        toast.success('Crèche créée');
+        if (r.billing) toast.info(`💰 ${r.billing.note}`);
+      }
+      onClose();
+    } catch(e){ toast.error(e.message); }
+  };
+  return (
+    (typeof document!=='undefined'?createPortal(<div className="fixed inset-0 bg-black/40 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+      <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} className="bg-white rounded-lg p-6 w-full max-w-md my-6 max-h-[calc(100vh-3rem)] overflow-y-auto scrollbar-thin">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="font-extrabold text-lg">{creche?'Éditer la crèche':'Nouvelle crèche'}</div>
+            {!creche && <div className="text-xs text-coral font-bold mt-1">💰 +40€ HT/mois (facturation auto)</div>}
+            {creche && <div className="text-xs text-ink-muted">Modifiez les informations de cet établissement</div>}
+          </div>
+          <button onClick={onClose}><X className="w-5 h-5" /></button>
+        </div>
+        <div className="space-y-3">
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Nom de la crèche</label>
+            <input value={f.nom} onChange={e=>setF({...f,nom:e.target.value})} placeholder="Ex : Les P'tits Bouts · Saint-Denis" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Ville</label>
+              <input value={f.ville} onChange={e=>setF({...f,ville:e.target.value})} placeholder="Saint-Denis" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Capacité</label>
+              <input type="number" value={f.capacite} onChange={e=>setF({...f,capacite:+e.target.value})} className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          </div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Adresse complète</label>
+            <input value={f.adresse} onChange={e=>setF({...f,adresse:e.target.value})} placeholder="12 rue des Flamboyants, 97400 Saint-Denis" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          <div className="grid grid-cols-2 gap-2">
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Téléphone</label>
+              <input value={f.tel} onChange={e=>setF({...f,tel:e.target.value})} placeholder="0262 …" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+            <div><label className="text-xs font-extrabold uppercase text-ink-muted">Email</label>
+              <input type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="contact@..." className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          </div>
+          <div><label className="text-xs font-extrabold uppercase text-ink-muted">Horaires d'ouverture</label>
+            <input value={f.horaires} onChange={e=>setF({...f,horaires:e.target.value})} placeholder="7h30 - 18h30" className="w-full mt-1 px-4 py-2.5 rounded-pill bg-bgsoft outline-none text-sm font-semibold" /></div>
+          {!creche && (
+            <div className="bg-coral/10 border border-coral/30 rounded-2xl p-3 text-xs">
+              <b className="text-coral">Rappel facturation</b>
+              <div className="text-ink-muted mt-1">Votre abonnement passera à <b className="text-ink-strong">{79 + nbCreches*40}€ HT/mois</b> après création (79€ base + {nbCreches}×40€ supplémentaires).</div>
+            </div>
+          )}
+          <button onClick={save} className="btn-pill w-full bg-teal text-white shadow-soft"><Save className="w-4 h-4" /> {creche?'Enregistrer':'Créer & activer'}</button>
+        </div>
+      </motion.div>
+    </div>, document.body):null)
+  );
 }
 
 export default App;
