@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: 249 115 22;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: #f7f4f0;
+  color: #14161A;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tap-target {
+  min-height: 56px;
+}
+
+.card {
+  background: white;
+  border-radius: 1.25rem;
+  box-shadow: 0 1px 2px rgba(20,22,26,0.06), 0 8px 24px rgba(20,22,26,0.06);
+}
+
+.keypad-btn {
+  @apply flex items-center justify-center text-2xl font-semibold rounded-2xl bg-white active:bg-orange-50 border border-black/5 select-none;
+  min-height: 68px;
+}
