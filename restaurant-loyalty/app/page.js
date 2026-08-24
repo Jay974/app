@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Bell, Gift, Star, Clock, LogOut, KeyRound, Smartphone } from 'lucide-react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { cn, formatEuros } from '@/lib/utils';
 import { enablePush } from '@/lib/push-client';
@@ -205,6 +206,13 @@ function Dashboard({ token, onLogout }) {
       >
         <Bell className="w-5 h-5 text-brand-600" /> Recevoir les offres du restaurant
       </button>
+
+      <Link
+        href="/carte-cadeau"
+        className="tap-target rounded-xl border border-black/10 bg-white flex items-center justify-center gap-2 font-medium"
+      >
+        <Gift className="w-5 h-5 text-brand-600" /> Offrir une carte cadeau
+      </Link>
 
       <div>
         <p className="font-semibold mb-2 flex items-center gap-1"><Gift className="w-4 h-4" /> Récompenses</p>

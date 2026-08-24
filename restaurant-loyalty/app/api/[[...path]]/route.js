@@ -3,8 +3,10 @@ import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import webpush from 'web-push';
+import QRCode from 'qrcode';
 import { getDb } from '@/lib/db';
 import { computePoints, tierForPoints, DEFAULT_SETTINGS } from '@/lib/points';
+import { generateGiftCardCode, DEFAULT_GIFT_CARD_SETTINGS } from '@/lib/giftcards';
 
 export const runtime = 'nodejs';
 
@@ -62,12 +64,19 @@ function requireClient(request) {
 async function getSettings(db) {
   const doc = await db.collection('settings').findOne({ _key: 'main' });
   if (!doc) return DEFAULT_SETTINGS;
-  const { points_rule, tiers, restaurant } = doc;
+  const { points_rule, tiers, restaurant, gift_cards } = doc;
   return {
     points_rule: points_rule || DEFAULT_SETTINGS.points_rule,
     tiers: tiers?.length ? tiers : DEFAULT_SETTINGS.tiers,
     restaurant: restaurant || DEFAULT_SETTINGS.restaurant,
+    gift_cards: gift_cards || DEFAULT_GIFT_CARD_SETTINGS,
   };
+}
+
+function cleanGiftCard(g) {
+  if (!g) return null;
+  const { _id, ...rest } = g;
+  return rest;
 }
 
 function cleanClient(c) {
@@ -219,10 +228,10 @@ async function handler(request, { params }) {
     if (route === 'settings' && method === 'PUT') {
       const a = requireAdmin(request);
       if (!a) return err('Réservé aux admins', 403);
-      const { points_rule, tiers, restaurant } = body;
+      const { points_rule, tiers, restaurant, gift_cards } = body;
       await db.collection('settings').updateOne(
         { _key: 'main' },
-        { $set: { points_rule, tiers, restaurant, updated_at: new Date().toISOString() } },
+        { $set: { points_rule, tiers, restaurant, gift_cards, updated_at: new Date().toISOString() } },
         { upsert: true }
       );
       return json(await getSettings(db));
@@ -540,6 +549,128 @@ async function handler(request, { params }) {
         }
       }
       return json({ near, distance_m: Math.round(dist) });
+    }
+
+    // ---------------- GIFT CARDS ----------------
+    if (route === 'gift-cards' && method === 'POST') {
+      const staffAuth = requireStaff(request);
+      const clientAuth = requireClient(request);
+      if (!staffAuth && !clientAuth) return err('Non autorisé', 401);
+
+      const { amount_cents, recipient_name, sender_name, message } = body;
+      if (!Number.isFinite(amount_cents) || amount_cents <= 0) return err('Montant invalide');
+
+      const settings = await getSettings(db);
+      const validityMonths = settings.gift_cards?.validity_months || DEFAULT_GIFT_CARD_SETTINGS.validity_months;
+      const now = new Date();
+      const expires = new Date(now);
+      expires.setMonth(expires.getMonth() + validityMonths);
+
+      let code = generateGiftCardCode();
+      for (let i = 0; i < 5 && (await db.collection('gift_cards').findOne({ code })); i++) {
+        code = generateGiftCardCode();
+      }
+
+      const card = {
+        id: uuidv4(),
+        code,
+        amount_cents,
+        balance_cents: amount_cents,
+        recipient_name: recipient_name || '',
+        sender_name: sender_name || '',
+        message: message || '',
+        // Créée par un client depuis la PWA : en attente du règlement en caisse pour être activée.
+        // Créée par le staff : le paiement vient d'être encaissé au comptoir, elle est active immédiatement.
+        status: staffAuth ? 'active' : 'awaiting_activation',
+        created_by_phone: clientAuth ? clientAuth.sub : null,
+        created_by_staff_id: staffAuth ? staffAuth.sub : null,
+        created_by_staff_name: staffAuth ? staffAuth.name : null,
+        activated_at: staffAuth ? now.toISOString() : null,
+        expires_at: expires.toISOString(),
+        redemptions: [],
+        created_at: now.toISOString(),
+      };
+      await db.collection('gift_cards').insertOne(card);
+      return json(cleanGiftCard(card), 201);
+    }
+
+    if (route === 'gift-cards/mine' && method === 'GET') {
+      const a = requireClient(request);
+      if (!a) return err('Non autorisé', 401);
+      const list = await db.collection('gift_cards').find({ created_by_phone: a.sub }).sort({ created_at: -1 }).toArray();
+      return json(list.map(cleanGiftCard));
+    }
+
+    if (segs[0] === 'gift-cards' && segs.length === 2 && segs[1] !== 'mine' && method === 'GET') {
+      const code = decodeURIComponent(segs[1]);
+      const card = await db.collection('gift_cards').findOne({ code });
+      if (!card) return err('Carte cadeau introuvable', 404);
+      return json(cleanGiftCard(card));
+    }
+
+    if (segs[0] === 'gift-cards' && segs.length === 3 && segs[2] === 'qr' && method === 'GET') {
+      const code = decodeURIComponent(segs[1]);
+      const card = await db.collection('gift_cards').findOne({ code });
+      if (!card) return err('Carte cadeau introuvable', 404);
+      const target = `${url.origin}/carte-cadeau/${encodeURIComponent(code)}`;
+      const buffer = await QRCode.toBuffer(target, { width: 480, margin: 1, color: { dark: '#14161A', light: '#ffffff' } });
+      return new NextResponse(buffer, { headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=3600' } });
+    }
+
+    if (segs[0] === 'gift-cards' && segs.length === 3 && segs[2] === 'activate' && method === 'POST') {
+      const a = requireStaff(request);
+      if (!a) return err('Non autorisé', 401);
+      const code = decodeURIComponent(segs[1]);
+      const card = await db.collection('gift_cards').findOne({ code });
+      if (!card) return err('Carte cadeau introuvable', 404);
+      if (card.status !== 'awaiting_activation') return err('Cette carte est déjà activée ou n\'est plus valable', 409);
+      const now = new Date().toISOString();
+      await db.collection('gift_cards').updateOne(
+        { code },
+        { $set: { status: 'active', activated_at: now, activated_by_staff_id: a.sub, activated_by_staff_name: a.name } }
+      );
+      if (card.created_by_phone) {
+        pushToClient(db, card.created_by_phone, {
+          title: 'Votre carte cadeau est activée !',
+          body: `${(card.amount_cents / 100).toFixed(2)} € prêts à être offerts.`,
+          tag: 'gift-card',
+        }).catch(() => {});
+      }
+      const updated = await db.collection('gift_cards').findOne({ code });
+      return json(cleanGiftCard(updated));
+    }
+
+    if (segs[0] === 'gift-cards' && segs.length === 3 && segs[2] === 'redeem' && method === 'POST') {
+      const a = requireStaff(request);
+      if (!a) return err('Non autorisé', 401);
+      const code = decodeURIComponent(segs[1]);
+      const { amount_cents } = body;
+      if (!Number.isFinite(amount_cents) || amount_cents <= 0) return err('Montant invalide');
+      const card = await db.collection('gift_cards').findOne({ code });
+      if (!card) return err('Carte cadeau introuvable', 404);
+      if (card.status === 'awaiting_activation') return err('Cette carte n\'est pas encore activée', 409);
+      if (card.status !== 'active') return err('Cette carte n\'est plus utilisable', 409);
+      if (new Date(card.expires_at) < new Date()) return err('Cette carte a expiré', 410);
+      if (amount_cents > card.balance_cents) return err('Le montant dépasse le solde de la carte', 409);
+
+      const newBalance = card.balance_cents - amount_cents;
+      const redemption = { amount_cents, staff_id: a.sub, staff_name: a.name, created_at: new Date().toISOString() };
+      await db.collection('gift_cards').updateOne(
+        { code },
+        {
+          $set: { balance_cents: newBalance, status: newBalance === 0 ? 'used' : 'active' },
+          $push: { redemptions: redemption },
+        }
+      );
+      if (card.created_by_phone) {
+        pushToClient(db, card.created_by_phone, {
+          title: 'Votre carte cadeau a été utilisée',
+          body: `-${(amount_cents / 100).toFixed(2)} € · solde restant ${(newBalance / 100).toFixed(2)} €`,
+          tag: 'gift-card',
+        }).catch(() => {});
+      }
+      const updated = await db.collection('gift_cards').findOne({ code });
+      return json(cleanGiftCard(updated));
     }
 
     return err('Route inconnue', 404);

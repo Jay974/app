@@ -145,6 +145,48 @@ function TiersSection({ settings, token, refresh }) {
   );
 }
 
+function GiftCardsSection({ settings, token, refresh }) {
+  const [presets, setPresets] = useState('');
+  const [validity, setValidity] = useState(12);
+
+  useEffect(() => {
+    if (settings?.gift_cards) {
+      setPresets(settings.gift_cards.preset_amounts_cents.map((c) => c / 100).join(', '));
+      setValidity(settings.gift_cards.validity_months);
+    }
+  }, [settings]);
+
+  const save = async () => {
+    const preset_amounts_cents = presets
+      .split(',')
+      .map((v) => Math.round(Number(v.trim()) * 100))
+      .filter((v) => v > 0);
+    if (preset_amounts_cents.length === 0) return toast.error('Au moins un montant valide requis');
+    await fetch('/api/settings', {
+      method: 'PUT',
+      headers: authHeaders(token),
+      body: JSON.stringify({ ...settings, gift_cards: { preset_amounts_cents, validity_months: Number(validity) } }),
+    });
+    toast.success('Cartes cadeaux mises à jour');
+    refresh();
+  };
+
+  return (
+    <Section icon={Gift} title="Cartes cadeaux">
+      <label className="text-sm text-ink/60">
+        Montants proposés côté client (€, séparés par des virgules)
+        <input value={presets} onChange={(e) => setPresets(e.target.value)} placeholder="10, 20, 30, 50" className="mt-1 w-full rounded-lg border border-black/10 px-3 py-2 text-sm" />
+      </label>
+      <label className="text-sm text-ink/60 flex items-center gap-2">
+        Durée de validité
+        <input type="number" min="1" value={validity} onChange={(e) => setValidity(e.target.value)} className="w-20 rounded-lg border border-black/10 px-2 py-1" />
+        mois
+      </label>
+      <button onClick={save} className="self-start rounded-lg bg-brand-600 text-white px-4 py-2 text-sm font-medium">Enregistrer</button>
+    </Section>
+  );
+}
+
 function RestaurantSection({ settings, token, refresh }) {
   const [r, setR] = useState({ name: '', lat: '', lng: '', proximity_radius_m: 300 });
 
@@ -371,6 +413,7 @@ export default function AdminPage() {
           <PointsRuleSection settings={settings} token={token} refresh={refresh} />
           <TiersSection settings={settings} token={token} refresh={refresh} />
           <RewardsSection token={token} />
+          <GiftCardsSection settings={settings} token={token} refresh={refresh} />
           <OffersSection token={token} />
           <RestaurantSection settings={settings} token={token} refresh={refresh} />
           <StaffSection token={token} />

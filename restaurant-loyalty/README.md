@@ -19,7 +19,8 @@ Trois surfaces séparées, chacune avec un rôle précis :
   numérique (solde, statut Bronze/Argent/Or, progression), historique,
   récompenses débloquées, et activation des notifications push.
 - **`/admin`** — réglages du restaurant : barème de points, seuils de
-  statuts, catalogue de récompenses, offres et équipe caisse (codes PIN).
+  statuts, catalogue de récompenses, cartes cadeaux, offres et équipe caisse
+  (codes PIN).
 
 ## Modèle de fidélité
 
@@ -49,6 +50,33 @@ branché ici, l'activation du compte PWA se fait ainsi :
 Si un fournisseur SMS (Twilio, Vonage…) est disponible plus tard, il suffit
 de brancher l'envoi du code dans `POST /api/clients/access/init` au lieu de
 l'afficher côté caisse.
+
+## Cartes cadeaux
+
+Sur le même modèle que la fidélité (numéro de téléphone comme identifiant,
+tablette caisse comme point de validation), avec un QR code pour l'activer
+et l'utiliser :
+
+- **Créée par un client** (`/carte-cadeau` dans la PWA, après connexion) —
+  il choisit le montant (préréglages + montant libre configurables dans
+  `/admin`), personnalise entièrement la carte (destinataire, message,
+  "de la part de"), et obtient un visuel avec QR code, partageable
+  (`navigator.share` ou lien copié). La carte est créée au statut *en
+  attente de règlement* : le montant n'a pas encore été payé.
+- **Créée directement en caisse** (`/caisse` → onglet "Carte cadeau" →
+  "Créer & activer") — pour une vente au comptoir : le staff encaisse le
+  montant et personnalise si besoin, la carte est active immédiatement.
+- **Activation** — si un client a créé une carte depuis la PWA, il la
+  présente (QR ou code) en caisse ; le staff scanne ou saisit le code,
+  confirme le règlement, la carte passe active.
+- **Utilisation** — le staff scanne ou saisit le code, la carte affiche son
+  solde, il déduit le montant de l'addition (usage partiel possible sur
+  plusieurs visites tant qu'il reste du solde).
+- Le QR encode un lien public `/carte-cadeau/{code}` (page de consultation,
+  pas d'authentification requise — le code fait office de secret, comme une
+  carte cadeau physique) ; l'image est générée à la volée par
+  `GET /api/gift-cards/:code/qr`. Le scan en caisse utilise `jsQR` en local
+  (aucune image envoyée à un service tiers).
 
 ## Notifications push (offres du jour)
 
@@ -88,6 +116,11 @@ les codes PIN des autres caissiers depuis cet écran.
 - `transactions` — historique des encaissements (montant, points, staff,
   récompense éventuellement échangée)
 - `rewards` — catalogue des récompenses à seuils de points
+- `gift_cards` — `code` unique, `amount_cents`/`balance_cents`,
+  personnalisation (destinataire, message, expéditeur), `status`
+  (`awaiting_activation`/`active`/`used`/`cancelled`), historique des
+  utilisations
 - `offers` — offres programmées ou de proximité
 - `push_subscriptions` — abonnements Web Push par client
-- `settings` — document unique (barème, statuts, position du restaurant)
+- `settings` — document unique (barème, statuts, cartes cadeaux, position du
+  restaurant)
