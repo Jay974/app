@@ -23,7 +23,7 @@ body {
 }
 
 .keypad-btn {
-  @apply flex items-center justify-center text-2xl font-semibold rounded-2xl bg-white active:bg-sage-100 border border-forest-900/10 select-none;
+  @apply flex items-center justify-center text-2xl font-semibold rounded-2xl bg-white text-forest-900 active:bg-sage-100 border border-forest-900/10 select-none;
   min-height: 68px;
 }
 
