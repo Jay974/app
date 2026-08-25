@@ -2,17 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --brand: 249 115 22;
-}
-
 html, body {
   height: 100%;
 }
 
 body {
-  background: #f7f4f0;
-  color: #14161A;
+  background: #FAFAF8;
+  color: #1A2F1A;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -22,11 +18,55 @@ body {
 
 .card {
   background: white;
-  border-radius: 1.25rem;
-  box-shadow: 0 1px 2px rgba(20,22,26,0.06), 0 8px 24px rgba(20,22,26,0.06);
+  border-radius: 1.5rem;
+  box-shadow: 0 1px 2px rgba(26,47,26,0.06), 0 8px 24px rgba(26,47,26,0.08);
 }
 
 .keypad-btn {
-  @apply flex items-center justify-center text-2xl font-semibold rounded-2xl bg-white active:bg-orange-50 border border-black/5 select-none;
+  @apply flex items-center justify-center text-2xl font-semibold rounded-2xl bg-white active:bg-sage-100 border border-forest-900/10 select-none;
   min-height: 68px;
+}
+
+/* Header d'app style "Hi, Gabriel" : avatar + salutation + cloche */
+.app-header {
+  @apply flex items-center justify-between px-5 pt-6 pb-2;
+}
+
+/* Carte hero dégradée (solde / statut) — équivalent du "Total Balance" du modèle */
+.hero-card {
+  border-radius: 1.75rem;
+  background: linear-gradient(135deg, #1A2F1A 0%, #2D6040 55%, #B8294A 130%);
+  color: #FAFAF8;
+  box-shadow: 0 12px 32px rgba(26,47,26,0.28);
+}
+
+/* Rangée de boutons circulaires (Withdraw / Document / Calculator / More) */
+.icon-btn {
+  @apply flex flex-col items-center gap-1.5 text-xs font-label font-semibold text-forest-900/80;
+}
+.icon-btn-circle {
+  @apply w-12 h-12 rounded-full flex items-center justify-center bg-sage-100 text-forest-700;
+}
+
+/* Bandeau promo (dégradé vert, carrousel de points) */
+.promo-card {
+  border-radius: 1.5rem;
+  background: linear-gradient(135deg, #2D6040 0%, #1A2F1A 100%);
+  color: #FAFAF8;
+}
+
+/* Navigation basse fixe */
+.bottom-nav {
+  @apply fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t border-forest-900/10 flex items-center justify-around py-2 px-2;
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+.bottom-nav-item {
+  @apply flex flex-col items-center gap-1 text-[11px] font-label font-semibold text-forest-900/40 px-3 py-1.5 rounded-xl;
+}
+.bottom-nav-item.active {
+  @apply text-forest-900 bg-sage-100;
+}
+
+.eyebrow {
+  @apply font-label uppercase tracking-[0.2em] text-[11px] font-extrabold;
 }

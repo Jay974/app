@@ -65,15 +65,15 @@ function PinLock({ onUnlocked }) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-8 px-6 bg-ink text-white">
+    <div className="min-h-screen flex flex-col items-center justify-center gap-8 px-6 bg-forest-900 text-cream">
       <div className="flex flex-col items-center gap-2">
-        <Lock className="w-8 h-8 text-brand-500" />
+        <Lock className="w-8 h-8 text-amber-400" />
         <h1 className="text-xl font-semibold">Caisse — Fidélité</h1>
-        <p className="text-white/50 text-sm">Entrez votre code personnel</p>
+        <p className="text-cream/50 text-sm">Entrez votre code personnel</p>
       </div>
       <div className="flex gap-3">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className={cn('w-4 h-4 rounded-full border-2 border-white/30', pin.length > i && 'bg-brand-500 border-brand-500')} />
+          <div key={i} className={cn('w-4 h-4 rounded-full border-2 border-cream/30', pin.length > i && 'bg-amber-500 border-amber-500')} />
         ))}
       </div>
       <div className="w-64">
@@ -95,7 +95,7 @@ function AmountStep({ onNext }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-between py-10 px-6">
       <div className="text-center">
-        <p className="text-ink/50 text-sm mb-2">Montant réglé par le client</p>
+        <p className="text-forest-900/50 text-sm mb-2">Montant réglé par le client</p>
         <div className="text-6xl font-bold tabular-nums">{formatEuros(cents)} €</div>
       </div>
       <div className="w-full max-w-sm">
@@ -103,7 +103,7 @@ function AmountStep({ onNext }) {
         <button
           disabled={cents <= 0}
           onClick={() => onNext(cents)}
-          className="tap-target w-full mt-4 rounded-2xl bg-brand-600 disabled:bg-ink/20 text-white font-semibold text-lg flex items-center justify-center gap-2"
+          className="tap-target w-full mt-4 rounded-2xl bg-amber-500 disabled:bg-forest-900/20 text-forest-900 font-semibold text-lg flex items-center justify-center gap-2"
         >
           Encaisser <Check className="w-5 h-5" />
         </button>
@@ -124,12 +124,12 @@ function PhoneStep({ amountCents, onBack, onNext }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-between py-8 px-6">
       <div className="w-full flex items-center gap-3">
-        <button onClick={onBack} className="p-2 rounded-full bg-black/5"><ArrowLeft className="w-5 h-5" /></button>
-        <p className="text-ink/60 text-sm">Montant attesté : <span className="font-semibold text-ink">{formatEuros(amountCents)} €</span></p>
+        <button onClick={onBack} className="p-2 rounded-full bg-sage-100"><ArrowLeft className="w-5 h-5" /></button>
+        <p className="text-forest-900/60 text-sm">Montant attesté : <span className="font-semibold text-forest-900">{formatEuros(amountCents)} €</span></p>
       </div>
       <div className="text-center">
-        <Phone className="w-6 h-6 mx-auto mb-2 text-brand-600" />
-        <p className="text-ink/50 text-sm mb-2">Numéro de téléphone du client</p>
+        <Phone className="w-6 h-6 mx-auto mb-2 text-bordeaux" />
+        <p className="text-forest-900/50 text-sm mb-2">Numéro de téléphone du client</p>
         <div className="text-4xl font-bold tabular-nums tracking-wider">{phone || '—'}</div>
       </div>
       <div className="w-full max-w-sm">
@@ -137,7 +137,7 @@ function PhoneStep({ amountCents, onBack, onNext }) {
         <button
           disabled={phone.length < 8}
           onClick={() => onNext(phone)}
-          className="tap-target w-full mt-4 rounded-2xl bg-brand-600 disabled:bg-ink/20 text-white font-semibold text-lg"
+          className="tap-target w-full mt-4 rounded-2xl bg-amber-500 disabled:bg-forest-900/20 text-forest-900 font-semibold text-lg"
         >
           Continuer
         </button>
@@ -183,32 +183,32 @@ function ConfirmStep({ amountCents, phone, staffToken, onBack, onDone }) {
   return (
     <div className="flex-1 flex flex-col justify-between py-8 px-6">
       <div className="w-full flex items-center gap-3">
-        <button onClick={onBack} className="p-2 rounded-full bg-black/5"><ArrowLeft className="w-5 h-5" /></button>
-        <p className="text-ink/60 text-sm">{phone}</p>
+        <button onClick={onBack} className="p-2 rounded-full bg-sage-100"><ArrowLeft className="w-5 h-5" /></button>
+        <p className="text-forest-900/60 text-sm">{phone}</p>
       </div>
 
       <div className="card p-6 flex flex-col gap-4">
         <div className="flex justify-between items-baseline">
-          <span className="text-ink/60">Montant</span>
+          <span className="text-forest-900/60">Montant</span>
           <span className="text-2xl font-bold">{formatEuros(amountCents)} €</span>
         </div>
         {lookup === null ? (
-          <p className="text-ink/40 text-sm">Vérification du client…</p>
+          <p className="text-forest-900/40 text-sm">Vérification du client…</p>
         ) : lookup.exists ? (
           <>
-            <div className="flex justify-between text-sm text-ink/60">
+            <div className="flex justify-between text-sm text-forest-900/60">
               <span>Solde actuel</span>
               <span>{balance} pts · statut {lookup.tier?.label}</span>
             </div>
             {eligible.length > 0 && (
-              <div className="border-t border-black/5 pt-3">
-                <p className="text-sm text-ink/60 mb-2 flex items-center gap-1"><Gift className="w-4 h-4" /> Récompense disponible</p>
+              <div className="border-t border-forest-900/10 pt-3">
+                <p className="text-sm text-forest-900/60 mb-2 flex items-center gap-1"><Gift className="w-4 h-4" /> Récompense disponible</p>
                 <div className="flex flex-col gap-2">
                   {eligible.map((r) => (
                     <button
                       key={r.id}
                       onClick={() => setSelectedReward(selectedReward === r.id ? null : r.id)}
-                      className={cn('text-left px-3 py-2 rounded-xl border text-sm', selectedReward === r.id ? 'border-brand-600 bg-brand-50' : 'border-black/10')}
+                      className={cn('text-left px-3 py-2 rounded-xl border text-sm', selectedReward === r.id ? 'border-amber-500 bg-amber-50' : 'border-forest-900/10')}
                     >
                       {r.name} — {r.points_cost} pts
                     </button>
@@ -218,14 +218,14 @@ function ConfirmStep({ amountCents, phone, staffToken, onBack, onDone }) {
             )}
           </>
         ) : (
-          <p className="text-sm text-ink/60">Nouveau client — un compte fidélité va être créé.</p>
+          <p className="text-sm text-forest-900/60">Nouveau client — un compte fidélité va être créé.</p>
         )}
       </div>
 
       <button
         disabled={busy}
         onClick={validate}
-        className="tap-target w-full rounded-2xl bg-brand-600 disabled:opacity-60 text-white font-semibold text-lg"
+        className="tap-target w-full rounded-2xl bg-amber-500 disabled:opacity-60 text-forest-900 font-semibold text-lg"
       >
         {busy ? 'Validation…' : 'Valider l\'encaissement'}
       </button>
@@ -241,13 +241,13 @@ function SuccessStep({ result, onNext }) {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
-      <div className="w-20 h-20 rounded-full bg-brand-100 flex items-center justify-center">
-        <Check className="w-10 h-10 text-brand-600" />
+      <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center">
+        <Check className="w-10 h-10 text-bordeaux" />
       </div>
       <p className="text-2xl font-bold">+{result.transaction.points_earned} points</p>
-      <p className="text-ink/60">Nouveau solde : {result.client.points_balance} pts</p>
+      <p className="text-forest-900/60">Nouveau solde : {result.client.points_balance} pts</p>
       {result.tier_up && (
-        <p className="text-brand-600 font-semibold">Nouveau statut : {result.tier.label} 🎉</p>
+        <p className="text-bordeaux font-semibold">Nouveau statut : {result.tier.label} 🎉</p>
       )}
     </div>
   );
@@ -323,9 +323,9 @@ function CodeEntry({ value, onChange, onScan, placeholder }) {
           value={value}
           onChange={(e) => onChange(e.target.value.toUpperCase())}
           placeholder={placeholder}
-          className="tap-target flex-1 rounded-xl border border-black/10 px-4 text-lg font-mono tracking-widest uppercase"
+          className="tap-target flex-1 rounded-xl border border-forest-900/10 px-4 text-lg font-mono tracking-widest uppercase"
         />
-        <button onClick={() => setScanning(true)} className="tap-target px-4 rounded-xl bg-ink text-white flex items-center gap-2">
+        <button onClick={() => setScanning(true)} className="tap-target px-4 rounded-xl bg-forest-900 text-cream flex items-center gap-2">
           <ScanLine className="w-5 h-5" /> Scanner
         </button>
       </div>
@@ -368,12 +368,12 @@ function GiftCardCreateStep({ token, onBack, onDone }) {
   return (
     <div className="flex-1 flex flex-col gap-4 py-6 px-6 overflow-y-auto">
       <div className="flex items-center gap-3">
-        <button onClick={onBack} className="p-2 rounded-full bg-black/5"><ArrowLeft className="w-5 h-5" /></button>
+        <button onClick={onBack} className="p-2 rounded-full bg-sage-100"><ArrowLeft className="w-5 h-5" /></button>
         <p className="font-semibold">Créer & activer une carte cadeau</p>
       </div>
 
       <div className="text-center">
-        <p className="text-ink/50 text-sm mb-2">Montant réglé par le client</p>
+        <p className="text-forest-900/50 text-sm mb-2">Montant réglé par le client</p>
         <div className="text-5xl font-bold tabular-nums">{formatEuros(cents)} €</div>
       </div>
       <div className="max-w-sm mx-auto w-full">
@@ -381,15 +381,15 @@ function GiftCardCreateStep({ token, onBack, onDone }) {
       </div>
 
       <div className="card p-4 flex flex-col gap-2 max-w-sm mx-auto w-full">
-        <input value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Pour qui ? (facultatif)" className="rounded-xl border border-black/10 px-3 py-2 text-sm" />
-        <input value={sender} onChange={(e) => setSender(e.target.value)} placeholder="De la part de (facultatif)" className="rounded-xl border border-black/10 px-3 py-2 text-sm" />
-        <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Message personnalisé (facultatif)" className="rounded-xl border border-black/10 px-3 py-2 text-sm" rows={2} />
+        <input value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Pour qui ? (facultatif)" className="rounded-xl border border-forest-900/10 px-3 py-2 text-sm" />
+        <input value={sender} onChange={(e) => setSender(e.target.value)} placeholder="De la part de (facultatif)" className="rounded-xl border border-forest-900/10 px-3 py-2 text-sm" />
+        <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Message personnalisé (facultatif)" className="rounded-xl border border-forest-900/10 px-3 py-2 text-sm" rows={2} />
       </div>
 
       <button
         disabled={busy || cents <= 0}
         onClick={submit}
-        className="tap-target max-w-sm mx-auto w-full rounded-2xl bg-brand-600 disabled:bg-ink/20 text-white font-semibold text-lg"
+        className="tap-target max-w-sm mx-auto w-full rounded-2xl bg-amber-500 disabled:bg-forest-900/20 text-forest-900 font-semibold text-lg"
       >
         {busy ? 'Création…' : 'Encaisser et activer'}
       </button>
@@ -430,7 +430,7 @@ function GiftCardActivateStep({ token, onBack, onDone }) {
   return (
     <div className="flex-1 flex flex-col gap-4 py-6 px-6">
       <div className="flex items-center gap-3">
-        <button onClick={onBack} className="p-2 rounded-full bg-black/5"><ArrowLeft className="w-5 h-5" /></button>
+        <button onClick={onBack} className="p-2 rounded-full bg-sage-100"><ArrowLeft className="w-5 h-5" /></button>
         <p className="font-semibold">Activer une carte créée par un client</p>
       </div>
       <CodeEntry value={code} onChange={lookup} onScan={lookup} placeholder="Code de la carte" />
@@ -438,11 +438,11 @@ function GiftCardActivateStep({ token, onBack, onDone }) {
         <>
           <GiftCardVisual card={card} />
           {card.status === 'awaiting_activation' ? (
-            <button disabled={busy} onClick={activate} className="tap-target rounded-2xl bg-brand-600 disabled:opacity-60 text-white font-semibold text-lg">
+            <button disabled={busy} onClick={activate} className="tap-target rounded-2xl bg-amber-500 disabled:opacity-60 text-forest-900 font-semibold text-lg">
               {busy ? 'Activation…' : `Confirmer le règlement de ${formatEuros(card.amount_cents)} € et activer`}
             </button>
           ) : (
-            <p className="text-sm text-ink/50 text-center">Cette carte est déjà {card.status === 'active' ? 'active' : 'traitée'}.</p>
+            <p className="text-sm text-forest-900/50 text-center">Cette carte est déjà {card.status === 'active' ? 'active' : 'traitée'}.</p>
           )}
         </>
       )}
@@ -495,7 +495,7 @@ function GiftCardRedeemStep({ token, onBack, onDone }) {
   return (
     <div className="flex-1 flex flex-col gap-4 py-6 px-6">
       <div className="flex items-center gap-3">
-        <button onClick={onBack} className="p-2 rounded-full bg-black/5"><ArrowLeft className="w-5 h-5" /></button>
+        <button onClick={onBack} className="p-2 rounded-full bg-sage-100"><ArrowLeft className="w-5 h-5" /></button>
         <p className="font-semibold">Utiliser une carte cadeau</p>
       </div>
       <CodeEntry value={code} onChange={lookup} onScan={lookup} placeholder="Code de la carte" />
@@ -503,7 +503,7 @@ function GiftCardRedeemStep({ token, onBack, onDone }) {
         <>
           <GiftCardVisual card={card} />
           <div className="text-center">
-            <p className="text-ink/50 text-sm mb-1">Montant à déduire (max {formatEuros(card.balance_cents)} €)</p>
+            <p className="text-forest-900/50 text-sm mb-1">Montant à déduire (max {formatEuros(card.balance_cents)} €)</p>
             <div className="text-4xl font-bold tabular-nums">{formatEuros(cents)} €</div>
           </div>
           <div className="max-w-sm mx-auto w-full">
@@ -512,14 +512,14 @@ function GiftCardRedeemStep({ token, onBack, onDone }) {
           <button
             disabled={busy || cents <= 0 || cents > card.balance_cents}
             onClick={redeem}
-            className="tap-target max-w-sm mx-auto w-full rounded-2xl bg-brand-600 disabled:opacity-60 text-white font-semibold text-lg"
+            className="tap-target max-w-sm mx-auto w-full rounded-2xl bg-amber-500 disabled:opacity-60 text-forest-900 font-semibold text-lg"
           >
             {busy ? 'Validation…' : `Déduire ${formatEuros(cents)} €`}
           </button>
         </>
       )}
       {card && card.status !== 'active' && (
-        <p className="text-sm text-ink/50 text-center">Cette carte n'est pas utilisable ({card.status === 'awaiting_activation' ? 'pas encore activée' : card.status}).</p>
+        <p className="text-sm text-forest-900/50 text-center">Cette carte n'est pas utilisable ({card.status === 'awaiting_activation' ? 'pas encore activée' : card.status}).</p>
       )}
     </div>
   );
@@ -533,8 +533,8 @@ function GiftCardSuccessStep({ card, onNext }) {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 py-8 overflow-y-auto">
-      <div className="w-20 h-20 rounded-full bg-brand-100 flex items-center justify-center">
-        <Check className="w-10 h-10 text-brand-600" />
+      <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center">
+        <Check className="w-10 h-10 text-bordeaux" />
       </div>
       <GiftCardVisual card={card} showQr />
     </div>
@@ -553,14 +553,14 @@ function GiftCardFlow({ token }) {
 
   return (
     <div className="flex-1 flex flex-col gap-3 justify-center px-6 py-10 max-w-sm mx-auto w-full">
-      <button onClick={() => setMode('create')} className="tap-target rounded-2xl bg-white border border-black/10 flex items-center gap-3 px-5 font-semibold">
-        <Sparkles className="w-5 h-5 text-brand-600" /> Créer & activer (vente au comptoir)
+      <button onClick={() => setMode('create')} className="tap-target rounded-2xl bg-white border border-forest-900/10 flex items-center gap-3 px-5 font-semibold">
+        <Sparkles className="w-5 h-5 text-bordeaux" /> Créer & activer (vente au comptoir)
       </button>
-      <button onClick={() => setMode('activate')} className="tap-target rounded-2xl bg-white border border-black/10 flex items-center gap-3 px-5 font-semibold">
-        <Check className="w-5 h-5 text-brand-600" /> Activer une carte créée par un client
+      <button onClick={() => setMode('activate')} className="tap-target rounded-2xl bg-white border border-forest-900/10 flex items-center gap-3 px-5 font-semibold">
+        <Check className="w-5 h-5 text-bordeaux" /> Activer une carte créée par un client
       </button>
-      <button onClick={() => setMode('redeem')} className="tap-target rounded-2xl bg-white border border-black/10 flex items-center gap-3 px-5 font-semibold">
-        <Wallet className="w-5 h-5 text-brand-600" /> Utiliser une carte cadeau
+      <button onClick={() => setMode('redeem')} className="tap-target rounded-2xl bg-white border border-forest-900/10 flex items-center gap-3 px-5 font-semibold">
+        <Wallet className="w-5 h-5 text-bordeaux" /> Utiliser une carte cadeau
       </button>
     </div>
   );
@@ -589,21 +589,21 @@ export default function CaissePage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="px-6 py-3 flex items-center justify-between border-b border-black/5 bg-white">
+      <div className="px-6 py-3 flex items-center justify-between border-b border-forest-900/10 bg-white">
         <span className="font-semibold">{staff.name}</span>
-        <button onClick={logout} className="text-ink/50 flex items-center gap-1 text-sm"><LogOut className="w-4 h-4" /> Verrouiller</button>
+        <button onClick={logout} className="text-forest-900/50 flex items-center gap-1 text-sm"><LogOut className="w-4 h-4" /> Verrouiller</button>
       </div>
 
-      <div className="flex bg-black/5 mx-6 mt-3 rounded-xl p-1">
+      <div className="flex bg-sage-100 mx-6 mt-3 rounded-xl p-1">
         <button
           onClick={() => setMode('checkout')}
-          className={cn('flex-1 py-2 rounded-lg text-sm font-medium', mode === 'checkout' ? 'bg-white shadow-sm' : 'text-ink/50')}
+          className={cn('flex-1 py-2 rounded-lg text-sm font-medium', mode === 'checkout' ? 'bg-white shadow-sm' : 'text-forest-900/50')}
         >
           Encaissement
         </button>
         <button
           onClick={() => setMode('giftcard')}
-          className={cn('flex-1 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-1', mode === 'giftcard' ? 'bg-white shadow-sm' : 'text-ink/50')}
+          className={cn('flex-1 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-1', mode === 'giftcard' ? 'bg-white shadow-sm' : 'text-forest-900/50')}
         >
           <Gift className="w-4 h-4" /> Carte cadeau
         </button>

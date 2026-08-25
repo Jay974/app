@@ -1,12 +1,12 @@
 {
-  "name": "Fidélité — Le Restaurant",
-  "short_name": "Fidélité",
-  "description": "Votre carte de fidélité du restaurant",
+  "name": "La Terrasse de Bourbon — Fidélité",
+  "short_name": "Terrasse Bourbon",
+  "description": "Carte de fidélité et cartes cadeaux — La Terrasse de Bourbon, Saint-Denis",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f7f4f0",
-  "theme_color": "#ea580c",
+  "background_color": "#FAFAF8",
+  "theme_color": "#1A2F1A",
   "orientation": "portrait",
   "icons": [
     { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },

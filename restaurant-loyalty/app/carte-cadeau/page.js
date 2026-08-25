@@ -53,7 +53,7 @@ function CreateForm({ token, onCreated }) {
   return (
     <div className="card p-5 flex flex-col gap-4">
       <div>
-        <p className="text-sm text-ink/60 mb-2">Montant</p>
+        <p className="text-sm text-forest-900/60 font-label mb-2">Montant</p>
         <div className="grid grid-cols-4 gap-2">
           {presets.map((p) => (
             <button
@@ -62,7 +62,7 @@ function CreateForm({ token, onCreated }) {
                 setAmount(p);
                 setCustom('');
               }}
-              className={cn('py-2 rounded-xl border text-sm font-medium', !custom && amount === p ? 'border-brand-600 bg-brand-50' : 'border-black/10')}
+              className={cn('py-2 rounded-xl border text-sm font-medium', !custom && amount === p ? 'border-amber-500 bg-amber-50' : 'border-forest-900/10')}
             >
               {(p / 100).toFixed(0)} €
             </button>
@@ -73,27 +73,27 @@ function CreateForm({ token, onCreated }) {
           onChange={(e) => setCustom(e.target.value.replace(/[^0-9.]/g, ''))}
           inputMode="decimal"
           placeholder="Autre montant (€)"
-          className="mt-2 w-full rounded-xl border border-black/10 px-3 py-2 text-sm"
+          className="mt-2 w-full rounded-xl border border-forest-900/10 px-3 py-2 text-sm"
         />
       </div>
 
-      <label className="text-sm text-ink/60">
+      <label className="text-sm text-forest-900/60 font-label">
         Pour qui ? (facultatif)
-        <input value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Prénom du destinataire" className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm" />
+        <input value={recipient} onChange={(e) => setRecipient(e.target.value)} placeholder="Prénom du destinataire" className="mt-1 w-full rounded-xl border border-forest-900/10 px-3 py-2 text-sm" />
       </label>
-      <label className="text-sm text-ink/60">
+      <label className="text-sm text-forest-900/60 font-label">
         De la part de
-        <input value={sender} onChange={(e) => setSender(e.target.value)} placeholder="Votre prénom" className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm" />
+        <input value={sender} onChange={(e) => setSender(e.target.value)} placeholder="Votre prénom" className="mt-1 w-full rounded-xl border border-forest-900/10 px-3 py-2 text-sm" />
       </label>
-      <label className="text-sm text-ink/60">
+      <label className="text-sm text-forest-900/60 font-label">
         Message personnalisé
-        <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Joyeux anniversaire !" className="mt-1 w-full rounded-xl border border-black/10 px-3 py-2 text-sm" rows={3} />
+        <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Joyeux anniversaire !" className="mt-1 w-full rounded-xl border border-forest-900/10 px-3 py-2 text-sm" rows={3} />
       </label>
 
-      <button disabled={busy} onClick={submit} className="tap-target rounded-xl bg-brand-600 disabled:opacity-50 text-white font-semibold flex items-center justify-center gap-2">
+      <button disabled={busy} onClick={submit} className="tap-target rounded-xl bg-amber-500 disabled:opacity-50 text-forest-900 font-label font-extrabold flex items-center justify-center gap-2">
         <Gift className="w-5 h-5" /> {busy ? 'Création…' : 'Créer ma carte cadeau'}
       </button>
-      <p className="text-xs text-ink/40">
+      <p className="text-xs text-forest-900/40 font-label">
         La carte est réservée avec votre personnalisation ; réglez son montant en caisse pour l'activer, ou transférez-la telle
         quelle à votre proche qui pourra le faire à votre place.
       </p>
@@ -116,7 +116,7 @@ function MyCards({ token }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="font-semibold">Mes cartes cadeaux</p>
+      <p className="font-display font-semibold text-forest-900">Mes cartes cadeaux</p>
       {cards.map((c) => (
         <Link key={c.id} href={`/carte-cadeau/${encodeURIComponent(c.code)}`} className="block">
           <GiftCardVisual card={c} />
@@ -148,27 +148,27 @@ export default function GiftCardHome() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
-        <p className="text-ink/60">Connectez-vous à votre carte de fidélité pour créer une carte cadeau.</p>
-        <Link href="/" className="text-brand-600 font-medium underline">Retour à l'accueil</Link>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center bg-cream">
+        <p className="text-forest-900/60 font-label">Connectez-vous à votre carte de fidélité pour créer une carte cadeau.</p>
+        <Link href="/" className="text-bordeaux font-label font-semibold underline">Retour à l'accueil</Link>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen max-w-md mx-auto px-5 py-8 flex flex-col gap-6">
+    <div className="min-h-screen bg-cream max-w-md mx-auto px-5 py-8 flex flex-col gap-6">
       <div className="flex items-center gap-3">
-        <Link href="/" className="p-2 rounded-full bg-black/5"><ArrowLeft className="w-5 h-5" /></Link>
-        <h1 className="text-xl font-bold">Carte cadeau</h1>
+        <Link href="/" className="p-2 rounded-full bg-sage-100 text-forest-700"><ArrowLeft className="w-5 h-5" /></Link>
+        <h1 className="font-display font-bold text-xl text-forest-900">Carte cadeau</h1>
       </div>
 
       {created ? (
         <div className="flex flex-col gap-4">
           <GiftCardVisual card={created} showQr />
-          <button onClick={() => share(created)} className="tap-target rounded-xl border border-black/10 bg-white flex items-center justify-center gap-2 font-medium">
-            <Share2 className="w-5 h-5 text-brand-600" /> Partager
+          <button onClick={() => share(created)} className="tap-target rounded-xl border border-forest-900/10 bg-white flex items-center justify-center gap-2 font-medium">
+            <Share2 className="w-5 h-5 text-bordeaux" /> Partager
           </button>
-          <button onClick={() => setCreated(null)} className="text-sm text-ink/50 underline self-center">Créer une autre carte</button>
+          <button onClick={() => setCreated(null)} className="text-sm text-forest-900/50 font-label underline self-center">Créer une autre carte</button>
         </div>
       ) : (
         <CreateForm token={token} onCreated={setCreated} />

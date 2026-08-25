@@ -48,10 +48,10 @@ function AdminLogin({ onToken }) {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6">
-      <Lock className="w-8 h-8 text-brand-600" />
+      <Lock className="w-8 h-8 text-bordeaux" />
       <h1 className="text-xl font-bold">Administration</h1>
       {needsBootstrap && (
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Votre nom" className="tap-target w-64 rounded-xl border border-black/10 px-4" />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Votre nom" className="tap-target w-64 rounded-xl border border-forest-900/10 px-4" />
       )}
       <input
         value={pin}
@@ -59,12 +59,12 @@ function AdminLogin({ onToken }) {
         type="password"
         inputMode="numeric"
         placeholder="Code PIN admin"
-        className="tap-target w-64 rounded-xl border border-black/10 px-4 text-center tracking-widest text-lg"
+        className="tap-target w-64 rounded-xl border border-forest-900/10 px-4 text-center tracking-widest text-lg"
       />
-      <button disabled={busy} onClick={needsBootstrap ? bootstrap : login} className="tap-target w-64 rounded-xl bg-brand-600 text-white font-semibold">
+      <button disabled={busy} onClick={needsBootstrap ? bootstrap : login} className="tap-target w-64 rounded-xl bg-amber-500 text-forest-900 font-semibold">
         {needsBootstrap ? 'Créer le compte admin' : 'Se connecter'}
       </button>
-      <button onClick={() => setNeedsBootstrap((v) => !v)} className="text-xs text-ink/40 underline">
+      <button onClick={() => setNeedsBootstrap((v) => !v)} className="text-xs text-forest-900/40 underline">
         {needsBootstrap ? 'J\'ai déjà un compte' : 'Premier lancement ? Créer le compte admin'}
       </button>
     </div>
@@ -74,7 +74,7 @@ function AdminLogin({ onToken }) {
 function Section({ icon: Icon, title, children }) {
   return (
     <div className="card p-5 flex flex-col gap-4">
-      <p className="font-semibold flex items-center gap-2"><Icon className="w-4 h-4 text-brand-600" /> {title}</p>
+      <p className="font-semibold flex items-center gap-2"><Icon className="w-4 h-4 text-bordeaux" /> {title}</p>
       {children}
     </div>
   );
@@ -99,12 +99,12 @@ function PointsRuleSection({ settings, token, refresh }) {
 
   return (
     <Section icon={Settings2} title="Barème de points">
-      <label className="text-sm text-ink/60 flex items-center gap-2">
+      <label className="text-sm text-forest-900/60 flex items-center gap-2">
         1 point tous les
-        <input type="number" min="0.1" step="0.1" value={euros} onChange={(e) => setEuros(Number(e.target.value))} className="w-24 rounded-lg border border-black/10 px-2 py-1" />
+        <input type="number" min="0.1" step="0.1" value={euros} onChange={(e) => setEuros(Number(e.target.value))} className="w-24 rounded-lg border border-forest-900/10 px-2 py-1" />
         € dépensés
       </label>
-      <button onClick={save} className="self-start rounded-lg bg-brand-600 text-white px-4 py-2 text-sm font-medium">Enregistrer</button>
+      <button onClick={save} className="self-start rounded-lg bg-amber-500 text-forest-900 px-4 py-2 text-sm font-medium">Enregistrer</button>
     </Section>
   );
 }
@@ -129,18 +129,18 @@ function TiersSection({ settings, token, refresh }) {
       {tiers.map((t, i) => (
         <div key={t.key} className="grid grid-cols-3 gap-2 items-center text-sm">
           <span className="font-medium">{t.label}</span>
-          <label className="flex items-center gap-1 text-ink/50">
+          <label className="flex items-center gap-1 text-forest-900/50">
             dès
-            <input type="number" value={t.min_lifetime_points} onChange={(e) => update(i, 'min_lifetime_points', Number(e.target.value))} className="w-20 rounded-lg border border-black/10 px-2 py-1" />
+            <input type="number" value={t.min_lifetime_points} onChange={(e) => update(i, 'min_lifetime_points', Number(e.target.value))} className="w-20 rounded-lg border border-forest-900/10 px-2 py-1" />
             pts
           </label>
-          <label className="flex items-center gap-1 text-ink/50">
+          <label className="flex items-center gap-1 text-forest-900/50">
             x
-            <input type="number" step="0.05" value={t.multiplier} onChange={(e) => update(i, 'multiplier', Number(e.target.value))} className="w-16 rounded-lg border border-black/10 px-2 py-1" />
+            <input type="number" step="0.05" value={t.multiplier} onChange={(e) => update(i, 'multiplier', Number(e.target.value))} className="w-16 rounded-lg border border-forest-900/10 px-2 py-1" />
           </label>
         </div>
       ))}
-      <button onClick={save} className="self-start rounded-lg bg-brand-600 text-white px-4 py-2 text-sm font-medium">Enregistrer</button>
+      <button onClick={save} className="self-start rounded-lg bg-amber-500 text-forest-900 px-4 py-2 text-sm font-medium">Enregistrer</button>
     </Section>
   );
 }
@@ -173,16 +173,16 @@ function GiftCardsSection({ settings, token, refresh }) {
 
   return (
     <Section icon={Gift} title="Cartes cadeaux">
-      <label className="text-sm text-ink/60">
+      <label className="text-sm text-forest-900/60">
         Montants proposés côté client (€, séparés par des virgules)
-        <input value={presets} onChange={(e) => setPresets(e.target.value)} placeholder="10, 20, 30, 50" className="mt-1 w-full rounded-lg border border-black/10 px-3 py-2 text-sm" />
+        <input value={presets} onChange={(e) => setPresets(e.target.value)} placeholder="10, 20, 30, 50" className="mt-1 w-full rounded-lg border border-forest-900/10 px-3 py-2 text-sm" />
       </label>
-      <label className="text-sm text-ink/60 flex items-center gap-2">
+      <label className="text-sm text-forest-900/60 flex items-center gap-2">
         Durée de validité
-        <input type="number" min="1" value={validity} onChange={(e) => setValidity(e.target.value)} className="w-20 rounded-lg border border-black/10 px-2 py-1" />
+        <input type="number" min="1" value={validity} onChange={(e) => setValidity(e.target.value)} className="w-20 rounded-lg border border-forest-900/10 px-2 py-1" />
         mois
       </label>
-      <button onClick={save} className="self-start rounded-lg bg-brand-600 text-white px-4 py-2 text-sm font-medium">Enregistrer</button>
+      <button onClick={save} className="self-start rounded-lg bg-amber-500 text-forest-900 px-4 py-2 text-sm font-medium">Enregistrer</button>
     </Section>
   );
 }
@@ -212,18 +212,18 @@ function RestaurantSection({ settings, token, refresh }) {
 
   return (
     <Section icon={MapPin} title="Établissement & notifications de proximité">
-      <input value={r.name} onChange={(e) => setR({ ...r, name: e.target.value })} placeholder="Nom du restaurant" className="rounded-lg border border-black/10 px-3 py-2 text-sm" />
+      <input value={r.name} onChange={(e) => setR({ ...r, name: e.target.value })} placeholder="Nom du restaurant" className="rounded-lg border border-forest-900/10 px-3 py-2 text-sm" />
       <div className="grid grid-cols-2 gap-2">
-        <input value={r.lat ?? ''} onChange={(e) => setR({ ...r, lat: e.target.value })} placeholder="Latitude" className="rounded-lg border border-black/10 px-3 py-2 text-sm" />
-        <input value={r.lng ?? ''} onChange={(e) => setR({ ...r, lng: e.target.value })} placeholder="Longitude" className="rounded-lg border border-black/10 px-3 py-2 text-sm" />
+        <input value={r.lat ?? ''} onChange={(e) => setR({ ...r, lat: e.target.value })} placeholder="Latitude" className="rounded-lg border border-forest-900/10 px-3 py-2 text-sm" />
+        <input value={r.lng ?? ''} onChange={(e) => setR({ ...r, lng: e.target.value })} placeholder="Longitude" className="rounded-lg border border-forest-900/10 px-3 py-2 text-sm" />
       </div>
-      <button onClick={useMyPosition} type="button" className="self-start text-xs text-brand-600 underline">Utiliser ma position actuelle</button>
-      <label className="text-sm text-ink/60 flex items-center gap-2">
+      <button onClick={useMyPosition} type="button" className="self-start text-xs text-bordeaux underline">Utiliser ma position actuelle</button>
+      <label className="text-sm text-forest-900/60 flex items-center gap-2">
         Rayon de détection
-        <input type="number" value={r.proximity_radius_m} onChange={(e) => setR({ ...r, proximity_radius_m: e.target.value })} className="w-24 rounded-lg border border-black/10 px-2 py-1" />
+        <input type="number" value={r.proximity_radius_m} onChange={(e) => setR({ ...r, proximity_radius_m: e.target.value })} className="w-24 rounded-lg border border-forest-900/10 px-2 py-1" />
         mètres
       </label>
-      <button onClick={save} className="self-start rounded-lg bg-brand-600 text-white px-4 py-2 text-sm font-medium">Enregistrer</button>
+      <button onClick={save} className="self-start rounded-lg bg-amber-500 text-forest-900 px-4 py-2 text-sm font-medium">Enregistrer</button>
     </Section>
   );
 }
@@ -252,18 +252,18 @@ function RewardsSection({ token }) {
   return (
     <Section icon={Gift} title="Récompenses (produits offerts)">
       {rewards.map((r) => (
-        <div key={r.id} className="flex justify-between items-center text-sm border-b border-black/5 pb-2">
+        <div key={r.id} className="flex justify-between items-center text-sm border-b border-forest-900/10 pb-2">
           <div>
             <p className="font-medium">{r.name}</p>
-            <p className="text-ink/50 text-xs">{r.points_cost} pts</p>
+            <p className="text-forest-900/50 text-xs">{r.points_cost} pts</p>
           </div>
           <button onClick={() => remove(r.id)} className="text-red-500"><Trash2 className="w-4 h-4" /></button>
         </div>
       ))}
       <div className="flex flex-col gap-2">
-        <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex: Dessert offert" className="rounded-lg border border-black/10 px-3 py-2 text-sm" />
-        <input value={form.points_cost} onChange={(e) => setForm({ ...form, points_cost: e.target.value })} type="number" placeholder="Coût en points" className="rounded-lg border border-black/10 px-3 py-2 text-sm" />
-        <button onClick={add} className="self-start rounded-lg bg-ink text-white px-4 py-2 text-sm font-medium flex items-center gap-1"><Plus className="w-4 h-4" /> Ajouter</button>
+        <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex: Dessert offert" className="rounded-lg border border-forest-900/10 px-3 py-2 text-sm" />
+        <input value={form.points_cost} onChange={(e) => setForm({ ...form, points_cost: e.target.value })} type="number" placeholder="Coût en points" className="rounded-lg border border-forest-900/10 px-3 py-2 text-sm" />
+        <button onClick={add} className="self-start rounded-lg bg-forest-900 text-cream px-4 py-2 text-sm font-medium flex items-center gap-1"><Plus className="w-4 h-4" /> Ajouter</button>
       </div>
     </Section>
   );
@@ -299,32 +299,32 @@ function OffersSection({ token }) {
   return (
     <Section icon={Megaphone} title="Offres & notifications push">
       {offers.map((o) => (
-        <div key={o.id} className="flex justify-between items-center text-sm border-b border-black/5 pb-2 gap-2">
+        <div key={o.id} className="flex justify-between items-center text-sm border-b border-forest-900/10 pb-2 gap-2">
           <div>
             <p className="font-medium">{o.title}</p>
-            <p className="text-ink/50 text-xs">{o.type === 'proximity' ? 'À proximité' : o.scheduled_at ? new Date(o.scheduled_at).toLocaleString('fr-FR') : 'Immédiate'}{o.sent_at ? ' · envoyée' : ''}</p>
+            <p className="text-forest-900/50 text-xs">{o.type === 'proximity' ? 'À proximité' : o.scheduled_at ? new Date(o.scheduled_at).toLocaleString('fr-FR') : 'Immédiate'}{o.sent_at ? ' · envoyée' : ''}</p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => sendNow(o.id)} className="text-brand-600"><Send className="w-4 h-4" /></button>
+            <button onClick={() => sendNow(o.id)} className="text-bordeaux"><Send className="w-4 h-4" /></button>
             <button onClick={() => remove(o.id)} className="text-red-500"><Trash2 className="w-4 h-4" /></button>
           </div>
         </div>
       ))}
       <div className="flex flex-col gap-2">
-        <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Titre" className="rounded-lg border border-black/10 px-3 py-2 text-sm" />
-        <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="Message" className="rounded-lg border border-black/10 px-3 py-2 text-sm" />
+        <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Titre" className="rounded-lg border border-forest-900/10 px-3 py-2 text-sm" />
+        <textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} placeholder="Message" className="rounded-lg border border-forest-900/10 px-3 py-2 text-sm" />
         <div className="flex gap-2">
-          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="rounded-lg border border-black/10 px-3 py-2 text-sm">
+          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="rounded-lg border border-forest-900/10 px-3 py-2 text-sm">
             <option value="scheduled">Date programmée</option>
             <option value="proximity">À proximité</option>
           </select>
           {form.type === 'scheduled' && (
-            <input type="datetime-local" value={form.scheduled_at} onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })} className="rounded-lg border border-black/10 px-3 py-2 text-sm flex-1" />
+            <input type="datetime-local" value={form.scheduled_at} onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })} className="rounded-lg border border-forest-900/10 px-3 py-2 text-sm flex-1" />
           )}
         </div>
-        <button onClick={add} className="self-start rounded-lg bg-ink text-white px-4 py-2 text-sm font-medium flex items-center gap-1"><Plus className="w-4 h-4" /> Créer l'offre</button>
+        <button onClick={add} className="self-start rounded-lg bg-forest-900 text-cream px-4 py-2 text-sm font-medium flex items-center gap-1"><Plus className="w-4 h-4" /> Créer l'offre</button>
       </div>
-      <p className="text-xs text-ink/40">Pas de planificateur automatique branché : utilisez l'icône d'envoi pour déclencher une offre programmée le moment venu.</p>
+      <p className="text-xs text-forest-900/40">Pas de planificateur automatique branché : utilisez l'icône d'envoi pour déclencher une offre programmée le moment venu.</p>
     </Section>
   );
 }
@@ -357,19 +357,19 @@ function StaffSection({ token }) {
   return (
     <Section icon={Users} title="Équipe (accès caisse)">
       {staff.map((s) => (
-        <div key={s.id} className="flex justify-between items-center text-sm border-b border-black/5 pb-2">
-          <span>{s.name} <span className="text-ink/40">· {s.role}</span></span>
+        <div key={s.id} className="flex justify-between items-center text-sm border-b border-forest-900/10 pb-2">
+          <span>{s.name} <span className="text-forest-900/40">· {s.role}</span></span>
           <button onClick={() => remove(s.id)} className="text-red-500"><Trash2 className="w-4 h-4" /></button>
         </div>
       ))}
       <div className="flex flex-col gap-2">
-        <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nom" className="rounded-lg border border-black/10 px-3 py-2 text-sm" />
-        <input value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value.replace(/\D/g, '') })} placeholder="Code PIN (4 chiffres min)" className="rounded-lg border border-black/10 px-3 py-2 text-sm" />
-        <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="rounded-lg border border-black/10 px-3 py-2 text-sm">
+        <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nom" className="rounded-lg border border-forest-900/10 px-3 py-2 text-sm" />
+        <input value={form.pin} onChange={(e) => setForm({ ...form, pin: e.target.value.replace(/\D/g, '') })} placeholder="Code PIN (4 chiffres min)" className="rounded-lg border border-forest-900/10 px-3 py-2 text-sm" />
+        <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="rounded-lg border border-forest-900/10 px-3 py-2 text-sm">
           <option value="caissier">Caissier</option>
           <option value="admin">Admin</option>
         </select>
-        <button onClick={add} className="self-start rounded-lg bg-ink text-white px-4 py-2 text-sm font-medium flex items-center gap-1"><Plus className="w-4 h-4" /> Ajouter</button>
+        <button onClick={add} className="self-start rounded-lg bg-forest-900 text-cream px-4 py-2 text-sm font-medium flex items-center gap-1"><Plus className="w-4 h-4" /> Ajouter</button>
       </div>
     </Section>
   );
@@ -403,7 +403,7 @@ export default function AdminPage() {
             localStorage.removeItem('staff_token');
             setToken(null);
           }}
-          className="text-ink/50 flex items-center gap-1 text-sm"
+          className="text-forest-900/50 flex items-center gap-1 text-sm"
         >
           <LogOut className="w-4 h-4" /> Déconnexion
         </button>

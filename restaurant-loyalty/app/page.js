@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Bell, Gift, Star, Clock, LogOut, KeyRound, Smartphone } from 'lucide-react';
+import { Bell, Gift, Star, Clock, LogOut, Sparkles, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { cn, formatEuros } from '@/lib/utils';
@@ -36,52 +36,52 @@ function LoginGate({ onToken }) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center px-6 py-10 gap-6 max-w-md mx-auto">
-      <div className="text-center">
-        <div className="w-16 h-16 rounded-2xl bg-brand-600 text-white flex items-center justify-center mx-auto mb-3 text-2xl font-bold">F</div>
-        <h1 className="text-xl font-bold">Carte de fidélité</h1>
-        <p className="text-ink/50 text-sm mt-1">Le Restaurant</p>
+    <div className="min-h-screen flex flex-col justify-center px-6 py-10 gap-6 max-w-md mx-auto bg-cream">
+      <div className="text-center flex flex-col items-center gap-2">
+        <div className="w-16 h-16 rounded-full bg-forest-900 text-cream flex items-center justify-center font-display font-bold text-2xl">TB</div>
+        <h1 className="font-display font-bold text-2xl text-forest-900">La Terrasse de Bourbon</h1>
+        <p className="font-script text-2xl text-bordeaux -mt-1">votre carte de fidélité</p>
       </div>
 
-      <div className="flex bg-black/5 rounded-xl p-1">
+      <div className="flex bg-sage-100 rounded-xl p-1">
         <button
           onClick={() => setMode('login')}
-          className={cn('flex-1 py-2 rounded-lg text-sm font-medium', mode === 'login' ? 'bg-white shadow-sm' : 'text-ink/50')}
+          className={cn('flex-1 py-2 rounded-lg text-sm font-label font-semibold', mode === 'login' ? 'bg-white shadow-sm text-forest-900' : 'text-forest-900/50')}
         >
           J'ai déjà un accès
         </button>
         <button
           onClick={() => setMode('claim')}
-          className={cn('flex-1 py-2 rounded-lg text-sm font-medium', mode === 'claim' ? 'bg-white shadow-sm' : 'text-ink/50')}
+          className={cn('flex-1 py-2 rounded-lg text-sm font-label font-semibold', mode === 'claim' ? 'bg-white shadow-sm text-forest-900' : 'text-forest-900/50')}
         >
           Activer mon compte
         </button>
       </div>
 
       <div className="card p-5 flex flex-col gap-3">
-        <label className="text-sm text-ink/60">
+        <label className="text-sm text-forest-900/60 font-label">
           Numéro de téléphone
           <input
             value={phone}
             onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
             inputMode="numeric"
             placeholder="0692xxxxxx"
-            className="tap-target mt-1 w-full rounded-xl border border-black/10 px-4 text-lg"
+            className="tap-target mt-1 w-full rounded-xl border border-forest-900/10 px-4 text-lg"
           />
         </label>
         {mode === 'claim' && (
-          <label className="text-sm text-ink/60">
+          <label className="text-sm text-forest-900/60 font-label">
             Code reçu en caisse
             <input
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
               inputMode="numeric"
               placeholder="123456"
-              className="tap-target mt-1 w-full rounded-xl border border-black/10 px-4 text-lg"
+              className="tap-target mt-1 w-full rounded-xl border border-forest-900/10 px-4 text-lg"
             />
           </label>
         )}
-        <label className="text-sm text-ink/60">
+        <label className="text-sm text-forest-900/60 font-label">
           {mode === 'claim' ? 'Choisissez un code PIN (4 chiffres)' : 'Code PIN'}
           <input
             value={pin}
@@ -89,28 +89,20 @@ function LoginGate({ onToken }) {
             inputMode="numeric"
             type="password"
             placeholder="••••"
-            className="tap-target mt-1 w-full rounded-xl border border-black/10 px-4 text-lg tracking-widest"
+            className="tap-target mt-1 w-full rounded-xl border border-forest-900/10 px-4 text-lg tracking-widest"
           />
         </label>
         <button
           disabled={busy || phone.length < 8 || pin.length < 4 || (mode === 'claim' && code.length < 6)}
           onClick={submit}
-          className="tap-target rounded-xl bg-brand-600 disabled:opacity-50 text-white font-semibold mt-2"
+          className="tap-target rounded-xl bg-amber-500 disabled:opacity-50 text-forest-900 font-label font-extrabold mt-2"
         >
           {busy ? '...' : mode === 'login' ? 'Se connecter' : 'Activer'}
         </button>
       </div>
-      <p className="text-xs text-ink/40 text-center">
+      <p className="text-xs text-forest-900/40 text-center font-label">
         Pas encore de compte ? Demandez un code d'activation à la caisse lors de votre prochain passage.
       </p>
-    </div>
-  );
-}
-
-function ProgressBar({ value }) {
-  return (
-    <div className="w-full h-2 rounded-full bg-black/10 overflow-hidden">
-      <div className="h-full bg-brand-500" style={{ width: `${Math.min(100, value)}%` }} />
     </div>
   );
 }
@@ -162,7 +154,7 @@ function Dashboard({ token, onLogout }) {
     }
   };
 
-  if (!me) return <div className="min-h-screen flex items-center justify-center text-ink/40">Chargement…</div>;
+  if (!me) return <div className="min-h-screen flex items-center justify-center text-forest-900/40 bg-cream font-label">Chargement…</div>;
 
   const { client, tier, next_tier, points_to_next, rewards, history } = me;
   const span = next_tier ? next_tier.min_lifetime_points - tier.min_lifetime_points : 1;
@@ -170,98 +162,143 @@ function Dashboard({ token, onLogout }) {
   const pct = next_tier ? (done / span) * 100 : 100;
 
   return (
-    <div className="min-h-screen max-w-md mx-auto px-5 py-8 flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-ink/40 text-xs">Bonjour</p>
-          <p className="font-semibold">{client.phone}</p>
-        </div>
-        <button onClick={onLogout} className="text-ink/40"><LogOut className="w-5 h-5" /></button>
-      </div>
-
-      <div className="rounded-2xl p-6 text-white flex flex-col gap-4" style={{ background: 'linear-gradient(135deg,#ea580c,#c2410c)' }}>
-        <div className="flex justify-between items-start">
+    <div className="min-h-screen bg-cream max-w-md mx-auto pb-28">
+      <div className="app-header">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-forest-900 text-cream flex items-center justify-center font-display font-bold">TB</div>
           <div>
-            <p className="text-white/70 text-xs uppercase tracking-wide">Statut</p>
-            <p className="text-2xl font-bold flex items-center gap-1"><Star className="w-5 h-5 fill-white" /> {tier.label}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-white/70 text-xs">Solde</p>
-            <p className="text-2xl font-bold">{client.points_balance} pts</p>
+            <p className="text-forest-900/50 text-xs font-label">Bonjour</p>
+            <p className="font-display font-semibold text-forest-900">{client.phone}</p>
           </div>
         </div>
-        {next_tier && (
-          <div>
-            <div className="w-full h-2 rounded-full bg-white/20 overflow-hidden">
-              <div className="h-full bg-white" style={{ width: `${Math.min(100, pct)}%` }} />
-            </div>
-            <p className="text-white/70 text-xs mt-1">{points_to_next} pts avant le statut {next_tier.label}</p>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <button onClick={activatePush} className="w-10 h-10 rounded-full bg-sage-100 flex items-center justify-center text-forest-700">
+            <Bell className="w-5 h-5" />
+          </button>
+          <button onClick={onLogout} className="w-10 h-10 rounded-full bg-sage-100 flex items-center justify-center text-forest-700">
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
-      <button
-        onClick={activatePush}
-        className="tap-target rounded-xl border border-black/10 bg-white flex items-center justify-center gap-2 font-medium"
-      >
-        <Bell className="w-5 h-5 text-brand-600" /> Recevoir les offres du restaurant
-      </button>
-
-      <Link
-        href="/carte-cadeau"
-        className="tap-target rounded-xl border border-black/10 bg-white flex items-center justify-center gap-2 font-medium"
-      >
-        <Gift className="w-5 h-5 text-brand-600" /> Offrir une carte cadeau
-      </Link>
-
-      <div>
-        <p className="font-semibold mb-2 flex items-center gap-1"><Gift className="w-4 h-4" /> Récompenses</p>
-        <div className="flex flex-col gap-2">
-          {rewards.map((r) => (
-            <div key={r.id} className={cn('card p-3 flex justify-between items-center', !r.unlocked && 'opacity-50')}>
-              <div>
-                <p className="font-medium">{r.name}</p>
-                {r.description && <p className="text-xs text-ink/50">{r.description}</p>}
+      <div className="px-5 mt-2 flex flex-col gap-4">
+        <div className="hero-card p-6">
+          <p className="eyebrow text-cream/70">Vos points fidélité</p>
+          <div className="flex items-end justify-between mt-1">
+            <p className="text-4xl font-display font-bold">{client.points_balance} <span className="text-lg font-label font-semibold text-cream/70">pts</span></p>
+            <p className="eyebrow text-amber-400 flex items-center gap-1"><Star className="w-3.5 h-3.5 fill-amber-400" /> {tier.label}</p>
+          </div>
+          {next_tier && (
+            <div className="mt-4">
+              <div className="w-full h-1.5 rounded-full bg-white/20 overflow-hidden">
+                <div className="h-full bg-amber-500" style={{ width: `${Math.min(100, pct)}%` }} />
               </div>
-              <span className="text-sm font-semibold">{r.points_cost} pts</span>
+              <p className="text-cream/60 text-xs mt-1.5 font-label">{points_to_next} pts avant le statut {next_tier.label}</p>
             </div>
-          ))}
-          {rewards.length === 0 && <p className="text-sm text-ink/40">Aucune récompense pour le moment.</p>}
+          )}
         </div>
-      </div>
 
-      {offers.length > 0 && (
-        <div>
-          <p className="font-semibold mb-2">Offres du moment</p>
-          <div className="flex flex-col gap-2">
-            {offers.map((o) => (
-              <div key={o.id} className="card p-3 bg-brand-50">
-                <p className="font-medium">{o.title}</p>
-                <p className="text-sm text-ink/60">{o.message}</p>
+        <div className="flex justify-between px-2">
+          <button onClick={activatePush} className="icon-btn">
+            <span className="icon-btn-circle"><Bell className="w-5 h-5" /></span>
+            Offres
+          </button>
+          <Link href="/carte-cadeau" className="icon-btn">
+            <span className="icon-btn-circle"><Gift className="w-5 h-5" /></span>
+            Cadeau
+          </Link>
+          <a href="#historique" className="icon-btn">
+            <span className="icon-btn-circle"><Clock className="w-5 h-5" /></span>
+            Historique
+          </a>
+          <a href="#recompenses" className="icon-btn">
+            <span className="icon-btn-circle"><Sparkles className="w-5 h-5" /></span>
+            Avantages
+          </a>
+        </div>
+
+        <div className="promo-card p-5 flex items-center justify-between gap-3">
+          <div>
+            <p className="font-script text-2xl leading-none text-amber-400">La Terrasse</p>
+            <p className="font-display font-bold text-lg leading-tight">de Bourbon</p>
+            <p className="text-cream/60 text-xs font-label mt-1">Coffee House · Brunch · Cocktail Bar</p>
+          </div>
+          <a
+            href="https://wa.me/262692253538"
+            target="_blank"
+            rel="noreferrer"
+            className="shrink-0 bg-amber-500 text-forest-900 font-label font-extrabold text-xs px-4 py-2.5 rounded-full flex items-center gap-1"
+          >
+            Réserver <ChevronRight className="w-3.5 h-3.5" />
+          </a>
+        </div>
+
+        <div id="recompenses">
+          <p className="font-display font-semibold text-forest-900 mb-2 flex items-center gap-1.5"><Gift className="w-4 h-4 text-bordeaux" /> Récompenses</p>
+          <div className="grid grid-cols-2 gap-3">
+            {rewards.map((r) => (
+              <div key={r.id} className={cn('rounded-2xl p-4 bg-forest-900 text-cream', !r.unlocked && 'opacity-40')}>
+                <p className="font-dish italic text-lg leading-tight">{r.name}</p>
+                {r.description && <p className="text-cream/50 text-xs mt-1">{r.description}</p>}
+                <p className="eyebrow text-amber-400 mt-3">{r.points_cost} pts</p>
               </div>
             ))}
+            {rewards.length === 0 && <p className="text-sm text-forest-900/40 col-span-2 font-label">Aucune récompense pour le moment.</p>}
           </div>
         </div>
-      )}
 
-      <div>
-        <p className="font-semibold mb-2 flex items-center gap-1"><Clock className="w-4 h-4" /> Historique</p>
-        <div className="flex flex-col gap-2">
-          {history.map((h) => (
-            <div key={h.id} className="card p-3 flex justify-between items-center text-sm">
-              <div>
-                <p>{new Date(h.created_at).toLocaleDateString('fr-FR')}</p>
-                {h.reward_redeemed && <p className="text-xs text-brand-600">{h.reward_redeemed.name} échangé (-{h.reward_redeemed.points_cost} pts)</p>}
-              </div>
-              <div className="text-right">
-                <p>{formatEuros(h.amount_cents)} €</p>
-                <p className="text-brand-600 font-semibold">+{h.points_earned} pts</p>
-              </div>
+        {offers.length > 0 && (
+          <div>
+            <p className="font-display font-semibold text-forest-900 mb-2">Offres du moment</p>
+            <div className="flex flex-col gap-2">
+              {offers.map((o) => (
+                <div key={o.id} className="card p-4 border border-bordeaux/10">
+                  <p className="font-display font-semibold text-forest-900">{o.title}</p>
+                  <p className="text-sm text-forest-900/60 font-body">{o.message}</p>
+                </div>
+              ))}
             </div>
-          ))}
-          {history.length === 0 && <p className="text-sm text-ink/40">Pas encore de visite enregistrée.</p>}
+          </div>
+        )}
+
+        <div id="historique">
+          <p className="font-display font-semibold text-forest-900 mb-2 flex items-center gap-1.5"><Clock className="w-4 h-4 text-bordeaux" /> Historique</p>
+          <div className="flex flex-col gap-2">
+            {history.map((h) => (
+              <div key={h.id} className="card p-3 flex justify-between items-center text-sm">
+                <div>
+                  <p className="font-label text-forest-900/60">{new Date(h.created_at).toLocaleDateString('fr-FR')}</p>
+                  {h.reward_redeemed && <p className="text-xs text-bordeaux font-label">{h.reward_redeemed.name} échangé (-{h.reward_redeemed.points_cost} pts)</p>}
+                </div>
+                <div className="text-right">
+                  <p className="font-body">{formatEuros(h.amount_cents)} €</p>
+                  <p className="text-forest-700 font-label font-semibold">+{h.points_earned} pts</p>
+                </div>
+              </div>
+            ))}
+            {history.length === 0 && <p className="text-sm text-forest-900/40 font-label">Pas encore de visite enregistrée.</p>}
+          </div>
         </div>
       </div>
+
+      <nav className="bottom-nav max-w-md mx-auto">
+        <span className="bottom-nav-item active">
+          <Star className="w-5 h-5" />
+          Accueil
+        </span>
+        <a href="#recompenses" className="bottom-nav-item">
+          <Gift className="w-5 h-5" />
+          Avantages
+        </a>
+        <a href="#historique" className="bottom-nav-item">
+          <Clock className="w-5 h-5" />
+          Historique
+        </a>
+        <Link href="/carte-cadeau" className="bottom-nav-item">
+          <Sparkles className="w-5 h-5" />
+          Cadeau
+        </Link>
+      </nav>
     </div>
   );
 }
