@@ -1,38 +1,46 @@
-# La Terrasse de Bourbon — Réservations
+# La Terrasse de Bourbon — Réservations & carte
 
-Plateforme de réservation autonome (un seul fichier `index.html`, sans dépendance à installer).
+Une seule page (`index.html`) pour deux publics :
 
-## Fonctionnement
+| Adresse | Pour qui | Contenu |
+|---|---|---|
+| `…/index.html` | Clients | Accueil, carte digitale, réservation, « Mes résas », suivi du statut |
+| `…/index.html#equipe` | Équipe | Hub : demandes à confirmer, plan de salle, service, ajout manuel |
 
-**Côté client (« Réserver »)**
-- Formulaire : nom, téléphone, date, horaire (Midi / Happy Hour / Soir), nombre de personnes, zone (Intérieur, Terrasse, Rooftop), notes.
-- À l'envoi, un message pré-rempli s'ouvre dans WhatsApp vers le restaurant ; le client voit un écran « En attente de confirmation ».
+## Parcours d'une réservation
 
-**Côté équipe (« Équipe », code PIN)**
-- Vue par date et par service (midi, happy hour, soir) avec compteurs : réservations, couverts, tables et places libres.
-- **Plan** : tables par zone (libre / réservée / cochée à la main). Toucher une table libre la coche ; toucher une table réservée ouvre la réservation.
-- **Réservations** : liste du service, attribution / changement de table, message WhatsApp, suppression.
-- **Ajouter** : saisie manuelle, proposition automatique de table (zone respectée, capacité adaptée, salons gardés pour les groupes), remplissage rapide par dictée.
-- **Scanner** : photo du cahier ou de l'addition → tables déjà prises cochées, réservations sans table placées automatiquement, vérification avant application.
+1. Le client choisit jour, heure, nombre de personnes et préférence d'espace, puis envoie sa demande.
+2. La demande arrive **automatiquement** dans le hub (onglet Demandes), avec alerte sonore, badge et notification si activée.
+3. Un membre de l'équipe **confirme ou refuse à la main**. Une table est proposée, mais c'est l'équipe qui décide (ou place plus tard).
+4. La page de suivi du client passe d'elle-même à « Confirmée » ou « Non disponible ». Un message WhatsApp pré-rédigé reste disponible si l'équipe veut prévenir le client directement.
 
-## Parcours d'une demande
+Statuts : `pending` (en attente) → `confirmed` / `declined`, et `cancelled` si le client ou l'équipe annule.
 
-1. Le client remplit la page et envoie le message WhatsApp déjà rédigé.
-2. L'équipe copie ce message dans **Ajouter → Importer une demande WhatsApp** : le formulaire se remplit et une table est proposée.
-3. Après l'enregistrement, **Confirmer au client sur WhatsApp** ouvre la conversation avec le client et un message de confirmation.
+## Mise en production (Supabase, gratuit à cette échelle)
 
-Dans claude.ai, si la personne qui réserve a accès à la base, la demande arrive directement avec le statut « À confirmer ».
+1. Créer un compte et un projet sur supabase.com (région Europe).
+2. **SQL Editor** : coller le contenu de `supabase.sql`, puis Run.
+3. **Authentication > Providers > Email** : désactiver « Allow new users to sign up ».
+4. **Authentication > Users > Add user** pour chaque membre de l'équipe, puis dans le SQL Editor :
+   `insert into public.staff (user_id) select id from auth.users where email = 'prenom@exemple.re';`
+5. **Project Settings > API** : copier l'URL du projet et la clé `anon public` dans `SUPABASE_URL` et `SUPABASE_ANON_KEY`, en haut du script de `index.html`.
+6. Héberger le dossier sur un hébergeur statique (Netlify, Vercel ou Cloudflare Pages, gratuits). Il n'y a ni build ni serveur à gérer.
 
-## Configuration
+Sans ces deux valeurs, la page tourne en **mode démo** : tout reste dans le navigateur de l'appareil, ce qui permet de tester le parcours en ouvrant la page client et `#equipe` dans deux onglets.
 
-En tête du `<script>` de `index.html` :
-- `WA_NUM` : numéro WhatsApp du restaurant
-- `PIN_HASH` : empreinte du code équipe (la commande pour la régénérer est en commentaire)
-- `SVC` : services et heure par défaut
+## Sécurité
+
+- Le public ne lit ni n'écrit jamais directement dans les tables. Il passe par trois fonctions : envoyer une demande, suivre sa demande avec un jeton secret, l'annuler.
+- Seuls les comptes de la table `staff` voient les réservations (téléphones compris).
+- Garde-fous : 3 demandes en attente maximum par numéro et par heure, 40 demandes par tranche de 10 minutes, date entre aujourd'hui et 6 mois.
+
+## Configuration dans `index.html`
+
+- `SVC` : services, horaires et créneaux proposés aux clients
 - `ZONES` : plan de salle (tables, capacités, `maxCap`, salons)
+- `MENU_CATS`, `MENU` : la carte. **Les plats actuels sont des exemples** : remplacez-les, puis passez `MENU_IS_EXAMPLE` à `false`.
 
-## Accès et données
+## Limites
 
-- Dans claude.ai, la base partagée n'est lisible et modifiable que par les personnes à qui la page est partagée en **contributeur** ou plus. Ces personnes entrent dans l'espace équipe sans code.
-- Hors de claude.ai, le code PIN n'est que dissuasif et les données restent sur chaque appareil (localStorage). Le scanner et le remplissage rapide n'y fonctionnent pas.
-- Un client qui n'a pas accès à la base passe obligatoirement par WhatsApp.
+- Le scanner du cahier et le remplissage par dictée utilisent l'IA de claude.ai : ils n'apparaissent que dans l'aperçu claude.ai, pas sur la version hébergée.
+- Dans l'aperçu claude.ai, la page reste en mode démo (claude.ai bloque les connexions vers Supabase).
