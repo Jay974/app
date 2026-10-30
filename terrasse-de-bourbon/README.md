@@ -15,16 +15,24 @@ Plateforme de réservation autonome (un seul fichier `index.html`, sans dépenda
 - **Ajouter** : saisie manuelle, proposition automatique de table (zone respectée, capacité adaptée, salons gardés pour les groupes), remplissage rapide par dictée.
 - **Scanner** : photo du cahier ou de l'addition → tables déjà prises cochées, réservations sans table placées automatiquement, vérification avant application.
 
+## Parcours d'une demande
+
+1. Le client remplit la page et envoie le message WhatsApp déjà rédigé.
+2. L'équipe copie ce message dans **Ajouter → Importer une demande WhatsApp** : le formulaire se remplit et une table est proposée.
+3. Après l'enregistrement, **Confirmer au client sur WhatsApp** ouvre la conversation avec le client et un message de confirmation.
+
+Dans claude.ai, si la personne qui réserve a accès à la base, la demande arrive directement avec le statut « À confirmer ».
+
 ## Configuration
 
 En tête du `<script>` de `index.html` :
 - `WA_NUM` : numéro WhatsApp du restaurant
-- `STAFF_PIN` : code d'accès équipe
+- `PIN_HASH` : empreinte du code équipe (la commande pour la régénérer est en commentaire)
 - `SVC` : services et heure par défaut
 - `ZONES` : plan de salle (tables, capacités, `maxCap`, salons)
 
-## Limites actuelles
+## Accès et données
 
-- La synchronisation entre appareils, le scanner photo et le remplissage rapide reposent sur le runtime des artefacts claude.ai (`window.claude`). Ouvert ailleurs, les données restent sur l'appareil (localStorage) et ces deux fonctions IA sont désactivées.
-- Les demandes clientes partent par WhatsApp uniquement : elles n'apparaissent pas automatiquement dans l'espace équipe.
-- Le code PIN est visible dans le code source de la page : il ne protège pas réellement les données.
+- Dans claude.ai, la base partagée n'est lisible et modifiable que par les personnes à qui la page est partagée en **contributeur** ou plus. Ces personnes entrent dans l'espace équipe sans code.
+- Hors de claude.ai, le code PIN n'est que dissuasif et les données restent sur chaque appareil (localStorage). Le scanner et le remplissage rapide n'y fonctionnent pas.
+- Un client qui n'a pas accès à la base passe obligatoirement par WhatsApp.
