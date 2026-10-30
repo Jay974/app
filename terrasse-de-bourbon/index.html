@@ -613,7 +613,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <div class="ctrl">
         <div class="pill-field"><input type="date" id="dash-date" aria-label="Date du service"></div>
         <div class="pills" role="group" aria-label="Service">
-          <button class="pill" data-svc="midi">Midi<small>12h–14h30</small></button>
+          <button class="pill" data-svc="midi">Midi<small>12h–14h30 · HH</small></button>
           <button class="pill" data-svc="hh">Happy Hour<small>17h–19h</small></button>
           <button class="pill" data-svc="soir">Soir<small>19h–22h30</small></button>
         </div>
@@ -736,7 +736,7 @@ const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/d
 
 const RESTO = 'La Terrasse de Bourbon';
 const SVC = {
-  midi: { label: 'Midi', time: '12h30', hours: '12h–14h30', what: 'Déjeuner', slots: ['12h00','12h30','13h00','13h30'] },
+  midi: { label: 'Midi', time: '12h30', hours: '12h–14h30', what: 'Déjeuner & Happy Hour', slots: ['12h00','12h30','13h00','13h30'] },
   hh:   { label: 'Happy Hour', time: '18h00', hours: '17h–19h', what: 'Cocktails', slots: ['17h00','17h30','18h00','18h30'] },
   soir: { label: 'Soir', time: '19h30', hours: '19h–22h30', what: 'Dîner', slots: ['19h00','19h30','20h00','20h30','21h00'] }
 };
@@ -777,8 +777,9 @@ const ZONES = [
   { short:'int', label:'Intérieur', tables:[
     {id:'bar1',name:'Bar 1',cap:2},{id:'bar2',name:'Bar 2',cap:2},{id:'bar3',name:'Bar 3',cap:2},
     {id:'t100',name:'100',cap:8},{id:'t101',name:'101',cap:6,maxCap:7},
-    {id:'t102',name:'102',cap:4},{id:'t103',name:'103',cap:4},{id:'t104',name:'104',cap:4},{id:'t105',name:'105',cap:4},
-    {id:'t106',name:'106',cap:2},{id:'t107',name:'107',cap:2},
+    {id:'coin1',name:'Coin 1',cap:2,maxCap:3},{id:'coin2',name:'Coin 2',cap:2,maxCap:3},   // 3e place en bout de table
+    {id:'t102',name:'102',cap:4},{id:'t103',name:'103',cap:4},{id:'t104',name:'104',cap:4},{id:'t104b',name:'104bis',cap:2},{id:'t105',name:'105',cap:4},
+    {id:'t106',name:'106',cap:2},{id:'t106b',name:'106bis',cap:2},{id:'t107',name:'107',cap:2},
     {id:'t108',name:'108',cap:4},{id:'t108a',name:'108a',cap:2},{id:'t108b',name:'108b',cap:2},
     {id:'gtbl',name:'Grande Table',cap:14,maxCap:16,salon:true} ]},
   { short:'ter', label:'Terrasse', tables:[
@@ -787,7 +788,7 @@ const ZONES = [
     {id:'t204',name:'204',cap:4},{id:'t205',name:'205',cap:4},{id:'t206',name:'206',cap:4} ]},
   { short:'rof', label:'Rooftop', tables:[
     {id:'t300',name:'Salon 300',cap:6,maxCap:10,salon:true},
-    {id:'t301',name:'301',cap:4},{id:'t302',name:'302',cap:4},{id:'t303',name:'303',cap:4},
+    {id:'t301',name:'301',cap:2},{id:'t302',name:'302',cap:2},{id:'t303',name:'303',cap:4},
     {id:'t304',name:'304',cap:4},{id:'t305',name:'305',cap:4},{id:'t306',name:'306',cap:4},
     {id:'t307',name:'Canapé 307',cap:10,maxCap:20,salon:true} ]}
 ];
