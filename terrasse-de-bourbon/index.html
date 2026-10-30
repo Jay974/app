@@ -1,0 +1,1007 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>La Terrasse de Bourbon</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #FAFAF8;
+  --surface: #ffffff;
+  --surface-2: #F4F2EF;
+  --surface-3: #EDEAE6;
+  --header-bg: rgba(250,250,248,0.92);
+  --border: rgba(26,47,26,0.08);
+  --border-strong: rgba(26,47,26,0.15);
+  --text: #1A2F1A;
+  --text-muted: #5E7C5E;
+  --text-light: #8CA48C;
+  --gold: #C77A00;
+  --gold-bright: #FF9B00;
+  --gold-light: rgba(255,155,0,0.1);
+  --gold-border: rgba(255,155,0,0.3);
+  --rose: #D1105F;
+  --rose-light: rgba(232,25,107,0.08);
+  --rose-border: rgba(232,25,107,0.3);
+  --green: #2D6040;
+  --green-light: rgba(45,96,64,0.08);
+  --green-border: rgba(45,96,64,0.28);
+  --green-dark: #1A2F1A;
+  --on-dark: #ffffff;
+  --sage: #B8D4B0;
+  --shadow-sm: 0 1px 3px rgba(26,47,26,0.06), 0 1px 2px rgba(26,47,26,0.04);
+  --shadow-md: 0 4px 16px rgba(26,47,26,0.08), 0 2px 6px rgba(26,47,26,0.04);
+  --radius: 12px;
+  --radius-sm: 8px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0F1A0F; --surface: #1A2F1A; --surface-2: #243524; --surface-3: #2D4030;
+    --header-bg: rgba(15,26,15,0.92);
+    --border: rgba(184,212,176,0.1); --border-strong: rgba(184,212,176,0.18);
+    --text: #EAF0EA; --text-muted: #B8D4B0; --text-light: #8FB08F;
+    --gold: #FFB233; --rose: #FF5C9A; --green: #8FD0A0;
+    --green-light: rgba(143,208,160,0.1); --green-border: rgba(143,208,160,0.3);
+    --rose-light: rgba(255,92,154,0.12); --rose-border: rgba(255,92,154,0.35);
+    --green-dark: #2D6040;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3); --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0F1A0F; --surface: #1A2F1A; --surface-2: #243524; --surface-3: #2D4030;
+  --header-bg: rgba(15,26,15,0.92);
+  --border: rgba(184,212,176,0.1); --border-strong: rgba(184,212,176,0.18);
+  --text: #EAF0EA; --text-muted: #B8D4B0; --text-light: #8FB08F;
+  --gold: #FFB233; --rose: #FF5C9A; --green: #8FD0A0;
+  --green-light: rgba(143,208,160,0.1); --green-border: rgba(143,208,160,0.3);
+  --rose-light: rgba(255,92,154,0.12); --rose-border: rgba(255,92,154,0.35);
+  --green-dark: #2D6040;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3); --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Montserrat', system-ui, sans-serif; font-weight: 400; font-size: 14px; line-height: 1.6;
+  min-height: 100vh;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+}
+button { font-family: inherit; }
+
+/* HEADER */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); background: var(--header-bg); z-index: 60; }
+.header {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 50;
+  background: var(--header-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+  margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.header-inner { max-width: 760px; margin: 0 auto; padding: 12px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.logo-block { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.logo-mark { width: 36px; height: 36px; background: #1A2F1A; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.logo-mark svg { width: 20px; height: 20px; fill: #FF9B00; }
+.logo-text { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.logo-title { font-family: 'Playfair Display', serif; font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: 0.02em; }
+.logo-sub { font-size: 9px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); }
+.nav-pills { display: flex; gap: 4px; align-items: center; }
+.nav-pill { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid var(--border-strong); background: transparent; color: var(--text-muted); cursor: pointer; transition: all .18s; white-space: nowrap; }
+.nav-pill:hover { color: var(--text); border-color: var(--green); }
+.nav-pill.active { background: var(--green-dark); color: var(--on-dark); border-color: var(--green-dark); }
+.main { max-width: 760px; margin: 0 auto; }
+
+/* HERO + FORM */
+.hero { text-align: center; padding: 44px 0 28px; }
+.hero-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 600; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin-bottom: 16px; }
+.hero-eyebrow::before, .hero-eyebrow::after { content: ''; width: 20px; height: 1px; background: var(--gold-border); }
+.hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(28px, 6vw, 40px); font-weight: 700; line-height: 1.2; text-wrap: balance; margin-bottom: 12px; }
+.hero h1 em { font-style: italic; color: var(--green); }
+.hero-sub { color: var(--text-muted); font-size: 14px; }
+.form-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 32px; box-shadow: var(--shadow-md); margin-bottom: 40px; }
+@media (max-width: 440px) { .form-card { padding: 20px 16px; border-radius: 16px; } }
+.form-section-label { font-size: 10px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--text-light); margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+@media (max-width: 500px) { .form-grid { grid-template-columns: 1fr; } }
+.form-group { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.form-label { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--text-muted); text-transform: uppercase; }
+.form-input, .form-select, .form-textarea {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 11px 14px;
+  font-family: inherit; font-size: 14px; color: var(--text); transition: all .18s; width: 100%; -webkit-appearance: none; appearance: none; min-width: 0;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--green); background: var(--surface); box-shadow: 0 0 0 3px var(--green-light); }
+.form-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235E7C5E' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; cursor: pointer;
+}
+.form-textarea { resize: vertical; min-height: 80px; }
+.guest-counter { display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 14px; }
+.guest-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0; }
+.guest-btn:hover { background: var(--green-dark); color: var(--on-dark); }
+.guest-mid { flex: 1; text-align: center; }
+.guest-count { font-weight: 600; font-size: 18px; line-height: 1.2; }
+.guest-label { font-size: 11px; color: var(--text-light); }
+.zone-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+.zone-btn { border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); padding: 12px 6px; cursor: pointer; text-align: center; transition: all .18s; color: var(--text-muted); }
+.zone-btn:hover { border-color: var(--green); color: var(--text); }
+.zone-btn.active { border-color: var(--green); background: var(--green-light); color: var(--green); }
+.zone-btn-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+.zone-btn-name { font-size: 11px; font-weight: 600; display: block; }
+.zone-btn-cap { font-size: 10px; color: var(--text-light); display: block; margin-top: 2px; }
+.btn-submit { width: 100%; background: var(--green-dark); color: var(--on-dark); border: none; border-radius: 10px; padding: 16px 24px; font-size: 14px; font-weight: 600; letter-spacing: .04em; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 8px; }
+.btn-submit:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.field-err { border-color: var(--rose) !important; }
+
+/* CONFIRMATION */
+.conf-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; box-shadow: var(--shadow-md); margin-bottom: 40px; }
+.conf-header { background: #1A2F1A; padding: 40px 32px 32px; text-align: center; position: relative; overflow: hidden; }
+.conf-header::before { content: ''; position: absolute; top: -40px; right: -40px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,155,0,0.08); }
+.conf-check { width: 64px; height: 64px; background: rgba(255,155,0,0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; border: 1.5px solid rgba(255,155,0,0.3); }
+.conf-check svg { width: 28px; height: 28px; }
+.conf-header h2 { font-family: 'Playfair Display', serif; font-size: 24px; color: #fff; margin-bottom: 6px; }
+.conf-header p { color: rgba(255,255,255,0.7); font-size: 13px; }
+.conf-body { padding: 32px; }
+@media (max-width: 440px) { .conf-body { padding: 24px 16px; } }
+.conf-status-pill { display: inline-flex; align-items: center; gap: 8px; background: var(--gold-light); border: 1px solid var(--gold-border); border-radius: 20px; padding: 6px 14px; font-size: 11px; font-weight: 600; color: var(--gold); margin-bottom: 24px; }
+.conf-status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold-bright); animation: pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+.conf-recap { background: var(--surface-2); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; }
+.recap-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.recap-row:last-child { border-bottom: none; padding-bottom: 0; } .recap-row:first-child { padding-top: 0; }
+.recap-icon { font-size: 16px; flex-shrink: 0; }
+.recap-label { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-light); }
+.recap-val { font-size: 14px; font-weight: 500; margin-top: 1px; overflow-wrap: anywhere; }
+.conf-note { background: var(--surface-2); border-radius: var(--radius-sm); padding: 16px; font-size: 12px; color: var(--text-muted); margin-bottom: 20px; }
+.conf-note strong { color: var(--text); }
+.btn-ghost { width: 100%; background: transparent; color: var(--green); border: 1.5px solid var(--green-border); border-radius: 10px; padding: 14px 24px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .18s; }
+.btn-ghost:hover { background: var(--green-light); }
+.wa-action { display: block; text-align: center; color: var(--text-light); font-size: 12px; margin-top: 16px; text-decoration: none; }
+.wa-action:hover { color: var(--text-muted); text-decoration: underline; }
+
+/* PIN */
+.pin-screen { max-width: 320px; margin: 56px auto 40px; text-align: center; }
+.pin-screen h2 { font-family: 'Playfair Display', serif; font-size: 22px; margin-bottom: 6px; }
+.pin-screen p { color: var(--text-muted); font-size: 13px; margin-bottom: 28px; }
+.pin-display { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
+.pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-strong); transition: all .15s; }
+.pin-dot.filled { background: var(--green); border-color: var(--green); }
+.pin-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pin-key { aspect-ratio: 1.3; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); font-size: 18px; font-weight: 500; cursor: pointer; transition: all .15s; box-shadow: var(--shadow-sm); }
+.pin-key:hover { background: var(--surface-2); } .pin-key:active { transform: scale(.95); }
+.pin-key.ok { background: var(--green-dark); color: var(--on-dark); font-size: 13px; font-weight: 600; }
+.pin-error { color: var(--rose); font-size: 12px; font-weight: 500; min-height: 18px; margin-top: 12px; }
+
+/* DASH */
+.dash-top { display: flex; align-items: center; justify-content: space-between; padding: 18px 0 12px; gap: 10px; flex-wrap: wrap; }
+.dash-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; text-transform: capitalize; }
+.btn-small { font-size: 11px; font-weight: 600; color: var(--text-muted); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 20px; padding: 6px 12px; cursor: pointer; }
+.btn-small:hover { color: var(--text); border-color: var(--green); }
+.db-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 600; letter-spacing: .06em; color: var(--text-light); padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); white-space: nowrap; }
+.db-badge.synced { color: var(--green); border-color: var(--green-border); background: var(--green-light); }
+.db-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.ctrl-row { display: flex; gap: 10px; align-items: stretch; margin-bottom: 14px; flex-wrap: wrap; }
+.ctrl-row input[type=date] { border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; font-family: inherit; font-size: 13px; background: var(--surface); color: var(--text); min-width: 0; }
+.seg { display: flex; flex: 1; min-width: 240px; background: var(--surface-2); border-radius: 10px; padding: 3px; gap: 2px; }
+.seg button { flex: 1; padding: 8px 6px; border-radius: 8px; border: none; background: transparent; color: var(--text-muted); font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.seg button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+.seg small { display: block; font-size: 9px; font-weight: 500; color: var(--text-light); }
+
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+@media (max-width: 520px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow-sm); }
+.stat-val { font-size: 24px; font-weight: 700; line-height: 1.1; }
+.stat-val small { font-size: 13px; font-weight: 500; color: var(--text-light); }
+.stat-lbl { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-light); margin-top: 4px; }
+
+.staff-tabs { display: flex; gap: 2px; margin-bottom: 16px; background: var(--surface-2); border-radius: 10px; padding: 3px; overflow-x: auto; }
+.staff-tab { flex: 1; padding: 9px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; border: none; background: transparent; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+.staff-tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+
+/* PLAN */
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--text-muted); margin-bottom: 14px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; border: 1.5px solid; }
+.lg-free { background: var(--green-light); border-color: var(--green-border) !important; }
+.lg-busy { background: var(--rose-light); border-color: var(--rose-border) !important; }
+.lg-manual { background: var(--surface-3); border-color: var(--border-strong) !important; }
+.zone-section { margin-bottom: 22px; }
+.zone-header { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.zone-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.zone-count { font-size: 11px; letter-spacing: 0; text-transform: none; color: var(--text-light); font-weight: 500; order: 3; }
+.table-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.tchip { border: 1.5px solid var(--green-border); background: var(--green-light); color: var(--green); border-radius: 10px; padding: 9px 8px; text-align: center; cursor: pointer; min-height: 64px; display: flex; flex-direction: column; justify-content: center; gap: 1px; transition: transform .12s; min-width: 0; }
+.tchip:active { transform: scale(.96); }
+.tchip .t-name { font-size: 14px; font-weight: 700; white-space: pre-line; line-height: 1.15; color: var(--text); }
+.tchip .t-sub { font-size: 10px; color: var(--text-light); }
+.tchip .t-who { font-size: 11px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tchip.busy { border-color: var(--rose-border); background: var(--rose-light); color: var(--rose); }
+.tchip.manual { border-color: var(--border-strong); background: var(--surface-3); color: var(--text-muted); }
+.tchip.salon { border-style: dashed; }
+
+/* LIST */
+.resa-list { display: flex; flex-direction: column; gap: 8px; }
+.resa-item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; cursor: pointer; box-shadow: var(--shadow-sm); text-align: left; width: 100%; color: var(--text); }
+.resa-item:hover { border-color: var(--green); }
+.resa-count { min-width: 40px; height: 40px; background: var(--green-light); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: var(--green); flex-shrink: 0; }
+.resa-main { flex: 1; min-width: 0; }
+.resa-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.resa-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.resa-badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.badge { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 20px; white-space: nowrap; }
+.badge-zone { background: var(--green-light); color: var(--green); }
+.badge-tbl { background: var(--gold-light); color: var(--gold); }
+.badge-warn { background: var(--rose-light); color: var(--rose); }
+.empty-state { text-align: center; padding: 40px 16px; color: var(--text-light); font-size: 13px; }
+.empty-state div { font-size: 36px; margin-bottom: 8px; opacity: .6; }
+
+/* SCANNER + ADD */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: var(--shadow-sm); margin-bottom: 14px; }
+.card h3 { font-family: 'Playfair Display', serif; font-size: 17px; margin-bottom: 4px; }
+.card p.hint { font-size: 12px; color: var(--text-muted); margin-bottom: 14px; }
+.btn-primary { background: var(--green-dark); color: var(--on-dark); border: none; border-radius: 10px; padding: 13px 18px; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%; display: flex; gap: 8px; align-items: center; justify-content: center; text-decoration: none; }
+.btn-primary:hover { opacity: .92; } .btn-primary:disabled { opacity: .5; cursor: default; }
+.btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border-strong); border-radius: 10px; padding: 11px 16px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.scan-preview { max-width: 100%; max-height: 220px; border-radius: 10px; border: 1px solid var(--border); margin: 12px 0; display: block; }
+.scan-status { font-size: 12px; color: var(--text-muted); min-height: 18px; margin-top: 8px; }
+.scan-status.err { color: var(--rose); }
+.scan-rows { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.scan-row { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface-2); display: grid; grid-template-columns: auto 1fr; gap: 8px 10px; align-items: center; }
+.scan-row.off { opacity: .5; }
+.scan-row input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--green); }
+.scan-fields { display: grid; grid-template-columns: 1.4fr .6fr .8fr; gap: 6px; }
+.scan-fields2 { grid-column: 2; display: grid; grid-template-columns: .8fr 1.2fr; gap: 6px; }
+.scan-row input[type=text], .scan-row input[type=number], .scan-row select { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 7px 8px; font-size: 12px; font-family: inherit; color: var(--text); width: 100%; min-width: 0; -webkit-appearance: none; appearance: none; }
+.scan-tag { font-size: 10px; font-weight: 600; color: var(--gold); grid-column: 2; }
+.scan-sum { font-size: 12px; background: var(--green-light); color: var(--green); border: 1px solid var(--green-border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+.wa-msg-box { background: #DCF8C6; color: #1a1a1a; border-radius: 10px; padding: 14px 16px; font-family: ui-monospace, monospace; font-size: 13px; margin-top: 14px; overflow-wrap: anywhere; }
+.wa-msg-actions { display: flex; gap: 8px; margin-top: 10px; }
+.btn-copy-wa, .btn-send-wa { flex: 1; padding: 9px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; text-align: center; text-decoration: none; }
+.btn-copy-wa { background: #fff; color: #1a1a1a; } .btn-send-wa { background: #25D366; color: #fff; }
+
+/* MODAL */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); backdrop-filter: blur(4px); z-index: 100; align-items: flex-end; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal-sheet { background: var(--surface); border-radius: 20px 20px 0 0; width: 100%; max-width: 600px; padding-bottom: max(20px, env(safe-area-inset-bottom, 0px)); max-height: 90vh; overflow-y: auto; }
+.modal-handle { width: 36px; height: 4px; background: var(--border-strong); border-radius: 2px; margin: 12px auto 0; }
+.modal-content { padding: 18px 22px 8px; }
+.modal-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; }
+.modal-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+.modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.modal-grid label { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-light); display: block; }
+.modal-grid span { font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.btn-modal-wa { flex: 2; min-width: 120px; background: #25D366; color: #fff; border: none; border-radius: 10px; padding: 12px; font-size: 13px; font-weight: 600; cursor: pointer; text-align: center; text-decoration: none; }
+.btn-modal-del, .btn-modal-close { flex: 1; padding: 12px; background: transparent; border: 1px solid var(--border-strong); border-radius: 10px; font-size: 13px; cursor: pointer; color: var(--text-muted); }
+.btn-modal-del { color: var(--rose); } .btn-modal-del.armed { background: var(--rose); color: #fff; border-color: var(--rose); }
+
+.toast { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(20px); background: #1A2F1A; color: #fff; padding: 11px 18px; border-radius: 24px; font-size: 13px; font-weight: 500; opacity: 0; pointer-events: none; transition: all .25s; z-index: 200; max-width: calc(100vw - 32px); text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+[hidden] { display: none !important; }
+</style>
+
+<!-- ═══════════════ CLIENT ═══════════════ -->
+<div id="client-section">
+  <header class="header"><div class="header-inner">
+    <div class="logo-block">
+      <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg></div>
+      <div class="logo-text"><span class="logo-title">La Terrasse de Bourbon</span><span class="logo-sub">Saint-Denis · La Réunion</span></div>
+    </div>
+    <div class="nav-pills">
+      <button class="nav-pill active" data-go="client">Réserver</button>
+      <button class="nav-pill" data-go="staff">Équipe</button>
+    </div>
+  </div></header>
+
+  <div class="main">
+    <div id="form-view">
+      <div class="hero">
+        <div class="hero-eyebrow">Réservation en ligne</div>
+        <h1>Vivez <em>l'instant</em><br>Terrasse</h1>
+        <p class="hero-sub">Cuisine créole contemporaine · Cocktails · Saint-Denis</p>
+      </div>
+      <div class="form-card">
+        <div class="form-section-label">Vos coordonnées</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label" for="f-name">Nom *</label><input type="text" class="form-input" id="f-name" placeholder="Votre nom" autocomplete="family-name"></div>
+          <div class="form-group"><label class="form-label" for="f-tel">Téléphone</label><input type="tel" class="form-input" id="f-tel" placeholder="0692 00 00 00" autocomplete="tel"></div>
+        </div>
+        <div class="form-section-label">Votre réservation</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label" for="f-date">Date *</label><input type="date" class="form-input" id="f-date"></div>
+          <div class="form-group"><label class="form-label" for="f-time">Heure *</label>
+            <select class="form-select" id="f-time">
+              <option value="">Choisir un horaire</option>
+              <optgroup label="Midi">
+                <option value="12h00">12h00</option><option value="12h30">12h30</option><option value="13h00">13h00</option><option value="13h30">13h30</option>
+              </optgroup>
+              <optgroup label="Happy Hour">
+                <option value="17h00">17h00</option><option value="17h30">17h30</option><option value="18h00">18h00</option><option value="18h30">18h30</option>
+              </optgroup>
+              <optgroup label="Soir">
+                <option value="19h00">19h00</option><option value="19h30">19h30</option><option value="20h00">20h00</option><option value="20h30">20h30</option><option value="21h00">21h00</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:20px">
+          <label class="form-label">Nombre de personnes *</label>
+          <div class="guest-counter">
+            <button class="guest-btn" data-guests="-1" aria-label="Moins">−</button>
+            <div class="guest-mid"><div class="guest-count" id="guest-count">2</div><div class="guest-label">personnes</div></div>
+            <button class="guest-btn" data-guests="1" aria-label="Plus">+</button>
+          </div>
+        </div>
+        <div class="form-section-label">Où souhaitez-vous vous installer ?</div>
+        <div class="zone-grid">
+          <button class="zone-btn" data-zone="Intérieur"><span class="zone-btn-icon">🏠</span><span class="zone-btn-name">Intérieur</span><span class="zone-btn-cap">Salle &amp; bar</span></button>
+          <button class="zone-btn" data-zone="Terrasse"><span class="zone-btn-icon">🌿</span><span class="zone-btn-name">Terrasse</span><span class="zone-btn-cap">En plein air</span></button>
+          <button class="zone-btn" data-zone="Rooftop"><span class="zone-btn-icon">🌆</span><span class="zone-btn-name">Rooftop</span><span class="zone-btn-cap">Vue dégagée</span></button>
+        </div>
+        <div class="form-group" style="margin-bottom:24px">
+          <label class="form-label" for="f-notes">Occasion, allergies, demande spéciale</label>
+          <textarea class="form-textarea" id="f-notes" placeholder="Anniversaire, intolérance alimentaire…"></textarea>
+        </div>
+        <button class="btn-submit" id="btn-client-submit">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+          Confirmer ma réservation
+        </button>
+      </div>
+    </div>
+
+    <div id="conf-view" hidden>
+      <div style="padding-top:32px"></div>
+      <div class="conf-card">
+        <div class="conf-header">
+          <div class="conf-check"><svg viewBox="0 0 24 24" fill="none" stroke="#FF9B00" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+          <h2>Demande reçue</h2>
+          <p>Merci pour votre confiance, nous préparons votre table.</p>
+        </div>
+        <div class="conf-body">
+          <div class="conf-status-pill"><span class="conf-status-dot"></span>En attente de confirmation</div>
+          <div class="conf-recap" id="conf-recap"></div>
+          <div class="conf-note"><strong>Notre équipe confirme votre réservation</strong> dans les meilleurs délais. Pour une demande urgente, appelez-nous au <strong>0692 25 35 38</strong>.</div>
+          <button class="btn-ghost" id="btn-new-resa">Faire une nouvelle réservation</button>
+          <a id="wa-client-link" href="#" class="wa-action" target="_blank" rel="noopener">Une question ? Écrivez-nous</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ STAFF ═══════════════ -->
+<div id="staff-section" hidden>
+  <header class="header"><div class="header-inner">
+    <div class="logo-block">
+      <div class="logo-mark"><svg viewBox="0 0 24 24"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg></div>
+      <div class="logo-text"><span class="logo-title">La Terrasse de Bourbon</span><span class="logo-sub">Espace équipe</span></div>
+    </div>
+    <div class="nav-pills">
+      <span class="db-badge" id="db-badge"><span class="db-badge-dot"></span><span id="db-label">Appareil</span></span>
+      <button class="nav-pill" data-go="client">← Retour</button>
+    </div>
+  </div></header>
+
+  <div class="main">
+    <div id="pin-screen" class="pin-screen">
+      <h2>Accès équipe</h2>
+      <p>Entrez le code PIN</p>
+      <div class="pin-display"><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div></div>
+      <div class="pin-keypad" id="pin-keypad">
+        <button class="pin-key" data-k="1">1</button><button class="pin-key" data-k="2">2</button><button class="pin-key" data-k="3">3</button>
+        <button class="pin-key" data-k="4">4</button><button class="pin-key" data-k="5">5</button><button class="pin-key" data-k="6">6</button>
+        <button class="pin-key" data-k="7">7</button><button class="pin-key" data-k="8">8</button><button class="pin-key" data-k="9">9</button>
+        <button class="pin-key" data-k="del" aria-label="Effacer">⌫</button><button class="pin-key" data-k="0">0</button><button class="pin-key ok" data-k="ok">OK</button>
+      </div>
+      <div class="pin-error" id="pin-error"></div>
+    </div>
+
+    <div id="staff-dash" hidden>
+      <div class="dash-top">
+        <div class="dash-title" id="dash-title">Aujourd'hui</div>
+        <button class="btn-small" id="btn-lock">Verrouiller</button>
+      </div>
+      <div class="ctrl-row">
+        <input type="date" id="dash-date" aria-label="Date">
+        <div class="seg" id="svc-seg">
+          <button data-svc="midi">Midi<small>12h–14h30</small></button>
+          <button data-svc="hh">Happy Hour<small>17h–19h</small></button>
+          <button data-svc="soir">Soir<small>19h–22h30</small></button>
+        </div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-val" id="s-resas">0</div><div class="stat-lbl">Réservations</div></div>
+        <div class="stat-card"><div class="stat-val" id="s-covers">0</div><div class="stat-lbl">Couverts</div></div>
+        <div class="stat-card"><div class="stat-val" id="s-free">0</div><div class="stat-lbl">Tables libres</div></div>
+        <div class="stat-card"><div class="stat-val" id="s-seats">0</div><div class="stat-lbl">Places libres</div></div>
+      </div>
+      <div class="staff-tabs" id="staff-tabs">
+        <button class="staff-tab active" data-tab="plan">🗺 Plan</button>
+        <button class="staff-tab" data-tab="resas">📋 Réservations</button>
+        <button class="staff-tab" data-tab="scan">📷 Scanner</button>
+        <button class="staff-tab" data-tab="add">➕ Ajouter</button>
+      </div>
+
+      <div id="panel-plan">
+        <div class="legend"><span><i class="lg-free"></i>Libre</span><span><i class="lg-busy"></i>Réservée</span><span><i class="lg-manual"></i>Occupée (cochée)</span><span>Touchez une table libre pour la cocher</span></div>
+        <div id="plan-zones"></div>
+      </div>
+
+      <div id="panel-resas" hidden><div id="resa-list" class="resa-list"></div></div>
+
+      <div id="panel-scan" hidden>
+        <div class="card">
+          <h3>Scanner le cahier ou l'addition</h3>
+          <p class="hint">Prenez en photo ce qui est déjà noté avant le service. Les tables déjà prises sont cochées, et les réservations sans table (juste « int » ou « ext ») reçoivent une table proposée. Vous vérifiez avant d'appliquer.</p>
+          <input type="file" id="scan-file" accept="image/*" hidden>
+          <button class="btn-primary" id="btn-scan-pick">📷 Prendre ou choisir une photo</button>
+          <img id="scan-preview" class="scan-preview" alt="Photo à analyser" hidden>
+          <div class="scan-status" id="scan-status"></div>
+        </div>
+        <div class="card" id="scan-result" hidden>
+          <h3>Vérification</h3>
+          <p class="hint" id="scan-context"></p>
+          <div class="scan-sum" id="scan-sum"></div>
+          <div class="scan-rows" id="scan-rows"></div>
+          <button class="btn-primary" id="btn-scan-apply">Appliquer au plan</button>
+        </div>
+      </div>
+
+      <div id="panel-add" hidden>
+        <div class="card" id="quickfill-card" hidden>
+          <h3>Remplissage rapide</h3>
+          <p class="hint">Dictez (micro du clavier) ou tapez en vrac pendant l'appel : « Martin, 4 personnes vendredi 19h30 en terrasse, 0692 12 34 56, anniversaire ».</p>
+          <textarea class="form-textarea" id="qf-text" placeholder="Ce que dit le client…" style="min-height:64px"></textarea>
+          <div style="height:10px"></div>
+          <button class="btn-primary" id="btn-qf">✨ Remplir le formulaire</button>
+          <div class="scan-status" id="qf-status"></div>
+        </div>
+        <div class="card">
+          <div class="form-grid" style="margin-bottom:14px">
+            <div class="form-group"><label class="form-label" for="a-name">Nom *</label><input type="text" class="form-input" id="a-name" autocomplete="off"></div>
+            <div class="form-group"><label class="form-label" for="a-tel">Tél.</label><input type="tel" class="form-input" id="a-tel" autocomplete="off"></div>
+          </div>
+          <div class="form-grid" style="margin-bottom:14px">
+            <div class="form-group"><label class="form-label" for="a-guests">Personnes *</label><input type="number" class="form-input" id="a-guests" value="2" min="1" max="40"></div>
+            <div class="form-group"><label class="form-label" for="a-date">Date *</label><input type="date" class="form-input" id="a-date"></div>
+          </div>
+          <div class="form-grid" style="margin-bottom:14px">
+            <div class="form-group"><label class="form-label" for="a-time">Heure *</label><input type="text" class="form-input" id="a-time" placeholder="19h30" autocomplete="off"></div>
+            <div class="form-group"><label class="form-label" for="a-zone">Zone</label>
+              <select class="form-select" id="a-zone"><option value="">Indifférent</option><option value="int">Intérieur</option><option value="ext">Extérieur (terrasse ou rooftop)</option><option value="ter">Terrasse</option><option value="rof">Rooftop</option></select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:14px"><label class="form-label" for="a-table">Table</label><select class="form-select" id="a-table"></select></div>
+          <div class="form-group" style="margin-bottom:14px"><label class="form-label" for="a-notes">Notes</label><textarea class="form-textarea" id="a-notes" style="min-height:60px"></textarea></div>
+          <button class="btn-primary" id="btn-add">Enregistrer la réservation</button>
+          <div class="wa-msg-box" id="wa-msg-box" hidden>
+            <span id="wa-msg-text"></span>
+            <div class="wa-msg-actions"><button class="btn-copy-wa" id="btn-copy-wa">📋 Copier</button><a id="wa-send-link" class="btn-send-wa" href="#" target="_blank" rel="noopener">Ouvrir WhatsApp</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-content">
+      <div class="modal-title" id="modal-name">—</div>
+      <div class="modal-sub" id="modal-meta">—</div>
+      <div class="modal-grid" id="modal-grid"></div>
+      <div id="modal-notes-block" hidden style="margin-bottom:14px">
+        <div class="form-label" style="margin-bottom:4px;color:var(--text-light)">Notes</div>
+        <div id="modal-notes" style="background:var(--surface-2);border-radius:8px;padding:10px 12px;font-size:13px;overflow-wrap:anywhere"></div>
+      </div>
+      <div class="form-group"><label class="form-label" for="modal-table">Table attribuée</label>
+        <div style="display:flex;gap:8px"><select class="form-select" id="modal-table"></select><button class="btn-secondary" id="btn-modal-table">OK</button></div>
+      </div>
+      <div class="wa-msg-box" id="modal-wa"></div>
+      <div class="modal-actions">
+        <a id="modal-wa-link" class="btn-modal-wa" href="#" target="_blank" rel="noopener">WhatsApp</a>
+        <button class="btn-modal-del" id="btn-modal-del">Supprimer</button>
+        <button class="btn-modal-close" id="btn-modal-close">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+'use strict';
+/* ── CONFIG ─────────────────────────────────────────────── */
+const WA_NUM = '262692100836';
+const STAFF_PIN = '1730';
+const SVC = { midi: {label:'Midi', time:'12h30'}, hh: {label:'Happy Hour', time:'18h00'}, soir: {label:'Soir', time:'19h30'} };
+
+const ZONES = [
+  { short:'int', label:'Intérieur', icon:'🏠', tables:[
+    {id:'bar1',name:'Bar 1',cap:2},{id:'bar2',name:'Bar 2',cap:2},{id:'bar3',name:'Bar 3',cap:2},
+    {id:'t100',name:'100',cap:8},{id:'t101',name:'101',cap:6,maxCap:7},
+    {id:'t102',name:'102',cap:4},{id:'t103',name:'103',cap:4},{id:'t104',name:'104',cap:4},{id:'t105',name:'105',cap:4},
+    {id:'t106',name:'106',cap:2},{id:'t107',name:'107',cap:2},
+    {id:'t108',name:'108',cap:4},{id:'t108a',name:'108a',cap:2},{id:'t108b',name:'108b',cap:2},
+    {id:'gtbl',name:'Grande Table',cap:14,maxCap:16,salon:true} ]},
+  { short:'ter', label:'Terrasse', icon:'🌿', tables:[
+    {id:'t200a',name:'200 Asc.',cap:2},{id:'t200b',name:'200bis',cap:4},
+    {id:'t201',name:'201',cap:4},{id:'t202',name:'202',cap:4},{id:'t203',name:'203',cap:4},
+    {id:'t204',name:'204',cap:4},{id:'t205',name:'205',cap:4},{id:'t206',name:'206',cap:4} ]},
+  { short:'rof', label:'Rooftop', icon:'🌆', tables:[
+    {id:'t300',name:'Salon 300',cap:6,maxCap:10,salon:true},
+    {id:'t301',name:'301',cap:4},{id:'t302',name:'302',cap:4},{id:'t303',name:'303',cap:4},
+    {id:'t304',name:'304',cap:4},{id:'t305',name:'305',cap:4},{id:'t306',name:'306',cap:4},
+    {id:'t307',name:'Canapé 307',cap:10,maxCap:20,salon:true} ]}
+];
+const TLIST = [];
+ZONES.forEach(z => z.tables.forEach(t => { t.zone = z.short; TLIST.push(t); }));
+const TBY = Object.fromEntries(TLIST.map(t => [t.id, t]));
+
+/* ── STATE ──────────────────────────────────────────────── */
+const S = { resas: [], occ: {} };        // occ[date_svc] = { tableId: 1 }
+const V = { date: '', svc: 'soir' };     // vue staff courante
+let guestCount = 2, clientZone = '', pinBuf = '', staffAuth = false;
+let db = null, dbTried = false, sampleCap, sampleLim = null;
+let modalId = null, delArmed = false, scanRows = [], currentWAMsg = '';
+
+/* ── HELPERS ────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const clone = o => JSON.parse(JSON.stringify(o == null ? null : o));
+const pad = n => String(n).padStart(2, '0');
+function isoLocal(d){ return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+function today(){ return isoLocal(new Date()); }
+function autoSvc(){ const h = new Date().getHours(); return h < 16 ? 'midi' : h < 19 ? 'hh' : 'soir'; }
+function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2600); }
+function fmtDateFr(iso){
+  if(!iso) return '—';
+  const dt = new Date(iso + 'T12:00:00');
+  return ['dim','lun','mar','mer','jeu','ven','sam'][dt.getDay()] + ' ' + pad(dt.getDate()) + ' ' + ['jan','fév','mars','avr','mai','juin','juil','août','sept','oct','nov','déc'][dt.getMonth()] + ' ' + dt.getFullYear();
+}
+function dayFr(iso){ return iso ? ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'][new Date(iso + 'T12:00:00').getDay()] : ''; }
+function svcOf(time){ const h = parseInt(String(time || '').replace(/[^0-9].*$/, ''), 10); if(isNaN(h)) return 'soir'; return h < 16 ? 'midi' : h < 19 ? 'hh' : 'soir'; }
+function zoneShort(z){ z = String(z || '').toLowerCase(); if(z.startsWith('int')) return 'int'; if(z.startsWith('ter')) return 'ter'; if(z.startsWith('roo') || z === 'rof') return 'rof'; if(z.startsWith('ext')) return 'ext'; return ''; }
+function zoneLabel(z){ return ({int:'Intérieur', ter:'Terrasse', rof:'Rooftop', ext:'Extérieur'})[zoneShort(z)] || '—'; }
+function tName(id){ return TBY[id] ? TBY[id].name : (id || ''); }
+function capTxt(t){ return t.cap + (t.maxCap ? '–' + t.maxCap : '') + 'p'; }
+function occKey(){ return V.date + '_' + V.svc; }
+function waLink(msg){ return 'https://wa.me/' + WA_NUM + '?text=' + encodeURIComponent(msg); }
+function fmtWAMsg(r){
+  return r.guests + 'p ' + dayFr(r.date) + ' ' + SVC[svcOf(r.time)].label.toLowerCase() + ' ' + r.time + ' ' + r.name +
+    (zoneShort(r.zone) ? ' ' + zoneShort(r.zone) : '') + (r.table ? ' tbl' + tName(r.table) : '') +
+    (r.tel ? ' ' + r.tel : '') + (r.notes ? ' — ' + r.notes : '');
+}
+
+/* ── STORAGE ────────────────────────────────────────────── */
+function loadLocal(){ try { S.resas = JSON.parse(localStorage.getItem('tdb_resas') || '[]'); S.occ = JSON.parse(localStorage.getItem('tdb_occ') || '{}'); } catch(e){ S.resas = []; S.occ = {}; } }
+function saveLocal(){ try { localStorage.setItem('tdb_resas', JSON.stringify(S.resas.filter(r => !db || r._local))); localStorage.setItem('tdb_occ', JSON.stringify(db ? {} : S.occ)); } catch(e){} }
+
+async function initDB(){
+  if(dbTried) return; dbTried = true;
+  try {
+    if(!window.claude) return;
+    db = await window.claude.use('db');
+    if(!db) return;
+    $('db-badge').classList.add('synced'); $('db-label').textContent = 'Synchronisé';
+    // Les snapshots sont gelés (lecture seule) : on les clone avant de les stocker.
+    db.collection('resas').onSnapshot(snap => { S.resas = snap.docs.map(d => clone(d.data())); renderAll(); }, () => {});
+    db.collection('occ').onSnapshot(snap => {
+      const o = {}; snap.docs.forEach(d => { const v = d.data(); o[d.id] = clone((v && v.v) || {}); });
+      S.occ = o; renderAll();
+    }, () => {});
+  } catch(e){ db = null; }
+}
+async function persistResa(r){
+  const i = S.resas.findIndex(x => x.id === r.id);
+  if(i >= 0) S.resas[i] = r; else S.resas.push(r);
+  if(db){ try { const body = clone(r); delete body._local; await db.doc('resas/' + r.id).set(body); delete r._local; return; } catch(e){ r._local = true; toast('Synchro impossible : enregistré sur cet appareil'); } }
+  else r._local = true;
+  saveLocal();
+}
+async function removeResa(id){
+  S.resas = S.resas.filter(r => r.id !== id);
+  if(db){ try { await db.doc('resas/' + id).delete(); } catch(e){ toast('Suppression non synchronisée'); } }
+  saveLocal();
+}
+async function persistOcc(key){
+  const cur = clone(S.occ[key] || {});
+  if(db){ try { await db.doc('occ/' + key).set({ v: cur, t: Date.now() }); return; } catch(e){ toast('Synchro impossible'); } }
+  saveLocal();
+}
+
+/* ── OCCUPATION ─────────────────────────────────────────── */
+function resasOfView(){
+  return S.resas.filter(r => r.date === V.date && svcOf(r.time) === V.svc)
+    .sort((a, b) => String(a.time).localeCompare(String(b.time), 'fr', {numeric:true}) || (a.ts || 0) - (b.ts || 0));
+}
+function occupancy(){
+  const m = {};
+  const man = S.occ[occKey()] || {};
+  Object.keys(man).forEach(id => { if(man[id]) m[id] = { manual: true }; });
+  resasOfView().forEach(r => { if(r.table) m[r.table] = { resa: r }; });
+  return m;
+}
+function allowedZones(z){ z = zoneShort(z); return z === 'int' ? ['int'] : z === 'ext' ? ['ter','rof'] : z ? [z] : ['int','ter','rof']; }
+/* Meilleure table libre : zone respectée, capacité suffisante, le moins de places perdues. */
+function suggestTable(guests, zone, taken){
+  const zs = allowedZones(zone); let best = null, bestScore = 1e9;
+  TLIST.forEach(t => {
+    if(taken.has(t.id) || zs.indexOf(t.zone) < 0) return;
+    const top = t.maxCap || t.cap; if(top < guests) return;
+    let sc = t.cap >= guests ? t.cap - guests : (guests - t.cap) + 4;   // dépasser la capacité normale coûte
+    if(t.salon && guests <= 6) sc += 6;                                   // on garde les salons pour les groupes
+    if(t.id.indexOf('bar') === 0 && guests > 2) sc += 10;
+    if(t.zone === 'rof') sc += 0.3;
+    if(sc < bestScore){ best = t; bestScore = sc; }
+  });
+  return best ? best.id : null;
+}
+
+/* ── NAV ────────────────────────────────────────────────── */
+function go(which){
+  $('client-section').hidden = which !== 'client';
+  $('staff-section').hidden = which !== 'staff';
+  if(which === 'staff'){ initDB(); }
+  window.scrollTo(0, 0);
+}
+function switchTab(tab){
+  document.querySelectorAll('.staff-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  ['plan','resas','scan','add'].forEach(t => $('panel-' + t).hidden = t !== tab);
+  if(tab === 'scan') prepScanner();
+  if(tab === 'add') prepAdd();
+}
+
+/* ── CLIENT ─────────────────────────────────────────────── */
+function clientSubmit(){
+  const name = $('f-name').value.trim(), date = $('f-date').value, time = $('f-time').value;
+  ['f-name','f-date','f-time'].forEach(i => $(i).classList.remove('field-err'));
+  const miss = !name ? 'f-name' : !date ? 'f-date' : !time ? 'f-time' : '';
+  if(miss){ $(miss).classList.add('field-err'); $(miss).focus(); return; }
+  const r = { id: uid(), name, date, time, guests: guestCount, zone: clientZone, tel: $('f-tel').value.trim(), notes: $('f-notes').value.trim(), ts: Date.now(), src: 'web' };
+  const row = (ic, l, v) => '<div class="recap-row"><span class="recap-icon">' + ic + '</span><div><div class="recap-label">' + l + '</div><div class="recap-val">' + esc(v) + '</div></div></div>';
+  $('conf-recap').innerHTML = row('👤','Nom', r.name) + row('🗓','Date', fmtDateFr(r.date)) + row('🕐','Heure', SVC[svcOf(r.time)].label + ' · ' + r.time) +
+    row('👥','Personnes', r.guests + ' personne' + (r.guests > 1 ? 's' : '')) + (r.zone ? row('📍','Espace', r.zone) : '') + (r.tel ? row('📱','Téléphone', r.tel) : '') + (r.notes ? row('📝','Notes', r.notes) : '');
+  const msg = fmtWAMsg(r);
+  $('wa-client-link').href = waLink(msg);
+  $('form-view').hidden = true; $('conf-view').hidden = false; window.scrollTo(0, 0);
+  try { window.open(waLink(msg), '_blank'); } catch(e){}
+}
+function newResa(){
+  ['f-name','f-tel','f-date','f-time','f-notes'].forEach(i => $(i).value = '');
+  $('f-date').value = today(); guestCount = 2; $('guest-count').textContent = '2';
+  clientZone = ''; document.querySelectorAll('.zone-btn').forEach(b => b.classList.remove('active'));
+  $('form-view').hidden = false; $('conf-view').hidden = true;
+}
+
+/* ── PIN ────────────────────────────────────────────────── */
+function pinKey(k){
+  if(k === 'del') pinBuf = pinBuf.slice(0, -1);
+  else if(k === 'ok'){ pinCheck(); return; }
+  else if(pinBuf.length < 4) pinBuf += k;
+  document.querySelectorAll('.pin-dot').forEach((d, i) => d.classList.toggle('filled', i < pinBuf.length));
+  if(pinBuf.length === 4) pinCheck();
+}
+function pinCheck(){
+  if(pinBuf === STAFF_PIN){ staffAuth = true; $('pin-screen').hidden = true; $('staff-dash').hidden = false; setupDash(); }
+  else { $('pin-error').textContent = 'Code incorrect'; setTimeout(() => $('pin-error').textContent = '', 2000); }
+  pinBuf = ''; document.querySelectorAll('.pin-dot').forEach(d => d.classList.remove('filled'));
+}
+function lock(){ staffAuth = false; $('pin-screen').hidden = false; $('staff-dash').hidden = true; }
+
+/* ── DASHBOARD ──────────────────────────────────────────── */
+function setupDash(){
+  if(!V.date) V.date = today();
+  V.svc = autoSvc();
+  $('dash-date').value = V.date;
+  $('a-date').value = V.date;
+  renderAll();
+}
+function renderAll(){
+  if(!staffAuth) return;
+  $('dash-title').textContent = dayFr(V.date) + ' ' + fmtDateFr(V.date).split(' ').slice(1, 3).join(' ');
+  document.querySelectorAll('#svc-seg button').forEach(b => b.classList.toggle('active', b.dataset.svc === V.svc));
+  const resas = resasOfView(), occ = occupancy();
+  const freeT = TLIST.filter(t => !occ[t.id]);
+  $('s-resas').textContent = resas.length;
+  $('s-covers').textContent = resas.reduce((s, r) => s + (+r.guests || 0), 0);
+  $('s-free').innerHTML = freeT.length + '<small> / ' + TLIST.length + '</small>';
+  $('s-seats').textContent = freeT.reduce((s, t) => s + t.cap, 0);
+  renderPlan(occ); renderList(resas);
+  if(!$('panel-add').hidden) buildTableSelect($('a-table'), $('a-zone').value, '', true);
+}
+function renderPlan(occ){
+  $('plan-zones').innerHTML = ZONES.map(z => {
+    const free = z.tables.filter(t => !occ[t.id]);
+    return '<div class="zone-section"><div class="zone-header">' + z.icon + ' ' + z.label +
+      '<span class="zone-count">' + free.length + '/' + z.tables.length + ' libres · ' + free.reduce((s, t) => s + t.cap, 0) + ' places</span></div><div class="table-grid">' +
+      z.tables.map(t => {
+        const o = occ[t.id]; const cls = o ? (o.resa ? 'busy' : 'manual') : '';
+        const who = o ? (o.resa ? '<div class="t-who">' + esc(o.resa.name) + '</div><div class="t-sub">' + esc(o.resa.guests) + 'p · ' + esc(o.resa.time) + '</div>' : '<div class="t-who">Occupée</div>') : '<div class="t-sub">' + capTxt(t) + ' · libre</div>';
+        return '<button class="tchip ' + cls + (t.salon ? ' salon' : '') + '" data-tid="' + t.id + '" aria-label="Table ' + esc(t.name) + (o ? ', occupée' : ', libre') + '"><div class="t-name">' + esc(t.name) + '</div>' + who + '</button>';
+      }).join('') + '</div></div>';
+  }).join('');
+}
+function renderList(resas){
+  const el = $('resa-list');
+  if(!resas.length){ el.innerHTML = '<div class="empty-state"><div>🍽️</div>Aucune réservation sur ce service</div>'; return; }
+  el.innerHTML = resas.map(r =>
+    '<button class="resa-item" data-rid="' + esc(r.id) + '"><div class="resa-count">' + esc(r.guests) + '</div>' +
+    '<div class="resa-main"><div class="resa-name">' + esc(r.name) + '</div><div class="resa-meta">' + esc(r.time) + (r.tel ? ' · ' + esc(r.tel) : '') + (r.notes ? ' · ' + esc(r.notes) : '') + '</div></div>' +
+    '<div class="resa-badges">' + (r.table ? '<span class="badge badge-tbl">Table ' + esc(tName(r.table)) + '</span>' : '<span class="badge badge-warn">Sans table</span>') +
+    (zoneShort(r.zone) ? '<span class="badge badge-zone">' + zoneLabel(r.zone) + '</span>' : '') + '</div></button>').join('');
+}
+
+async function toggleManual(tid){
+  const key = occKey(); const cur = Object.assign({}, S.occ[key] || {});
+  if(cur[tid]) delete cur[tid]; else cur[tid] = 1;
+  S.occ[key] = cur; renderAll();
+  await persistOcc(key);
+}
+function onTableTap(tid){
+  const o = occupancy()[tid];
+  if(o && o.resa) openModal(o.resa.id); else toggleManual(tid);
+}
+
+/* ── SÉLECTEUR DE TABLES ────────────────────────────────── */
+function buildTableSelect(sel, zone, current, withAuto){
+  const occ = occupancy(), zs = allowedZones(zone);
+  const prev = sel.value;
+  let h = '<option value="">Aucune</option>' + (withAuto ? '<option value="auto">✨ Proposer automatiquement</option>' : '');
+  ZONES.filter(z => zs.indexOf(z.short) >= 0).forEach(z => {
+    h += '<optgroup label="' + z.label + '">' + z.tables.map(t => {
+      const busy = occ[t.id] && t.id !== current;
+      return '<option value="' + t.id + '"' + (busy ? ' disabled' : '') + '>' + esc(t.name) + ' (' + capTxt(t) + ')' + (busy ? ' — prise' : '') + '</option>';
+    }).join('') + '</optgroup>';
+  });
+  sel.innerHTML = h;
+  sel.value = current || (Array.prototype.some.call(sel.options, o => o.value === prev && !o.disabled) ? prev : '');
+}
+function prepAdd(){
+  $('a-date').value = $('a-date').value || V.date;
+  if(!$('a-time').value) $('a-time').placeholder = SVC[V.svc].time;
+  buildTableSelect($('a-table'), $('a-zone').value, '', true);
+  getSample().then(s => { $('quickfill-card').hidden = !s; });
+}
+
+/* ── AJOUT MANUEL ───────────────────────────────────────── */
+async function staffAddResa(){
+  const name = $('a-name').value.trim(), guests = parseInt($('a-guests').value, 10) || 0, date = $('a-date').value, time = $('a-time').value.trim() || SVC[V.svc].time;
+  if(!name || !guests || !date){ toast('Nom, personnes et date sont requis'); return; }
+  let table = $('a-table').value, zone = $('a-zone').value;
+  const saveV = { date: V.date, svc: V.svc };
+  V.date = date; V.svc = svcOf(time);                      // l'occupation se calcule sur le service de la résa
+  if(table === 'auto'){
+    table = suggestTable(guests, zone, new Set(Object.keys(occupancy()))) || '';
+    if(!table) toast('Aucune table adaptée de libre : à placer à la main');
+  }
+  if(table && TBY[table]) zone = TBY[table].zone;
+  const r = { id: uid(), name, guests, date, time, zone, table, tel: $('a-tel').value.trim(), notes: $('a-notes').value.trim(), ts: Date.now(), src: 'staff' };
+  await persistResa(r);
+  const msg = fmtWAMsg(r); currentWAMsg = msg;
+  $('wa-msg-text').textContent = msg; $('wa-send-link').href = waLink(msg); $('wa-msg-box').hidden = false;
+  ['a-name','a-tel','a-notes'].forEach(i => $(i).value = ''); $('a-guests').value = '2'; $('a-time').value = '';
+  $('dash-date').value = V.date;
+  toast('Réservation ajoutée' + (r.table ? ' · table ' + tName(r.table) : ''));
+  renderAll();
+}
+function copyWAMsg(){
+  const done = () => { $('btn-copy-wa').textContent = '✓ Copié'; setTimeout(() => $('btn-copy-wa').textContent = '📋 Copier', 1500); };
+  const fallback = () => { const rg = document.createRange(); rg.selectNodeContents($('wa-msg-text')); const s = getSelection(); s.removeAllRanges(); s.addRange(rg); };
+  try { navigator.clipboard.writeText(currentWAMsg).then(done, fallback); } catch(e){ fallback(); }
+}
+
+/* ── IA : accès ─────────────────────────────────────────── */
+async function getSample(){
+  if(sampleCap !== undefined) return sampleCap;
+  try { sampleCap = window.claude ? await window.claude.use('sample') : null; } catch(e){ sampleCap = null; }
+  if(sampleCap){ try { sampleLim = await sampleCap.limits(); } catch(e){ sampleLim = null; } }
+  return sampleCap;
+}
+function aiError(e){
+  const c = e && e.code;
+  return c === 'not_granted' ? 'Autorisation refusée : réessayez et acceptez la demande.' :
+         c === 'rate_limited' ? 'Trop de demandes, réessayez dans un instant.' :
+         c === 'image_rejected' || c === 'images_unavailable' ? 'Cette photo n\'a pas pu être envoyée. Essayez-en une autre.' :
+         'Analyse impossible pour le moment. Vous pouvez saisir à la main.';
+}
+
+/* ── REMPLISSAGE RAPIDE (texte / dictée) ────────────────── */
+async function quickFill(){
+  const txt = $('qf-text').value.trim(); if(!txt) return;
+  const s = await getSample(); const st = $('qf-status'); st.className = 'scan-status';
+  if(!s){ st.textContent = 'Disponible uniquement connecté à Claude.'; st.className = 'scan-status err'; return; }
+  $('btn-qf').disabled = true; st.textContent = 'Lecture en cours…';
+  try {
+    const d = await s.json(
+      'Tu aides un restaurant à noter une réservation prise par téléphone. Nous sommes le ' + today() + ' (' + dayFr(today()) + '). ' +
+      'Texte brut (peut contenir des fautes de dictée) : """' + txt + '"""\n' +
+      'Réponds UNIQUEMENT par un objet JSON : {"name":string|null,"tel":string|null,"guests":number|null,"date":"AAAA-MM-JJ"|null,"time":"19h30"|null,"zone":"int"|"ext"|"ter"|"rof"|null,"notes":string|null}. ' +
+      'Résous « vendredi », « demain », etc. en date réelle (prochaine occurrence). zone: int=intérieur/salle, ter=terrasse, rof=rooftop, ext=extérieur sans précision. N\'invente rien : null si absent.',
+      { modelTier: 'quick', cache: false });
+    if(d.name) $('a-name').value = String(d.name); if(d.tel) $('a-tel').value = String(d.tel);
+    if(+d.guests > 0) $('a-guests').value = Math.round(+d.guests);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(d.date || '')) $('a-date').value = d.date;
+    if(d.time) $('a-time').value = String(d.time);
+    const z = zoneShort(d.zone); if(z) $('a-zone').value = z;
+    if(d.notes) $('a-notes').value = String(d.notes);
+    if($('a-date').value){ V.date = $('a-date').value; $('dash-date').value = V.date; }
+    if($('a-time').value) V.svc = svcOf($('a-time').value);
+    renderAll(); buildTableSelect($('a-table'), $('a-zone').value, '', true);
+    st.textContent = 'Formulaire rempli : vérifiez puis enregistrez.';
+  } catch(e){ st.textContent = aiError(e); st.className = 'scan-status err'; }
+  $('btn-qf').disabled = false;
+}
+
+/* ── SCANNER ────────────────────────────────────────────── */
+async function prepScanner(){
+  const s = await getSample(); const st = $('scan-status');
+  const ok = !!(s && sampleLim && sampleLim.images);
+  $('btn-scan-pick').disabled = !ok;
+  if(!ok){ st.textContent = 'Le scanner photo est disponible uniquement connecté à votre compte Claude.'; st.className = 'scan-status'; }
+  else if(st.textContent.indexOf('uniquement') >= 0) st.textContent = '';
+}
+function toJpegBlob(file){
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 1800 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => { URL.revokeObjectURL(url); b ? res({ blob: b, url: URL.createObjectURL(b) }) : rej(new Error('blob')); }, 'image/jpeg', 0.85);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('img')); };
+    img.src = url;
+  });
+}
+async function scanPhoto(file){
+  const st = $('scan-status'); st.className = 'scan-status'; $('scan-result').hidden = true;
+  const s = await getSample(); if(!s) return;
+  let prep; try { prep = await toJpegBlob(file); } catch(e){ st.textContent = 'Photo illisible, essayez-en une autre.'; st.className = 'scan-status err'; return; }
+  $('scan-preview').src = prep.url; $('scan-preview').hidden = false;
+  st.textContent = 'Lecture de la photo… (quelques secondes)'; $('btn-scan-pick').disabled = true;
+  const list = TLIST.map(t => t.id + ' = ' + t.name).join(' ; ');
+  try {
+    const d = await s.json(
+      'Tu lis la photo d\'un cahier, d\'une addition ou d\'une feuille de restaurant où sont notées des réservations et/ou des tables déjà prises pour UN service. Extrais chaque ligne utile.\n' +
+      'Réponds UNIQUEMENT par un objet JSON : {"entries":[{"name":string|null,"guests":number|null,"time":"19h30"|null,"table":string|null,"area":"int"|"ext"|null,"notes":string|null}]}.\n' +
+      'Tables valides (id = libellé) : ' + list + '.\n' +
+      'Règles : "table" = l\'id exact de la liste quand un numéro/nom de table est noté (ex. « 102 » -> t102, « Salon 300 » -> t300, « bar 2 » -> bar2), sinon null. ' +
+      '"area" = "int" si écrit int/intérieur/salle, "ext" si ext/extérieur/terrasse/rooftop, sinon null. ' +
+      'Une table simplement cochée ou notée occupée sans nom ni couverts : name et guests à null. Si illisible, null. N\'invente aucune ligne.',
+      { images: [prep.blob], modelTier: 'default', cache: false });
+    buildScanRows(d && d.entries);
+  } catch(e){ st.textContent = aiError(e); st.className = 'scan-status err'; }
+  $('btn-scan-pick').disabled = false;
+}
+function buildScanRows(entries){
+  const st = $('scan-status'); entries = Array.isArray(entries) ? entries : [];
+  const taken = new Set(Object.keys(occupancy()));
+  scanRows = entries.map(e => {
+    const t = TBY[e && e.table] ? e.table : '';
+    const g = Math.round(+e.guests) || 0;
+    return { id: uid(), on: true, name: e.name ? String(e.name) : '', guests: g, time: e.time ? String(e.time) : '', table: t, area: e.area === 'int' || e.area === 'ext' ? e.area : '', notes: e.notes ? String(e.notes) : '', suggested: false };
+  }).filter(r => r.name || r.guests || r.table);
+  scanRows.forEach(r => { if(r.table) taken.add(r.table); });
+  scanRows.filter(r => !r.table && (r.name || r.guests)).sort((a, b) => b.guests - a.guests).forEach(r => {
+    const t = suggestTable(r.guests || 2, r.area, taken);
+    if(t){ r.table = t; r.suggested = true; taken.add(t); }
+  });
+  if(!scanRows.length){ st.textContent = 'Aucune ligne reconnue. Essayez une photo plus nette ou plus proche.'; st.className = 'scan-status err'; return; }
+  st.textContent = '';
+  $('scan-context').textContent = 'Appliqué sur : ' + fmtDateFr(V.date) + ' · ' + SVC[V.svc].label + '. Modifiez la date ou le service en haut si besoin.';
+  renderScanRows(); $('scan-result').hidden = false;
+  $('scan-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function renderScanRows(){
+  const n = scanRows.filter(r => r.on);
+  const ticked = n.filter(r => !r.suggested && r.table).length, prop = n.filter(r => r.suggested).length, none = n.filter(r => !r.table && (r.name || r.guests)).length;
+  $('scan-sum').textContent = ticked + ' table' + (ticked > 1 ? 's' : '') + ' déjà prise' + (ticked > 1 ? 's' : '') + ' · ' + prop + ' proposée' + (prop > 1 ? 's' : '') + (none ? ' · ' + none + ' sans table disponible' : '');
+  const taken = new Set(); scanRows.forEach(r => { if(r.on && r.table) taken.add(r.table); });
+  $('scan-rows').innerHTML = scanRows.map(r => {
+    const opts = '<option value="">Sans table</option>' + ZONES.map(z => '<optgroup label="' + z.label + '">' + z.tables.map(t => '<option value="' + t.id + '"' + (r.table === t.id ? ' selected' : '') + '>' + esc(t.name) + '</option>').join('') + '</optgroup>').join('');
+    return '<div class="scan-row' + (r.on ? '' : ' off') + '" data-sid="' + r.id + '"><input type="checkbox" data-f="on" aria-label="Inclure"' + (r.on ? ' checked' : '') + '>' +
+      '<div class="scan-fields"><input type="text" data-f="name" placeholder="Nom" value="' + esc(r.name) + '"><input type="number" data-f="guests" placeholder="Pers." min="0" value="' + (r.guests || '') + '"><input type="text" data-f="time" placeholder="Heure" value="' + esc(r.time) + '"></div>' +
+      '<div class="scan-fields2"><select data-f="area" aria-label="Zone"><option value="">Zone ?</option><option value="int"' + (r.area === 'int' ? ' selected' : '') + '>Int</option><option value="ext"' + (r.area === 'ext' ? ' selected' : '') + '>Ext</option></select>' +
+      '<select data-f="table" aria-label="Table">' + opts + '</select></div>' +
+      (r.suggested ? '<div class="scan-tag">✨ Table proposée automatiquement</div>' : (r.table && !r.name && !r.guests ? '<div class="scan-tag">Table déjà occupée</div>' : '')) + '</div>';
+  }).join('');
+}
+async function applyScan(){
+  const rows = scanRows.filter(r => r.on); if(!rows.length) return;
+  $('btn-scan-apply').disabled = true;
+  let nResa = 0, nTick = 0; const key = occKey(); const cur = Object.assign({}, S.occ[key] || {});
+  for(const r of rows){
+    if(!r.name && !r.guests){ if(r.table && !cur[r.table]){ cur[r.table] = 1; nTick++; } continue; }
+    const z = r.table && TBY[r.table] ? TBY[r.table].zone : r.area;
+    await persistResa({ id: uid(), name: r.name || 'Sans nom', guests: r.guests || 2, date: V.date, time: r.time || SVC[V.svc].time, zone: z || '', table: r.table || '', notes: r.notes, ts: Date.now(), src: 'scan' });
+    nResa++;
+  }
+  if(nTick){ S.occ[key] = cur; await persistOcc(key); }
+  scanRows = []; $('scan-result').hidden = true; $('scan-preview').hidden = true; $('scan-file').value = '';
+  renderAll(); switchTab('plan');
+  toast(nResa + ' réservation' + (nResa > 1 ? 's' : '') + ' ajoutée' + (nResa > 1 ? 's' : '') + (nTick ? ' · ' + nTick + ' table' + (nTick > 1 ? 's' : '') + ' cochée' + (nTick > 1 ? 's' : '') : ''));
+  $('btn-scan-apply').disabled = false;
+}
+
+/* ── MODALE RÉSA ────────────────────────────────────────── */
+function openModal(id){
+  const r = S.resas.find(x => x.id === id); if(!r) return;
+  modalId = id; delArmed = false; $('btn-modal-del').textContent = 'Supprimer'; $('btn-modal-del').classList.remove('armed');
+  $('modal-name').textContent = r.name;
+  $('modal-meta').textContent = fmtDateFr(r.date) + ' · ' + r.time + ' · ' + r.guests + ' pers.';
+  const it = (l, v) => '<div><label>' + l + '</label><span>' + esc(v) + '</span></div>';
+  $('modal-grid').innerHTML = it('Service', SVC[svcOf(r.time)].label) + it('Zone', zoneLabel(r.zone)) + it('Table', r.table ? tName(r.table) : '—') + it('Téléphone', r.tel || '—');
+  $('modal-notes').textContent = r.notes || ''; $('modal-notes-block').hidden = !r.notes;
+  const saved = { d: V.date, s: V.svc }; V.date = r.date; V.svc = svcOf(r.time);
+  buildTableSelect($('modal-table'), '', r.table, false);
+  V.date = saved.d; V.svc = saved.s;
+  const msg = fmtWAMsg(r); $('modal-wa').textContent = msg; $('modal-wa-link').href = waLink(msg);
+  $('modal-overlay').classList.add('open');
+}
+function closeModal(){ $('modal-overlay').classList.remove('open'); modalId = null; }
+async function saveModalTable(){
+  const r = S.resas.find(x => x.id === modalId); if(!r) return;
+  r.table = $('modal-table').value; if(r.table && TBY[r.table]) r.zone = TBY[r.table].zone;
+  await persistResa(r); renderAll(); toast(r.table ? 'Table ' + tName(r.table) + ' attribuée' : 'Table retirée'); closeModal();
+}
+async function deleteModal(){
+  if(!delArmed){ delArmed = true; $('btn-modal-del').textContent = 'Confirmer ?'; $('btn-modal-del').classList.add('armed'); return; }
+  await removeResa(modalId); closeModal(); renderAll(); toast('Réservation supprimée');
+}
+
+/* ── EVENTS ─────────────────────────────────────────────── */
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-go],[data-guests],[data-zone],[data-k],[data-svc],[data-tab],[data-tid],[data-rid]'); if(!t) return;
+  const d = t.dataset;
+  if(d.go) go(d.go);
+  else if(d.guests){ guestCount = Math.max(1, Math.min(40, guestCount + (+d.guests))); $('guest-count').textContent = guestCount; }
+  else if(d.zone){ clientZone = d.zone; document.querySelectorAll('.zone-btn').forEach(b => b.classList.toggle('active', b === t)); }
+  else if(d.k) pinKey(d.k);
+  else if(d.svc){ V.svc = d.svc; renderAll(); }
+  else if(d.tab) switchTab(d.tab);
+  else if(d.tid) onTableTap(d.tid);
+  else if(d.rid) openModal(d.rid);
+});
+$('btn-client-submit').onclick = clientSubmit;
+$('btn-new-resa').onclick = newResa;
+$('btn-lock').onclick = lock;
+$('dash-date').onchange = e => { V.date = e.target.value || today(); renderAll(); };
+$('btn-add').onclick = staffAddResa;
+$('btn-copy-wa').onclick = copyWAMsg;
+$('a-zone').onchange = () => buildTableSelect($('a-table'), $('a-zone').value, '', true);
+$('a-date').onchange = () => { if($('a-date').value){ V.date = $('a-date').value; $('dash-date').value = V.date; renderAll(); } };
+$('a-time').onchange = () => { if($('a-time').value){ V.svc = svcOf($('a-time').value); renderAll(); } };
+$('btn-qf').onclick = quickFill;
+$('btn-scan-pick').onclick = () => $('scan-file').click();
+$('scan-file').onchange = e => { const f = e.target.files && e.target.files[0]; if(f) scanPhoto(f); };
+$('btn-scan-apply').onclick = applyScan;
+$('scan-rows').addEventListener('input', e => bindScan(e));
+$('scan-rows').addEventListener('change', e => bindScan(e, true));
+function bindScan(e, isChange){
+  const row = e.target.closest('.scan-row'), f = e.target.dataset.f; if(!row || !f) return;
+  const r = scanRows.find(x => x.id === row.dataset.sid); if(!r) return;
+  if(f === 'on'){ r.on = e.target.checked; renderScanRows(); return; }
+  if(f === 'guests') r.guests = Math.round(+e.target.value) || 0; else r[f] = e.target.value;
+  if(f === 'table'){ r.suggested = false; if(r.table && !r.area) r.area = ''; }
+  if(isChange && (f === 'table' || f === 'area')) renderScanRows();
+}
+$('btn-modal-table').onclick = saveModalTable;
+$('btn-modal-del').onclick = deleteModal;
+$('btn-modal-close').onclick = closeModal;
+$('modal-overlay').onclick = e => { if(e.target === $('modal-overlay')) closeModal(); };
+
+/* ── INIT ───────────────────────────────────────────────── */
+(function(){
+  $('f-date').value = today(); $('f-date').min = today();
+  V.date = today(); V.svc = autoSvc();
+  loadLocal();
+})();
+</script>
+
+</body></html>
