@@ -780,17 +780,18 @@ const ZONES = [
     {id:'coin1',name:'Coin 1',cap:2,maxCap:3},{id:'coin2',name:'Coin 2',cap:2,maxCap:3},   // 3e place en bout de table
     {id:'t102',name:'102',cap:4},{id:'t103',name:'103',cap:4},{id:'t104',name:'104',cap:4},{id:'t104b',name:'104bis',cap:2},{id:'t105',name:'105',cap:4},
     {id:'t106',name:'106',cap:2},{id:'t106b',name:'106bis',cap:2},{id:'t107',name:'107',cap:2},
-    {id:'t108',name:'108',cap:4},{id:'t108a',name:'108a',cap:2},{id:'t108b',name:'108b',cap:2},
+    {id:'t108',name:'108',cap:4},{id:'t108bis',name:'108bis',cap:2},{id:'t108ter',name:'108ter',cap:2},
     {id:'gtbl',name:'Grande Table',cap:14,maxCap:16,salon:true} ]},
   { short:'ter', label:'Terrasse', tables:[
     {id:'t200a',name:'200 Asc.',cap:2},{id:'t200b',name:'200bis',cap:4},
     {id:'t201',name:'201',cap:4},{id:'t202',name:'202',cap:4},{id:'t203',name:'203',cap:4},
-    {id:'t204',name:'204',cap:4},{id:'t205',name:'205',cap:4},{id:'t206',name:'206',cap:4} ]},
+    {id:'t204',name:'204',cap:4},{id:'t206',name:'206',cap:4},{id:'t208',name:'208',cap:4},{id:'t210',name:'210',cap:4} ]},
   { short:'rof', label:'Rooftop', tables:[
     {id:'t300',name:'Salon 300',cap:6,maxCap:10,salon:true},
     {id:'t301',name:'301',cap:2},{id:'t302',name:'302',cap:2},{id:'t303',name:'303',cap:4},
-    {id:'t304',name:'304',cap:4},{id:'t305',name:'305',cap:4},{id:'t306',name:'306',cap:4},
-    {id:'t307',name:'Canapé 307',cap:10,maxCap:20,salon:true} ]}
+    {id:'t304',name:'304',cap:4},
+    {id:'t307',name:'Canapé 307',cap:10,maxCap:20,salon:true},
+    {id:'t308',name:'308',cap:4},{id:'t310',name:'310',cap:4},{id:'t312',name:'312',cap:4} ]}
 ];
 const TLIST = [];
 ZONES.forEach(z => z.tables.forEach(t => { t.zone = z.short; TLIST.push(t); }));
