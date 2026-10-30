@@ -38,7 +38,8 @@ Sans ces deux valeurs, la page tourne en **mode démo** : tout reste dans le nav
 
 - `SVC` : services, horaires et créneaux proposés aux clients
 - `ZONES` : plan de salle (tables, capacités, `maxCap`, salons)
-- `MENU_CATS`, `MENU` : la carte. **Les plats actuels sont des exemples** : remplacez-les, puis passez `MENU_IS_EXAMPLE` à `false`.
+- `MENU_CATS` : la carte complète (16 rubriques, transcrite de la carte papier). Chaque ligne : nom, prix, description, allergènes, et `1` en dernier pour la mettre en avant sur l'accueil.
+- `HAPPY_HOURS`, `svcClosed` : happy hour (12h–14h30 et 17h–19h) et fermeture du dimanche soir.
 
 ## Limites
 

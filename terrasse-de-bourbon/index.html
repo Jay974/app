@@ -31,6 +31,7 @@
   --cat-green: #2D6040; --cat-green-soft: rgba(45,96,64,.12);
   --cat-orange: #C77A00; --cat-orange-soft: rgba(255,155,0,.15);
   --cat-rose: #D1105F; --cat-rose-soft: rgba(209,16,95,.1);
+  --al-yellow: #D49A00; --al-blue: #4C7FCB; --al-pink: #D1105F; --al-tan: #A2703E; --al-green: #2D8C5E;   /* allergènes, couleurs de la carte papier */
   --table: #DCD7CB;
   --seat: #BDB6A6;
   --busy: #C2502C; --busy-soft: rgba(194,80,44,.1);
@@ -52,6 +53,7 @@
     --cat-green: #8FD0A0; --cat-green-soft: rgba(143,208,160,.13);
     --cat-orange: #FFB233; --cat-orange-soft: rgba(255,178,51,.14);
     --cat-rose: #FF5C9A; --cat-rose-soft: rgba(255,92,154,.13);
+    --al-yellow: #FFC94D; --al-blue: #8FB4FF; --al-pink: #FF7FB0; --al-tan: #D9A877; --al-green: #8FD0A0;
     --table: #2D4030; --seat: #4A6450;
     --busy: #FF8A6B; --busy-soft: rgba(255,138,107,.13); --ok: #8FD0A0; --ok-soft: rgba(143,208,160,.13);
     --shadow: 0 10px 30px rgba(0,0,0,.35);
@@ -69,6 +71,7 @@
   --cat-green: #8FD0A0; --cat-green-soft: rgba(143,208,160,.13);
   --cat-orange: #FFB233; --cat-orange-soft: rgba(255,178,51,.14);
   --cat-rose: #FF5C9A; --cat-rose-soft: rgba(255,92,154,.13);
+  --al-yellow: #FFC94D; --al-blue: #8FB4FF; --al-pink: #FF7FB0; --al-tan: #D9A877; --al-green: #8FD0A0;
   --table: #2D4030; --seat: #4A6450;
   --busy: #FF8A6B; --busy-soft: rgba(255,138,107,.13); --ok: #8FD0A0; --ok-soft: rgba(143,208,160,.13);
   --shadow: 0 10px 30px rgba(0,0,0,.35);
@@ -215,7 +218,32 @@ svg { display: block; }
 .price { font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; margin-right: 4px; }
 .tag { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--field); color: var(--muted); }
 .tag.ex { background: var(--gold-soft); color: var(--gold); }
-.banner { background: var(--gold-soft); color: var(--ink); border-radius: var(--r-sm); padding: 10px 14px; font-size: 12px; }
+.cat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.cat-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 8px; display: flex; flex-direction: column; gap: 6px; text-align: left; box-shadow: var(--shadow); min-width: 0; }
+.cat-card:hover { border-color: var(--gold-line); }
+.cat-card .thumb { aspect-ratio: 1; width: 100%; height: auto; }
+.cat-card .thumb svg { width: 30px; height: 30px; }
+.cat-card b { font-size: 12px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
+.cat-card span { font-size: 11px; color: var(--muted); }
+.cat-head { display: grid; grid-template-columns: 56px 1fr; gap: 14px; align-items: center; }
+.cat-head .thumb { width: 56px; height: 56px; }
+.items { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 0 14px; box-shadow: var(--shadow); }
+.item { display: grid; grid-template-columns: 1fr auto; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+.item:first-child { border-top: 0; }
+.item b { font-weight: 600; font-size: 14px; }
+.item p { font-size: 12px; color: var(--muted); line-height: 1.45; margin-top: 2px; }
+.item-price { text-align: right; display: flex; flex-direction: column; gap: 2px; font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.item-price small { font-weight: 500; color: var(--faint); font-size: 11px; margin-right: 5px; }
+.als { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+.al { font-size: 10px; font-weight: 600; padding: 2px 8px 2px 6px; border-radius: 99px; background: var(--field); color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
+.al::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--al-c, var(--faint)); }
+.al-yellow { --al-c: var(--al-yellow); } .al-blue { --al-c: var(--al-blue); } .al-pink { --al-c: var(--al-pink); } .al-tan { --al-c: var(--al-tan); } .al-green { --al-c: var(--al-green); }
+.legal { font-size: 11px; color: var(--faint); text-align: center; text-wrap: balance; }
+.hh-banner { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r); background: var(--gold-soft); border: 1px solid var(--gold-line); text-decoration: none; color: var(--ink); }
+.hh-banner .ico { color: var(--gold); }
+.hh-banner div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.hh-banner b { font-size: 14px; }
+.hh-banner span { font-size: 12px; color: var(--muted); }
 
 /* ── réservation ── */
 .sheet { background: var(--sheet); border-radius: var(--r-lg); padding: 18px 18px 22px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 20px; border: 1px solid var(--line); }
@@ -436,6 +464,13 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
   <symbol id="c-desserts" viewBox="0 0 24 24"><path d="M3 18 21 9v9H3Z"/><path d="M3 18 18 7.5"/><circle cx="18" cy="5.5" r="1.5"/><path d="M3 14l18-1"/></symbol>
   <symbol id="c-cocktails" viewBox="0 0 24 24"><path d="M4 4h16l-8 9-8-9Z"/><path d="M12 13v7M8 20h8M15 2l-2 5"/><circle cx="17.5" cy="6" r="2"/></symbol>
   <symbol id="c-softs" viewBox="0 0 24 24"><path d="M7 7h10l-1.2 13a1 1 0 0 1-1 .9H9.2a1 1 0 0 1-1-.9L7 7Z"/><path d="M6 7h12M13 7l2-5h3"/><path d="M7.6 12h8.8"/></symbol>
+  <symbol id="c-burger" viewBox="0 0 24 24"><path d="M4 10c0-3.3 3.6-6 8-6s8 2.7 8 6H4Z"/><path d="M3 13.5h18"/><path d="M4 16.5h16v.5a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-.5Z"/></symbol>
+  <symbol id="c-leaf" viewBox="0 0 24 24"><path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15"/><path d="m5 19 8-8"/></symbol>
+  <symbol id="c-fish" viewBox="0 0 24 24"><path d="M6 12c3-5 8-6 15 0-7 6-12 5-15 0Z"/><path d="M6 12 2 8v8Z"/><circle cx="16.5" cy="11" r=".9"/></symbol>
+  <symbol id="c-beer" viewBox="0 0 24 24"><path d="M6 8h10v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V8Z"/><path d="M16 10h2a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2M6 8a3 3 0 0 1 3-4 3 3 0 0 1 5 0 2.5 2.5 0 0 1 2 4"/></symbol>
+  <symbol id="c-cup" viewBox="0 0 24 24"><path d="M5 9h12v5a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5V9Z"/><path d="M17 11h1.5a2.5 2.5 0 0 1 0 5H17M9 3c0 1.5 1 1.5 1 3M13 3c0 1.5 1 1.5 1 3"/></symbol>
+  <symbol id="c-wine" viewBox="0 0 24 24"><path d="M8 3h8l-.5 5a3.5 3.5 0 0 1-7 0L8 3Z"/><path d="M12 11.5V20M8.5 20h7M8.3 6h7.4"/></symbol>
+  <symbol id="c-star" viewBox="0 0 24 24"><path d="m12 3 2.6 5.5 6 .8-4.4 4.1 1.1 6L12 16.6l-5.3 2.8 1.1-6-4.4-4.1 6-.8Z"/></symbol>
 </svg>
 
 <!-- ═══════════════ CLIENT ═══════════════ -->
@@ -450,7 +485,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       </div>
       <div class="title-block">
         <p class="hello" id="hello">Bonsoir</p>
-        <h1 class="h1">Cuisine créole &amp; cocktails <em>à Saint-Denis</em></h1>
+        <h1 class="h1">Restaurant &amp; cocktail bar <em>à Saint-Denis</em></h1>
       </div>
       <label class="search"><svg class="ico"><use href="#i-search"/></svg><input id="home-search" type="search" placeholder="Un plat, un cocktail…" aria-label="Chercher dans la carte" enterkeyhint="search"></label>
     </header>
@@ -459,9 +494,11 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <div class="hero-txt"><span class="hero-eyebrow" id="hero-eyebrow">Ce soir à Saint-Denis</span><span class="hero-title">Réserver une table</span></div>
       <span class="hero-go"><svg class="ico"><use href="#i-arrow"/></svg></span>
     </a>
+    <div id="home-hh"></div>
     <section class="sec">
       <div class="sec-head"><h2 class="h2">Les services</h2></div>
       <div class="svc-row" id="svc-row"></div>
+      <p class="note">Le midi tous les jours. Le soir du lundi au jeudi jusqu'à 23h, le vendredi et le samedi jusqu'à minuit. Fermé le dimanche soir.</p>
     </section>
     <section class="sec">
       <div class="sec-head"><h2 class="h2">Où vous installer</h2></div>
@@ -471,7 +508,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <div class="sec-head"><h2 class="h2">À la carte</h2><a href="#carte">Voir la carte →</a></div>
       <div class="dish-scroll" id="home-dishes"></div>
     </section>
-    <div class="foot"><span>Une question ? <b class="num">0692 25 35 38</b></span><a href="#equipe">Espace équipe</a></div>
+    <div class="foot"><span>Réservations : <b class="num">+262 692 25 35 38</b></span><span>@LaTerrasseDeBourbon</span><a href="#equipe">Espace équipe</a></div>
   </div>
 
   <!-- Carte -->
@@ -484,8 +521,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <label class="search"><svg class="ico"><use href="#i-search"/></svg><input id="menu-search" type="search" placeholder="Un plat, un cocktail…" aria-label="Chercher dans la carte"></label>
       <div class="chips" id="menu-cats" role="group" aria-label="Catégories"></div>
     </header>
-    <p class="banner" id="menu-ex" hidden>Aperçu avec des plats d'exemple. La carte du restaurant s'affichera ici.</p>
-    <div class="dish-list" id="menu-list"></div>
+    <div class="stack" id="menu-body" style="gap:14px"></div>
   </div>
 
   <!-- Réserver -->
@@ -615,7 +651,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
         <div class="pills" role="group" aria-label="Service">
           <button class="pill" data-svc="midi">Midi<small>12h–14h30 · HH</small></button>
           <button class="pill" data-svc="hh">Happy Hour<small>17h–19h</small></button>
-          <button class="pill" data-svc="soir">Soir<small>19h–22h30</small></button>
+          <button class="pill" data-svc="soir">Soir<small>19h–23h</small></button>
         </div>
       </div>
       <div class="stats">
@@ -737,9 +773,12 @@ const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/d
 const RESTO = 'La Terrasse de Bourbon';
 const SVC = {
   midi: { label: 'Midi', time: '12h30', hours: '12h–14h30', what: 'Déjeuner & Happy Hour', slots: ['12h00','12h30','13h00','13h30'] },
-  hh:   { label: 'Happy Hour', time: '18h00', hours: '17h–19h', what: 'Cocktails', slots: ['17h00','17h30','18h00','18h30'] },
-  soir: { label: 'Soir', time: '19h30', hours: '19h–22h30', what: 'Dîner', slots: ['19h00','19h30','20h00','20h30','21h00'] }
+  hh:   { label: 'Happy Hour', time: '18h00', hours: '17h–19h', what: 'Cocktails & tapas', slots: ['17h00','17h30','18h00','18h30'] },
+  soir: { label: 'Soir', time: '19h30', hours: '19h–23h', what: 'Dîner', slots: ['19h00','19h30','20h00','20h30','21h00'] }
 };
+/* Fermé le dimanche soir (happy hour de 17h et dîner). */
+function svcClosed(date, svc){ return svc !== 'midi' && dt(date).getDay() === 0; }
+const HAPPY_HOURS = [['12h00', '14h30'], ['17h00', '19h00']];
 const STATUS = {
   pending:   { label: 'En attente de confirmation', short: 'À confirmer' },
   confirmed: { label: 'Confirmée', short: 'Confirmée' },
@@ -748,29 +787,252 @@ const STATUS = {
 };
 const ZONE_TXT = { int: 'Salle & bar', ter: 'En plein air', rof: 'Vue sur la ville' };
 
-/* Carte digitale. EXEMPLES À REMPLACER par la vraie carte (puis passer MENU_IS_EXAMPLE à false). */
-const MENU_IS_EXAMPLE = true;
+/* ── CARTE ─────────────────────────────────────────────────
+   Transcrite de la carte papier. Chaque ligne : [nom, prix, description, allergènes, mise en avant sur l'accueil (1)].
+   Prix : un nombre, ou une liste [[format, prix], …] (verre / bouteille, 25 cl / 50 cl).
+   Allergènes tels qu'indiqués sur la carte : G gluten, MO moutarde, O œufs, L lait, P poissons, C crustacés,
+   ML mollusques, SE sésame, FC fruits à coques, SO soja. */
+const ALLERGENS = { G: ['Gluten', 'yellow'], MO: ['Moutarde', 'yellow'], O: ['Œufs', 'blue'], L: ['Lait', 'blue'], P: ['Poissons', 'pink'], C: ['Crustacés', 'pink'], ML: ['Mollusques', 'pink'], SE: ['Sésame', 'tan'], FC: ['Fruits à coques', 'tan'], SO: ['Soja', 'green'] };
+const vin = (verre, bouteille) => verre ? [['12,5 cl', verre], ['75 cl', bouteille]] : [['75 cl', bouteille]];
+const pression = (a, b) => [['25 cl', a], ['50 cl', b]];
+const SUP_FRUITS = 'Sup. 1 € : fruits rouges, passion ou pêche';
 const MENU_CATS = [
-  { id: 'entrees', label: 'Entrées', color: 'green' },
-  { id: 'plats', label: 'Plats', color: 'orange' },
-  { id: 'desserts', label: 'Desserts', color: 'rose' },
-  { id: 'cocktails', label: 'Cocktails', color: 'orange' },
-  { id: 'softs', label: 'Sans alcool', color: 'green' }
-];
-const MENU = [
-  { cat: 'entrees', name: 'Samoussas maison', desc: 'Légumes ou poulet, 4 pièces, sauce piment', price: 7, tags: ['Maison'] },
-  { cat: 'entrees', name: 'Bouchons vapeur', desc: '6 pièces, sauce soja et piment', price: 8 },
-  { cat: 'entrees', name: 'Achards de légumes', desc: 'Chou, carotte, haricots, curcuma', price: 6, tags: ['Végétarien'] },
-  { cat: 'plats', name: 'Rougail saucisses', desc: 'Riz, grains, rougail tomate', price: 16, tags: ['Épicé'] },
-  { cat: 'plats', name: 'Cari poulet péi', desc: 'Riz, grains, rougail', price: 17 },
-  { cat: 'plats', name: 'Cari ti-jacques', desc: 'Jacquier, riz, grains', price: 15, tags: ['Végétarien'] },
-  { cat: 'desserts', name: 'Gâteau patate douce', desc: 'Recette de famille, glace vanille', price: 7 },
-  { cat: 'desserts', name: 'Flan coco', desc: 'Caramel au rhum', price: 6 },
-  { cat: 'cocktails', name: 'Punch coco', desc: 'Rhum, lait de coco, vanille', price: 8 },
-  { cat: 'cocktails', name: 'Mojito combava', desc: 'Rhum blanc, citron vert, combava', price: 10 },
-  { cat: 'cocktails', name: 'Rhum arrangé maison', desc: 'Selon l\'arrivage, 4 cl', price: 6, tags: ['Maison'] },
-  { cat: 'softs', name: 'Jus de goyavier', desc: 'Pressé du jour', price: 5 },
-  { cat: 'softs', name: 'Citronnade gingembre', desc: 'Citron, gingembre frais, sucre de canne', price: 5 }
+  { id: 'tapas', label: 'Tapas', icon: 'c-entrees', color: 'orange', food: true, note: 'À partir de 17h', groups: [['', [
+    ['Assiette de frites', 5, 'Frites classiques ou frites de patate douce'],
+    ['Gyozas aux légumes', 8, '8 pièces', 'G SO'],
+    ['Sticks de mozzarella', 10, '8 pièces', 'G L'],
+    ['Rillettes de poissons', 10, '', 'P L G'],
+    ['Wings de poulet', 12, '8 pièces, sauce BBQ'],
+    ['Camembert rôti au miel', 16, 'Avec ou sans oignons confits, servi avec son pain toasté', 'L G'],
+    ['Mi-cuit de foie gras', 19, 'Accompagné de son chutney du moment et de son pain toasté', 'G'],
+    ['Planche Végé', 19, 'Guacamole, boulettes de falafel, sauce vierge aux pommes vertes, sauce salsa, tomates confites, feta', 'L G'],
+    ['Planche Charcuterie & Fromage', 19, 'Magret séché, saucisson sec, serrano, Piton Maïdo, Cap Noir, fromage de chèvre, beurre & cornichons', 'L G'],
+    ['Mix Créole', 20, '4 pièces de chaque : samoussas, nems de poulet, bouchons de poulet frit, accras de morue, bonbons piment', 'G P L', 1],
+    ['Planche Crousti Mix', 25, '4 pièces de chaque : beignets de calamar, oignons rings, wings de poulet, crevettes croustillantes, sticks de mozzarella', 'G ML L'],
+    ['Planche Terre & Mer', 35, 'Tartare de thon, beignets de calamars, brochette de crevettes, rillettes de thon, samoussas poisson, crevettes panko, gravelax de magret, jambon de dinde (Duchemann), pommes de terre sautées et brochette de poulet', 'G P L']
+  ]]] },
+  { id: 'burgers', label: 'Burgers', icon: 'c-burger', color: 'orange', food: true, note: 'Servis avec 2 accompagnements au choix · Sup. 3 € : œuf, bacon ou cheddar fondu · Sup. 5 € : foie gras', groups: [['', [
+    ['Burger Boeuf', 21, 'Pain burger artisanal, cheddar tranché, steak de boeuf, salade, tomate, oignons, cheddar, sauce BBQ', 'G O L SE'],
+    ['Burger Poulet', 21, 'Pain burger artisanal, cheddar tranché, poulet pané maison, salade, tomate, oignons, cheddar, sauce tartare', 'G O L SE'],
+    ['Burger Poisson', 21, 'Pain burger artisanal, cheddar tranché, poisson pané maison, salade, tomate, oignons, cornichons, sauce tartare', 'G O P L SE'],
+    ['Burger Veggie', 21, 'Pain burger artisanal, galette de pomme de terre, salade, tomates confites, aubergine rôtie, cornichons, guacamole', 'G O L SE'],
+    ['Burger du chef', 23, 'Boeuf ou poulet. Pain burger artisanal, cheddar tranché, bacon de volaille (Duchemann), salade, tomates, oignons confits, oeuf au plat', 'G O L SE', 1]
+  ]]] },
+  { id: 'salades', label: 'Salades', icon: 'c-leaf', color: 'green', food: true, note: 'Servies dans cette composition · Sup. 5 € : burrata', groups: [['', [
+    ['Salade Burrata', 18, 'Burrata, tagliatelles de carottes & courgettes, salade, tomates, tomates confites, fruit du moment, vinaigrette framboise & persillade', 'L'],
+    ['Salade César', 19, 'Salade & mix de choux, poulet crispy, oeuf dur, tomates cerises, parmesan, croûtons de pain, sauce César', 'G O L MO'],
+    ['Avocado Toast', 19, 'Toast grillé, saumon fumé, guacamole, tomates cerises, salade, oignons frits & persillade', 'P G O L'],
+    ['Bruschetta', 19, 'Toast grillé, tartare de tomate, jambon serrano, tomates cerises, tomates séchées, parmesan', 'L G MO'],
+    ['Salade Chèvre-Miel', 19, 'Salade, mix de choux, tomates cerises, toasts de chèvre miel, noix et lardons de volaille', 'FC G MO L'],
+    ['Salade Zourite', 20, 'Salade & mix de choux, tomates cerises, concombres, ananas, zourite, coto mili et sa vinaigrette créole', 'G MO ML', 1],
+    ['Terrine de Foie Gras', 25, 'Accompagnée de son chutney du moment, de son pain toasté et de la salade', 'G MO']
+  ]]] },
+  { id: 'vege', label: 'Végétarien', icon: 'c-leaf', color: 'green', food: true, note: 'Servis dans cette composition · Sup. 5 € : burrata', groups: [['', [
+    ['Aubergine Croustillante', 18, 'Sauce tomate sucrée salée, feta, tomates cerises, concombres, sauce salsa, oignons, figues séchées & poivrons', 'O G L'],
+    ['Linguine burrata', 23, 'Et son crémeux au parmesan et à l\'huile de truffe noire', 'G L']
+  ]]] },
+  { id: 'viandes', label: 'Viandes', icon: 'c-plats', color: 'orange', food: true, groups: [
+    ['Avec 2 accompagnements au choix', [
+      ['Brochettes de poulet aux sésames', 22, 'Laquées sauce soja & miel', 'SO SE'],
+      ['Travers de porc', 25, 'Sauce BBQ'],
+      ['Côtelette d\'agneau grillée', 27, 'Au beurre d\'ail et mix cajun'],
+      ['Souris d\'agneau', 28, 'Assaisonnée au miel & gingembre']
+    ]],
+    ['Avec 2 accompagnements et une sauce maison au choix', [
+      ['Filet mignon de porc', 25, 'Avec sa croûte d\'herbes'],
+      ['Filet de kangourou', 26, '', 'SO'],
+      ['Magret de canard', 29, 'Laqué sauce soja & miel', 'SO'],
+      ['Pièce du boucher', 33]
+    ]],
+    ['Servis dans cette composition', [
+      ['Risotto et ses brochettes de boeuf', 25, '', 'G L'],
+      ['Risotto poulet à l\'huile de truffe', 26, 'Ballottine de poulet farcie aux petits légumes', 'G L']
+    ]]
+  ] },
+  { id: 'poissons', label: 'Poissons', icon: 'c-fish', color: 'green', food: true, groups: [
+    ['Avec 2 accompagnements au choix', [
+      ['Tartare du moment', 22, 'Selon composition du jour', 'C P'],
+      ['Tataki du moment', 23, 'Sauce soja & miel', 'C P SO SE'],
+      ['Poisson grillé du moment', 24, 'Selon arrivage, sauce à base de fumet de poisson', 'C P'],
+      ['Pavé de saumon mi-cuit', 25, 'Laqué sauce soja & miel', 'C P SO'],
+      ['Zourite grillé', 27, 'Sauce vierge aux pommes vertes et sa persillade', 'C P'],
+      ['Duo de Thon & Saumon', 28, 'Pavé de thon mi-cuit, carpaccio de saumon et sauce vierge aux pommes vertes', 'C P SO']
+    ]],
+    ['Servis dans cette composition', [
+      ['Fish & Chips', 19, 'Accompagné de frites, salade & sa sauce tartare', 'G C O P'],
+      ['Risotto Gambas', 29, 'Crémeux safrané au combava et ses gambas', 'G C L ML', 1]
+    ]]
+  ] },
+  { id: 'accomp', label: 'Garnitures & sauces', icon: 'c-plats', color: 'green', food: true, groups: [
+    ['Accompagnements · inclus pour les plats « 2 accompagnements au choix », sinon en supplément', [
+      ['Frites', 3], ['Frites de patate douce', 3], ['Salade', 3], ['Légumes rôtis', 3], ['Riz', 3],
+      ['Écrasé de pomme de terre', 3, 'Sup. 1 € : à l\'huile de truffe']
+    ]],
+    ['Sauces maison · incluses pour les plats « sauce au choix », sinon en supplément', [
+      ['Sauce poivre', 2], ['Sauce roquefort', 2], ['Sauce forestière', 2]
+    ]]
+  ] },
+  { id: 'enfant', label: 'Menu enfant', icon: 'c-star', color: 'rose', food: true, groups: [['', [
+    ['Menu enfant', 12, 'Une boisson : eau, Coca-Cola, Sprite, sirop, diabolo ou jus de fruit. Un plat : steak haché, poisson pané ou nuggets, avec frites ou pâtes. Un dessert : une boule de glace au parfum de votre choix.']
+  ]]] },
+  { id: 'desserts', label: 'Desserts', icon: 'c-desserts', color: 'rose', food: true, note: 'Sup. 1 € : chantilly', groups: [['', [
+    ['Boule de glace', 3, 'Parfum au choix : vanille, chocolat, café, coco, fraise, sorbet passion, sorbet goyavier, sorbet tangor, gianduja, bubblegum, arc-en-ciel et parfum du mois', 'L'],
+    ['Crème brûlée à la vanille de Bourbon', 8, '', 'O L'],
+    ['Tiramisu du moment', 9, '', 'G O L'],
+    ['Fondant au chocolat', 10, 'Sur son coulis de fruits rouges, accompagné d\'une boule de glace vanille & chantilly', 'G O L'],
+    ['Carpaccio d\'ananas', 10, 'Arrosé de son sirop de vanille avec sa boule de sorbet citron combava'],
+    ['Café / Thé gourmand', 12, 'Les 5 mignardises du jour avec le café ou le thé de votre choix', 'G O L'],
+    ['Brioche perdue', 12, 'Coulis caramel beurre salé, accompagnée d\'une boule de glace gianduja & chantilly', 'G O L', 1],
+    ['Profiteroles', 12, 'Coulis de chocolat, choux & leurs boules de glace vanille, amandes grillées & chantilly', 'G O L'],
+    ['Champagne gourmand', 18, 'Les 5 mignardises du jour avec une coupe de brut ou de demi-sec au choix', 'G O L']
+  ]]] },
+  { id: 'hh', label: 'Happy Hour', icon: 'c-cocktails', color: 'orange', alcohol: true, note: 'De 12h à 14h30 et de 17h à 19h', groups: [
+    ['Cocktails', [
+      ['Mojito', 5, 'Rhum blanc Isautier, menthe, citron vert, sucre roux, limonade (fruits rouges, passion ou pêche)'],
+      ['Ti-Punch', 5, 'Rhum blanc Isautier, citron vert, sucre roux'],
+      ['Gin Tonic', 5],
+      ['Caïpiroska', 5, 'Vodka, citron vert, sucre roux (fruits rouges, passion ou pêche)'],
+      ['Vodka Red Tea', 6, 'Vodka, purée de fruits rouges & passion, jus de cranberry, jus de citron'],
+      ['Planteur', 6, 'Rhum blanc Isautier, jus d\'ananas & mangue, grenadine'],
+      ['Water Melon Tonic', 6, 'Gin, pastèque, jus de citron, sirop de sucre, tonic']
+    ]],
+    ['Bières pression · 50 cl', [['Dodo / Phoenix', 4], ['Affligem / Kéwès', 5], ['Grimbergen Rouge', 5]]],
+    ['Mocktails', [
+      ['Virgin Mojito', 5, 'Menthe, citron vert, sucre roux, limonade (fruits rouges, passion ou pêche)'],
+      ['Passionada', 5, 'Purée de passion, jus de citron, sirop de sucre, eau gazeuse'],
+      ['Passiontonic', 5, 'Purée de passion, jus de citron, sirop de sucre, tonic'],
+      ['Virgin Red Tea', 5, 'Purée de fruits rouges & passion, jus de cranberry, jus de citron'],
+      ['Virgin Water Melon Tonic', 5, 'Pastèque, jus de citron, sirop de sucre, tonic']
+    ]],
+    ['Softs · servis au verre', [['Coca-Cola', 2], ['Sprite', 2], ['Jus en brique', 2, 'Ananas, pomme, orange ou mangue']]]
+  ] },
+  { id: 'cocktails', label: 'Cocktails', icon: 'c-cocktails', color: 'orange', alcohol: true, groups: [
+    ['Rhums', [
+      ['Mojito', 8, 'Rhum blanc Isautier, menthe, citron vert, sucre roux, limonade. ' + SUP_FRUITS],
+      ['Daïquiri', 8, 'Rhum blanc Isautier, jus de citron, sirop de sucre. ' + SUP_FRUITS],
+      ['Ti-Punch', 8, 'Rhum blanc Isautier, citron vert, sucre roux'],
+      ['Planteur', 9, 'Rhum blanc Isautier, jus d\'ananas & mangue, grenadine'],
+      ['Kalou', 9, 'Rhum ambré Isautier, citron vert, sucre roux'],
+      ['Caïpirinha', 10, 'Cachaça, citron vert, sucre roux. ' + SUP_FRUITS],
+      ['Malibu Sunrise', 10, 'Rhum blanc Isautier, Malibu, jus de citron, jus d\'ananas & coco, grenadine'],
+      ['Pina Colada', 10, 'Rhum blanc Isautier, jus d\'ananas & coco, glace vanille, crème de coco'],
+      ['Maï Taï', 12, 'Rhum blanc Isautier, Amaretto, triple sec, jus de citron, sirop de sucre, sirop d\'orgeat'],
+      ['Blue Hawaïen', 12, 'Malibu, glace vanille, purée de coco, jus d\'ananas & coco, curaçao']
+    ]],
+    ['Whisky', [
+      ['Whisky Sour', 8, 'Whisky, jus de citron, sirop de sucre'],
+      ['Whisk\'Int', 10, 'Whisky, menthe, citron vert, purée de fruits rouges, sucre roux, limonade'],
+      ['Jackito', 12, 'Jack Daniel\'s, menthe, citron vert, sucre roux, limonade'],
+      ['Honey Ice Tea', 12, 'Jack Daniel\'s Honey, ice tea maison, jus de citron, sirop de sucre'],
+      ['Old Fashioned', 12, 'Black Label, angostura, sirop de sucre']
+    ]],
+    ['Vodka', [
+      ['Caïpiroska', 8, 'Vodka, citron vert, sucre roux. ' + SUP_FRUITS],
+      ['Cosmopolitain', 9, 'Vodka, triple sec, jus de cranberry, jus de citron'],
+      ['Sex On The Beach', 10, 'Vodka, jus d\'orange, jus de cranberry, sirop de fraise, sirop de pêche'],
+      ['Vodka Red Tea', 10, 'Vodka, purée de fruits rouges & passion, jus de cranberry, jus de citron'],
+      ['Moscow Mule', 11, 'Vodka, jus de citron, ginger ale'],
+      ['Espresso Martini', 12, 'Vodka, café, arôme de vanille, sirop de sucre'],
+      ['Pornstar Martini', 13, 'Vodka, triple sec, jus de citron, purée de passion, sirop de sucre, + 1 shooter de champagne']
+    ]],
+    ['Gin', [
+      ['Gin Fizz', 9, 'Gin, jus de citron, tonic, sirop de sucre'],
+      ['Razeberry Fizz', 10, 'Gin, purée de fruits rouges, jus de citron, tonic, sirop de sucre'],
+      ['Red Carpet', 11, 'Gin, purée de fruits rouges, gingembre, jus de citron, tonic, sirop de sucre'],
+      ['Basilic Smash', 10, 'Gin, sirop de basilic, jus de citron, sirop de sucre'],
+      ['WaterMelon Tonic', 12, 'Gin, pastèque, jus de citron, tonic, sirop de sucre'],
+      ['Ocean Spritz', 12, 'Gin, citron, curaçao, eau gazeuse, prosecco'],
+      ['Basilic Ginger Tonic', 12, 'Gin, jus de citron, sirop de basilic, ginger ale'],
+      ['Queen Victoria', 12, 'Gin, ananas, jus de citron, purée de passion, tonic, sirop de sucre']
+    ]],
+    ['Tequila', [
+      ['Margarita', 10, 'Tequila, triple sec, jus de citron'],
+      ['Tequila Sunrise', 10, 'Tequila, jus d\'orange, grenadine']
+    ]],
+    ['Nos signatures', [
+      ['Aperol Spritz', 12, 'Prosecco, Aperol, eau gazeuse'],
+      ['Saint Germain Spritz', 12, 'Prosecco, Saint Germain, jus de citron, eau gazeuse'],
+      ['French Passion', 13, 'Vodka, champagne, triple sec, purée de passion, jus de citron, sirop de sucre'],
+      ['French Berry', 13, 'Gin, champagne, triple sec, purée de fruits rouges, jus de citron, sirop de sucre'],
+      ['Terrasito', 13, 'Rhum blanc Isautier, 974 mix (ou Desperado + 1 €), menthe, citron vert, gingembre, purée de passion, sucre roux', '', 1],
+      ['Long Island Ice Tea', 14, 'Rhum blanc Isautier, vodka, gin, tequila, triple sec, jus de citron, Coca-Cola ou cranberry'],
+      ['Cocktail Création', 14, 'Surprise !']
+    ]]
+  ] },
+  { id: 'mocktails', label: 'Mocktails', icon: 'c-softs', color: 'green', groups: [['Sans alcool', [
+    ['Citronnade', 5],
+    ['Virgin Mojito', 6, 'Menthe, citron vert, sucre roux, limonade. ' + SUP_FRUITS],
+    ['Passionada', 7, 'Purée de passion, jus de citron, sirop de sucre, eau gazeuse'],
+    ['Passiontonic', 7, 'Purée de passion, jus de citron, sirop de sucre, tonic'],
+    ['Tonic Gingembre', 7, 'Sirop de gingembre, jus de citron, tonic'],
+    ['Berry\'s Lemon', 7, 'Purée de fruits rouges, jus de citron, sirop de sucre, eau gazeuse'],
+    ['Cocktail de fruits frais', 8],
+    ['Virgin WaterMelon Tonic', 8, 'Pastèque, jus de citron, sirop de sucre, tonic'],
+    ['Virgin Red Tea', 8, 'Purée de fruits rouges & passion, jus de cranberry, jus de citron'],
+    ['Virgin Lada', 8, 'Jus d\'ananas & coco, glace à la vanille, crème de coco'],
+    ['Virgin Basilic Ginger', 8, 'Jus de citron, sirop de basilic, ginger ale']
+  ]]] },
+  { id: 'bieres', label: 'Bières', icon: 'c-beer', color: 'orange', alcohol: true, groups: [
+    ['Pression', [
+      ['Dodo / Phoenix', pression(3, 6)], ['Panaché / Monaco', pression(4, 7)], ['Affligem Blonde', pression(5, 8)],
+      ['Manawa IPA', pression(5, 8)], ['Grimbergen Rouge', pression(5, 8)], ['Kéwès blanche', pression(5, 8)]
+    ]],
+    ['Bouteille', [['Heineken / zéro · 25 cl', 5], ['974 Mix Original / Mojito', 5], ['Desperados Original / Red', 6]]]
+  ] },
+  { id: 'softs', label: 'Softs', icon: 'c-softs', color: 'green', groups: [['', [
+    ['Coca-Cola', 4], ['Coca-Cola Zéro', 4], ['Fanta', 4], ['Ice Tea pêche', 4], ['Schweppes Tonic', 4], ['Schweppes Agrumes', 4], ['Sprite', 4], ['Orangina', 4],
+    ['Sirop', 2.5, 'Grenadine, fraise, menthe ou pêche. Sup. 0,50 € : diabolo'],
+    ['Ice Tea maison', 4], ['Perrier · 33 cl', 4], ['Eau plate · 50 cl', 2], ['Eau gazeuse · 50 cl', 2], ['Eau plate · 1 L', 4], ['Eau gazeuse · 1 L', 4.5]
+  ]]] },
+  { id: 'chaud', label: 'Cafés, thés & frappés', icon: 'c-cup', color: 'orange', groups: [
+    ['Boissons chaudes', [
+      ['Ristretto / Expresso / Allongé', 2.4], ['Café noisette', 2.4], ['Double expresso', 3], ['Long black', 3.5], ['Cappuccino', 3.5],
+      ['Latte macchiato', 4.5], ['Mocha', 4.5], ['Chocolat chaud', 3.5], ['Thé vert, noir & infusion', 3.9]
+    ]],
+    ['Frappés', [
+      ['Café frappé', 7, 'Café, glace vanille, lait, sirop de sucre, chantilly'],
+      ['Chocolat frappé', 7, 'Poudre de cacao, coulis de chocolat, glace vanille, lait, sirop de sucre, chantilly'],
+      ['Frappé M&M\'s', 8, 'M&M\'s écrasés, glace vanille, lait, chantilly'],
+      ['Frappé Oréo', 8, 'Oréo écrasés, glace vanille, lait, chantilly'],
+      ['Frappé du moment', 8, 'Selon composition du jour']
+    ]]
+  ] },
+  { id: 'vins', label: 'Vins & champagnes', icon: 'c-wine', color: 'rose', alcohol: true, groups: [
+    ['Rouge', [
+      ['Marius, Michel Chapoutier · Syrah / Grenache', vin(6, 25), 'IGP Pays d\'Oc'],
+      ['Les Pinoteuses · Pinot Noir', vin(7, 27), 'IGP Pays d\'Oc'],
+      ['Cuvée Lou Pichoun · Bio', vin(7, 28), 'AOP Côtes du Rhône'],
+      ['Domaine du Salut', vin(8, 30), 'AOC Graves'],
+      ['Domaine Morel', vin(8, 31), 'AOC Brouilly'],
+      ['Les Déesses Muettes', vin(0, 42), 'AOP Pic Saint-Loup'],
+      ['Domaine du Père Caboche', vin(0, 62), 'AOC Châteauneuf-du-Pape']
+    ]],
+    ['Blanc', [
+      ['Les Délices de Martine · Viognier', vin(6, 25), 'IGP Pays d\'Oc'],
+      ['Père & Fils · Chardonnay', vin(7, 27), 'IGP Pays d\'Oc'],
+      ['Tariquet Classique', vin(7, 28), 'IGP Côtes de Gascogne'],
+      ['Domaine Hertzog · Pinot Gris', vin(8, 30)],
+      ['Goutte de Lune', vin(8, 31), 'IGP Côtes de Gascogne'],
+      ['Tariquet Premières Grives', vin(0, 33), 'IGP Côtes de Gascogne'],
+      ['Belena · Les Alouettes', vin(0, 38), 'AOP Chablis']
+    ]],
+    ['Rosé', [
+      ['Gris Blanc', vin(7, 29), 'IGP Languedoc'],
+      ['Cuvée Minotaure', vin(8, 31), 'AOP Côtes de Provence'],
+      ['Domaine des Vabres', vin(0, 36), 'AOP Pic Saint-Loup']
+    ]],
+    ['Champagne', [
+      ['François Dubois', vin(12, 75), 'Brut ou demi-sec'],
+      ['Moët', vin(0, 110), 'Brut'],
+      ['Moët & Chandon', vin(0, 120), 'Nectar Impérial'],
+      ['Deutz', vin(0, 120), 'Brut'],
+      ['Ruinart', vin(0, 150)],
+      ['Ruinart', vin(0, 230), 'Blanc de Blancs'],
+      ['Perrier-Jouët', vin(0, 300)],
+      ['Dom Pérignon', vin(0, 350)],
+      ['Louis Roederer', vin(0, 400), '« Cristal » 2012']
+    ]]
+  ] }
 ];
 
 const ZONES = [
@@ -1116,40 +1378,66 @@ function renderHome(){
   $('scene-home').innerHTML = sceneSVG('home', svc, 'ter', svc === 'midi' ? 0 : 14);
   $('svc-row').innerHTML = Object.keys(SVC).map(k => '<button class="svc-card' + (k === svc ? ' now' : '') + '" data-pick-svc="' + k + '"><b>' + SVC[k].label + '</b><span class="svc-hours">' + SVC[k].hours + '</span><span>' + SVC[k].what + '</span></button>').join('');
   $('zone-row').innerHTML = ['int','ter','rof'].map(z => '<button class="zone-card" data-pick-zone="' + z + '"><div class="scene">' + sceneSVG('z' + z, svc, z, svc === 'midi' ? 0 : 14) + '</div><div class="txt"><b>' + zoneLabel(z) + '</b><span>' + ZONE_TXT[z] + '</span></div></button>').join('');
-  $('home-dishes').innerHTML = MENU.filter((d, i, a) => a.findIndex(x => x.cat === d.cat) === i).map(d => {
-    const c = MENU_CATS.find(x => x.id === d.cat);
-    return '<a class="dish-card" href="#carte" data-pick-cat="' + d.cat + '" style="text-decoration:none"><div class="thumb c-' + c.color + '">' + ico('c-' + d.cat, '') + '</div><b>' + esc(d.name) + '</b><div class="dish-meta"><span class="price">' + fmtPrice(d.price) + '</span>' + (MENU_IS_EXAMPLE ? '<span class="tag ex">Exemple</span>' : '') + '</div></a>';
-  }).join('');
+  $('home-hh').innerHTML = hhBanner();
+  const featured = [];
+  MENU_CATS.forEach(c => c.groups.forEach(g => g[1].forEach(it => { if(it[4]) featured.push([c, it]); })));
+  $('home-dishes').innerHTML = featured.map(([c, it]) => '<a class="dish-card" href="#carte" data-pick-cat="' + c.id + '" style="text-decoration:none"><div class="thumb c-' + c.color + '">' + ico(c.icon, '') + '</div><b>' + esc(it[0]) + '</b><span class="note" style="font-size:11px;margin-top:-6px">' + esc(c.label) + '</span><div class="dish-meta"><span class="price">' + fmtPrice(it[1]) + '</span></div></a>').join('');
 }
 
 /* ── CLIENT : CARTE ─────────────────────────────────────── */
-function renderMenu(){
-  $('menu-ex').hidden = !MENU_IS_EXAMPLE;
-  $('menu-search').value = menuQuery;
-  $('menu-cats').innerHTML = '<button class="chip' + (!menuCat ? ' active' : '') + '" data-cat="">Tout</button>' +
-    MENU_CATS.map(c => '<button class="chip' + (menuCat === c.id ? ' active' : '') + '" data-cat="' + c.id + '">' + c.label + '</button>').join('');
-  renderMenuList();
+const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const toMin = t => { const [h, m] = t.split('h').map(Number); return h * 60 + m; };
+function hhNow(){ const n = new Date(), m = n.getHours() * 60 + n.getMinutes(); return n.getDay() === 0 && m >= toMin('17h00') ? null : HAPPY_HOURS.find(([a, b]) => m >= toMin(a) && m < toMin(b)); }
+function hhBanner(){
+  const h = hhNow();
+  return h ? '<a class="hh-banner" href="#carte" data-pick-cat="hh">' + ico('c-cocktails') + '<div><b>Happy Hour en cours</b><span>Jusqu\'à ' + h[1] + ' · cocktails dès 5 €</span></div>' + ico('i-arrow') + '</a>' : '';
 }
-function renderMenuList(){
-  const q = menuQuery.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  const norm = s => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  const items = MENU.filter(d => (!menuCat || d.cat === menuCat) && (!q || norm(d.name + ' ' + d.desc + ' ' + (d.tags || []).join(' ')).indexOf(q) >= 0));
-  if(!items.length){ $('menu-list').innerHTML = '<div class="empty">Rien ne correspond à « ' + esc(menuQuery) + ' ». Essayez un autre mot.</div>'; return; }
-  let html = '', cur = '';
-  items.forEach(d => {
-    const c = MENU_CATS.find(x => x.id === d.cat);
-    if(!menuCat && d.cat !== cur){ cur = d.cat; html += '<span class="section-lbl" style="margin-top:8px">' + c.label + '</span>'; }
-    html += '<article class="dish"><div class="thumb c-' + c.color + '">' + ico('c-' + d.cat, '') + '</div><div class="dish-main"><h3>' + esc(d.name) + '</h3><p>' + esc(d.desc) + '</p>' +
-      '<div class="dish-meta"><span class="price">' + fmtPrice(d.price) + '</span>' + (d.tags || []).map(t => '<span class="tag">' + esc(t) + '</span>').join('') + (MENU_IS_EXAMPLE ? '<span class="tag ex">Exemple</span>' : '') + '</div></div></article>';
-  });
-  $('menu-list').innerHTML = html;
+function itemHTML(it){
+  const [name, price, desc, al] = it;
+  const prices = Array.isArray(price) ? price.map(([l, p]) => '<span><small>' + l + '</small>' + fmtPrice(p) + '</span>').join('') : '<span>' + fmtPrice(price) + '</span>';
+  const als = al ? '<div class="als">' + al.split(' ').map(k => '<span class="al al-' + ALLERGENS[k][1] + '">' + ALLERGENS[k][0] + '</span>').join('') + '</div>' : '';
+  return '<div class="item"><div style="min-width:0"><b>' + esc(name) + '</b>' + (desc ? '<p>' + esc(desc) + '</p>' : '') + als + '</div><div class="item-price">' + prices + '</div></div>';
+}
+function catFoot(c){
+  return c.food ? '<p class="legal">Allergènes indiqués selon notre carte. Signalez toute allergie ou restriction alimentaire à nos serveurs.</p>' :
+    c.alcohol ? '<p class="legal">L\'abus d\'alcool est dangereux pour la santé, à consommer avec modération.</p>' : '';
+}
+function renderMenu(){
+  $('menu-search').value = menuQuery;
+  $('menu-cats').innerHTML = '<button class="chip' + (!menuCat ? ' active' : '') + '" data-cat="">Toute la carte</button>' +
+    MENU_CATS.map(c => '<button class="chip' + (menuCat === c.id ? ' active' : '') + '" data-cat="' + c.id + '">' + c.label + '</button>').join('');
+  const act = $('menu-cats').querySelector('.active');
+  if(act && act.scrollIntoView) act.scrollIntoView({ inline: 'center', block: 'nearest' });
+  renderMenuBody();
+}
+function renderMenuBody(){
+  const q = norm(menuQuery.trim()), el = $('menu-body');
+  if(q){
+    let html = '', n = 0;
+    MENU_CATS.forEach(c => {
+      const its = c.groups.flatMap(g => g[1]).filter(it => norm(it[0] + ' ' + (it[2] || '')).indexOf(q) >= 0);
+      if(its.length){ n += its.length; html += '<span class="section-lbl">' + esc(c.label) + '</span><div class="items">' + its.map(itemHTML).join('') + '</div>'; }
+    });
+    el.innerHTML = n ? html : '<div class="empty">Rien ne correspond à « ' + esc(menuQuery) + ' ». Essayez un autre mot.</div>';
+    return;
+  }
+  if(!menuCat){
+    el.innerHTML = hhBanner() + '<div class="cat-grid">' + MENU_CATS.map(c => {
+      const n = c.groups.reduce((s, g) => s + g[1].length, 0);
+      return '<button class="cat-card" data-cat="' + c.id + '"><div class="thumb c-' + c.color + '">' + ico(c.icon, '') + '</div><b>' + esc(c.label) + '</b><span>' + n + ' choix</span></button>';
+    }).join('') + '</div>';
+    return;
+  }
+  const c = MENU_CATS.find(x => x.id === menuCat);
+  el.innerHTML = '<div class="cat-head"><div class="thumb c-' + c.color + '">' + ico(c.icon, '') + '</div><div class="title-block"><h2 class="h2">' + esc(c.label) + '</h2>' + (c.note ? '<span class="note">' + esc(c.note) + '</span>' : '') + '</div></div>' +
+    c.groups.map(([sub, its]) => (sub ? '<span class="section-lbl">' + esc(sub) + '</span>' : '') + '<div class="items">' + its.map(itemHTML).join('') + '</div>').join('') + catFoot(c);
 }
 
 /* ── CLIENT : RÉSERVER ──────────────────────────────────── */
-function firstFreeSlot(date, svc){ return SVC[svc].slots.find(t => !slotPast(date, t)) || ''; }
+function firstFreeSlot(date, svc){ return svcClosed(date, svc) ? '' : SVC[svc].slots.find(t => !slotPast(date, t)) || ''; }
 function renderBook(){
   if(!B.date) B.date = today();
-  if(B.time && slotPast(B.date, B.time)) B.time = '';
+  if(B.time && (slotPast(B.date, B.time) || svcClosed(B.date, svcOf(B.time)))) B.time = '';
   const t0 = today(), days = [];
   for(let i = 0; i < 14; i++) days.push(addDays(t0, i));
   const custom = days.indexOf(B.date) < 0;
@@ -1158,9 +1446,9 @@ function renderBook(){
     return '<button type="button" class="day' + (d === B.date ? ' active' : '') + '" data-day="' + d + '" aria-label="' + esc(fmtDateFr(d)) + '"><small>' + (i === 0 ? 'Auj.' : i === 1 ? 'Dem.' : JOURS[D.getDay()].slice(0, 3) + '.') + '</small><b>' + D.getDate() + '</b><small>' + MOIS[D.getMonth()] + '</small></button>';
   }).join('') + '<label class="day other' + (custom ? ' active' : '') + '"><small>' + (custom ? JOURS[dt(B.date).getDay()].slice(0, 3) + '.' : 'Autre') + '</small><b>' + (custom ? dt(B.date).getDate() : '…') + '</b><small>' + (custom ? MOIS[dt(B.date).getMonth()] : 'date') + '</small><input type="date" id="f-date-other" min="' + t0 + '" max="' + addDays(t0, 180) + '" aria-label="Choisir une autre date"></label>';
   $('slots').innerHTML = Object.keys(SVC).map(k => {
-    const all = SVC[k].slots, open = all.filter(t => !slotPast(B.date, t));
+    const all = SVC[k].slots, open = all.filter(t => !slotPast(B.date, t)), closed = svcClosed(B.date, k);
     return '<div class="slot-group"><span>' + SVC[k].label + ' · ' + SVC[k].what + '</span><div class="slots">' +
-      (open.length ? all.map(t => '<button type="button" class="chip' + (t === B.time ? ' active' : '') + '" data-slot="' + t + '"' + (slotPast(B.date, t) ? ' disabled' : '') + '>' + t + '</button>').join('') : '<span class="note">Service passé pour aujourd\'hui</span>') + '</div></div>';
+      (closed ? '<span class="note">Fermé le dimanche soir</span>' : open.length ? all.map(t => '<button type="button" class="chip' + (t === B.time ? ' active' : '') + '" data-slot="' + t + '"' + (slotPast(B.date, t) ? ' disabled' : '') + '>' + t + '</button>').join('') : '<span class="note">Service passé pour aujourd\'hui</span>') + '</div></div>';
   }).join('');
   $('guest-count').textContent = B.guests;
   document.querySelectorAll('[data-zone]').forEach(b => b.classList.toggle('active', b.dataset.zone === B.zone));
@@ -1665,10 +1953,10 @@ document.addEventListener('click', e => {
   else if(d.zone !== undefined){ B.zone = d.zone; document.querySelectorAll('[data-zone]').forEach(b => b.classList.toggle('active', b.dataset.zone === B.zone)); renderBookScene(); }
   else if(d.day){ B.date = d.day; renderBook(); }
   else if(d.slot){ B.time = d.slot; document.querySelectorAll('[data-slot]').forEach(b => b.classList.toggle('active', b.dataset.slot === B.time)); renderBookScene(); $('f-err').textContent = ''; }
-  else if(d.cat !== undefined){ menuCat = d.cat; renderMenu(); }
-  else if(d.pickSvc){ if(!B.date) B.date = today(); let day = B.date; if(!firstFreeSlot(day, d.pickSvc)) day = addDays(today(), 1); B.date = day; B.time = firstFreeSlot(day, d.pickSvc); location.hash = 'reserver'; }
+  else if(d.cat !== undefined){ menuCat = d.cat; menuQuery = ''; renderMenu(); window.scrollTo(0, 0); }
+  else if(d.pickSvc){ let day = B.date && B.date >= today() ? B.date : today(); for(let i = 0; i < 7 && !firstFreeSlot(day, d.pickSvc); i++) day = addDays(day, 1); B.date = day; B.time = firstFreeSlot(day, d.pickSvc); location.hash = 'reserver'; }
   else if(d.pickZone){ B.zone = d.pickZone; location.hash = 'reserver'; }
-  else if(d.pickCat){ menuCat = d.pickCat; menuQuery = ''; }
+  else if(d.pickCat){ menuCat = d.pickCat; menuQuery = ''; if(location.hash === '#carte') renderMenu(); }
   else if(d.svc){ V.svc = d.svc; renderAll(); }
   else if(d.pz){ V.pz = d.pz; renderAll(); }
   else if(d.tab) switchTab(d.tab);
@@ -1684,7 +1972,7 @@ addEventListener('hashchange', route);
 document.addEventListener('visibilitychange', () => { if(!document.hidden && !$('v-track').hidden) refreshTrack(); });
 setInterval(() => { if(hubReady && V.tab === 'inbox' && !document.hidden) renderAll(); }, 60000);   // âges « il y a x min »
 $('home-search').addEventListener('keydown', e => { if(e.key === 'Enter'){ menuQuery = e.target.value; menuCat = ''; location.hash = 'carte'; } });
-$('menu-search').addEventListener('input', e => { menuQuery = e.target.value; renderMenuList(); });
+$('menu-search').addEventListener('input', e => { menuQuery = e.target.value; renderMenuBody(); });
 $('book-form').onsubmit = submitBooking;
 $('btn-copy-link').onclick = e => copyText(pageUrl() + '#suivi-' + trackToken, e.currentTarget);
 $('btn-cancel').onclick = cancelTrack;
