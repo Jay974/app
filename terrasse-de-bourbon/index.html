@@ -766,9 +766,9 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 /* Renseignez ces deux valeurs (Supabase > Project Settings > API) pour passer en production.
    La clé « anon » est publique par conception : la sécurité vient des règles de supabase.sql.
    Laissées vides, la page tourne en mode démo (données sur cet appareil uniquement). */
-const SUPABASE_URL = '';
-const SUPABASE_ANON_KEY = '';
-const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';
+const SUPABASE_URL = 'https://cffggtvlslfepiihlmpm.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_-zT9LvvD8Fts0dvS4A-uRA_53S7lClf';
+const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js';
 
 const RESTO = 'La Terrasse de Bourbon';
 const SVC = {
@@ -1473,6 +1473,7 @@ async function submitBooking(e){
   } catch(err){
     const m = String(err && err.message || '');
     $('f-err').textContent = m.indexOf('trop_de_demandes') >= 0 ? 'Plusieurs demandes viennent d\'être envoyées. Patientez un peu ou appelez-nous.' :
+      m.indexOf('ferme_dimanche_soir') >= 0 ? 'Le restaurant est fermé le dimanche soir. Choisissez le midi ou un autre jour.' :
       m.indexOf('date_invalide') >= 0 ? 'Cette date n\'est pas réservable en ligne. Choisissez une date dans les 6 prochains mois.' :
       'L\'envoi n\'a pas abouti. Vérifiez votre connexion et réessayez, ou appelez le 0692 25 35 38.';
   }
