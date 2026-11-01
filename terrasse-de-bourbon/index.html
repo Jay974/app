@@ -1473,6 +1473,7 @@ async function submitBooking(e){
   } catch(err){
     const m = String(err && err.message || '');
     $('f-err').textContent = m.indexOf('trop_de_demandes') >= 0 ? 'Plusieurs demandes viennent d\'être envoyées. Patientez un peu ou appelez-nous.' :
+      m.indexOf('ferme_dimanche_soir') >= 0 ? 'Le restaurant est fermé le dimanche soir. Choisissez le midi ou un autre jour.' :
       m.indexOf('date_invalide') >= 0 ? 'Cette date n\'est pas réservable en ligne. Choisissez une date dans les 6 prochains mois.' :
       'L\'envoi n\'a pas abouti. Vérifiez votre connexion et réessayez, ou appelez le 0692 25 35 38.';
   }

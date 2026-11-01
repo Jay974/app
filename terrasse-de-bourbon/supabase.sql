@@ -83,6 +83,10 @@ begin
   if p_date < v_today or p_date > v_today + 180 then
     raise exception 'date_invalide';
   end if;
+  -- Fermé le dimanche soir : seul le service du midi (avant 16h) est réservable.
+  if extract(dow from p_date) = 0 and split_part(p_time, 'h', 1)::int >= 16 then
+    raise exception 'ferme_dimanche_soir';
+  end if;
   -- Garde-fous contre les envois en rafale.
   if nullif(trim(p_tel), '') is not null and (
     select count(*) from reservations
