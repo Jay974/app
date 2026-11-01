@@ -24,7 +24,16 @@ Statuts : `pending` (en attente) → `confirmed` / `declined`, et `cancelled` si
 4. **Authentication > Users > Add user** pour chaque membre de l'équipe, puis dans le SQL Editor :
    `insert into public.staff (user_id) select id from auth.users where email = 'prenom@exemple.re';`
 5. **Project Settings > API** : copier l'URL du projet et la clé `anon public` dans `SUPABASE_URL` et `SUPABASE_ANON_KEY`, en haut du script de `index.html`.
-6. Héberger le dossier sur un hébergeur statique (Netlify, Vercel ou Cloudflare Pages, gratuits). Il n'y a ni build ni serveur à gérer.
+6. Héberger sur Vercel (voir ci-dessous). Il n'y a ni build ni serveur à gérer.
+
+## Déploiement sur Vercel
+
+1. vercel.com > **Add New… > Project** > importer le dépôt GitHub `Jay974/app`.
+2. **Root Directory** : `terrasse-de-bourbon`. **Framework Preset** : `Other`. Laisser Build Command et Output Directory vides.
+3. **Deploy**. Chaque push sur la branche de production redéploie automatiquement.
+4. Facultatif : **Settings > Domains** pour brancher votre nom de domaine.
+
+`vercel.json` ajoute quelques en-têtes de sécurité ; `.vercelignore` évite de publier ce README et `supabase.sql`.
 
 Sans ces deux valeurs, la page tourne en **mode démo** : tout reste dans le navigateur de l'appareil, ce qui permet de tester le parcours en ouvrant la page client et `#equipe` dans deux onglets.
 
