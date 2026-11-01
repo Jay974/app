@@ -1,4 +1,19 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<meta name="theme-color" content="#1A2F1A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>
+/* Manifeste et icône selon l'app installée : site client (/) ou hub équipe (/equipe). Thème appliqué avant l'affichage. */
+(function(){
+  var staff = location.pathname.indexOf('/equipe') === 0 || location.hash === '#equipe', h = document.head;
+  function add(tag, attrs){ var el = document.createElement(tag); for(var k in attrs) el.setAttribute(k, attrs[k]); h.appendChild(el); }
+  add('link', { rel: 'manifest', href: staff ? '/manifest-equipe.webmanifest' : '/manifest.webmanifest' });
+  add('link', { rel: 'apple-touch-icon', href: staff ? '/icons/apple-touch-icon-equipe.png' : '/icons/apple-touch-icon.png' });
+  add('meta', { name: 'apple-mobile-web-app-title', content: staff ? 'Hub Terrasse' : 'Terrasse' });
+  try { var t = localStorage.getItem('tdb_theme'); if(t) document.documentElement.setAttribute('data-theme', t); } catch(e){}
+})();
+</script></head><body>
 <title>La Terrasse de Bourbon</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -7,88 +22,63 @@
 <style>
 /* Layout : app mobile centrée. Client = bandeau vert + cartes crème + barre de navigation en pilule (clair d'abord).
    Hub équipe = même DA en vert profond et orange doré, toujours sombre. */
+/* Layout : app mobile centrée. Bandeau vert de la maison + cartes, fond blanc ; le mode nuit passe en fond noir. */
 :root {
-  --bg: #F5F2EA;
+  --bg: #FFFFFF;
   --surface: #FFFFFF;
   --sheet: #FFFFFF;
-  --field: #EFEBE2;
-  --line: rgba(26,47,26,.08);
-  --line-strong: rgba(26,47,26,.17);
+  --field: #F2F3EF;
+  --line: rgba(26,47,26,.10);
+  --line-strong: rgba(26,47,26,.20);
   --ink: #1A2F1A;
   --muted: #5E7C5E;
-  --faint: #8CA48C;
+  --faint: #879E87;
   --band: #1A2F1A;           /* vert de la maison */
   --on-band: #F5F2EA;
   --on-band-muted: rgba(245,242,234,.68);
   --primary: #1A2F1A;
-  --on-primary: #F5F2EA;
-  --gold: #C77A00;           /* orange doré, lisible sur crème */
+  --on-primary: #FFFFFF;
+  --gold: #C77A00;           /* orange doré, lisible sur blanc */
   --gold-deep: #A86400;
-  --gold-soft: rgba(255,155,0,.13);
+  --gold-soft: rgba(255,155,0,.12);
   --gold-line: rgba(199,122,0,.45);
   --orange: #FF9B00;         /* orange vif, sur fond vert */
   --rose: #D1105F;
-  --cat-green: #2D6040; --cat-green-soft: rgba(45,96,64,.12);
-  --cat-orange: #C77A00; --cat-orange-soft: rgba(255,155,0,.15);
-  --cat-rose: #D1105F; --cat-rose-soft: rgba(209,16,95,.1);
+  --cat-green: #2D6040; --cat-green-soft: rgba(45,96,64,.10);
+  --cat-orange: #C77A00; --cat-orange-soft: rgba(255,155,0,.13);
+  --cat-rose: #D1105F; --cat-rose-soft: rgba(209,16,95,.09);
   --al-yellow: #D49A00; --al-blue: #4C7FCB; --al-pink: #D1105F; --al-tan: #A2703E; --al-green: #2D8C5E;   /* allergènes, couleurs de la carte papier */
-  --table: #DCD7CB;
-  --seat: #BDB6A6;
+  --table: #E2E4DE;
+  --seat: #BFC4BA;
   --busy: #C2502C; --busy-soft: rgba(194,80,44,.1);
   --ok: #2D6040; --ok-soft: rgba(45,96,64,.11);
-  --shadow: 0 10px 30px rgba(26,47,26,.09);
+  --shadow: 0 6px 24px rgba(26,47,26,.08);
   --font-display: 'Playfair Display', 'Iowan Old Style', Georgia, serif;
   --font-body: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --r-lg: 24px; --r: 16px; --r-sm: 12px;
+  color-scheme: light;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0F1A0F; --surface: #1A2F1A; --sheet: #1D331E; --field: #253A26;
-    --line: rgba(184,212,176,.1); --line-strong: rgba(184,212,176,.2);
-    --ink: #EAF0EA; --muted: #B8D4B0; --faint: #8FB08F;
-    --band: #142614; --on-band: #EAF0EA; --on-band-muted: rgba(234,240,234,.66);
-    --primary: #FFB233; --on-primary: #1A2F1A;
-    --gold: #FFB233; --gold-deep: #FF9B00; --gold-soft: rgba(255,178,51,.13); --gold-line: rgba(255,178,51,.5);
-    --rose: #FF5C9A;
-    --cat-green: #8FD0A0; --cat-green-soft: rgba(143,208,160,.13);
-    --cat-orange: #FFB233; --cat-orange-soft: rgba(255,178,51,.14);
-    --cat-rose: #FF5C9A; --cat-rose-soft: rgba(255,92,154,.13);
-    --al-yellow: #FFC94D; --al-blue: #8FB4FF; --al-pink: #FF7FB0; --al-tan: #D9A877; --al-green: #8FD0A0;
-    --table: #2D4030; --seat: #4A6450;
-    --busy: #FF8A6B; --busy-soft: rgba(255,138,107,.13); --ok: #8FD0A0; --ok-soft: rgba(143,208,160,.13);
-    --shadow: 0 10px 30px rgba(0,0,0,.35);
-    color-scheme: dark;
-  }
-}
+/* Mode nuit : fond noir (bouton lune / soleil). */
 :root[data-theme="dark"] {
-  --bg: #0F1A0F; --surface: #1A2F1A; --sheet: #1D331E; --field: #253A26;
-  --line: rgba(184,212,176,.1); --line-strong: rgba(184,212,176,.2);
-  --ink: #EAF0EA; --muted: #B8D4B0; --faint: #8FB08F;
-  --band: #142614; --on-band: #EAF0EA; --on-band-muted: rgba(234,240,234,.66);
-  --primary: #FFB233; --on-primary: #1A2F1A;
+  --bg: #000000; --surface: #111311; --sheet: #151815; --field: #222622;
+  --line: rgba(255,255,255,.09); --line-strong: rgba(255,255,255,.18);
+  --ink: #F2F4EF; --muted: #B8D4B0; --faint: #7F907F;
+  --band: #0E1D11; --on-band: #F2F4EF; --on-band-muted: rgba(242,244,239,.66);
+  --primary: #FFB233; --on-primary: #10200F;
   --gold: #FFB233; --gold-deep: #FF9B00; --gold-soft: rgba(255,178,51,.13); --gold-line: rgba(255,178,51,.5);
   --rose: #FF5C9A;
-  --cat-green: #8FD0A0; --cat-green-soft: rgba(143,208,160,.13);
-  --cat-orange: #FFB233; --cat-orange-soft: rgba(255,178,51,.14);
-  --cat-rose: #FF5C9A; --cat-rose-soft: rgba(255,92,154,.13);
+  --cat-green: #8FD0A0; --cat-green-soft: rgba(143,208,160,.12);
+  --cat-orange: #FFB233; --cat-orange-soft: rgba(255,178,51,.13);
+  --cat-rose: #FF5C9A; --cat-rose-soft: rgba(255,92,154,.12);
   --al-yellow: #FFC94D; --al-blue: #8FB4FF; --al-pink: #FF7FB0; --al-tan: #D9A877; --al-green: #8FD0A0;
-  --table: #2D4030; --seat: #4A6450;
-  --busy: #FF8A6B; --busy-soft: rgba(255,138,107,.13); --ok: #8FD0A0; --ok-soft: rgba(143,208,160,.13);
-  --shadow: 0 10px 30px rgba(0,0,0,.35);
+  --table: #262A26; --seat: #4A524A;
+  --busy: #FF8A6B; --busy-soft: rgba(255,138,107,.14); --ok: #8FD0A0; --ok-soft: rgba(143,208,160,.13);
+  --shadow: 0 8px 28px rgba(0,0,0,.6);
   color-scheme: dark;
 }
-/* Hub équipe : un seul look, sombre, quel que soit le thème. */
-body.is-hub {
-  --bg: #0E1810; --surface: #16251A; --sheet: #1C2E20; --field: #253A29;
-  --line: rgba(234,240,234,.08); --line-strong: rgba(234,240,234,.17);
-  --ink: #EEF1E8; --muted: #A9BFA9; --faint: #708C73;
-  --primary: #FFB233; --on-primary: #16251A;
-  --gold: #FFB233; --gold-deep: #FF9B00; --gold-soft: rgba(255,178,51,.12); --gold-line: rgba(255,178,51,.5);
-  --table: #2A3F2D; --seat: #45604A;
-  --busy: #FF8A6B; --busy-soft: rgba(255,138,107,.13); --ok: #8FD0A0; --ok-soft: rgba(143,208,160,.13);
-  --shadow: 0 18px 40px rgba(0,0,0,.4);
-  color-scheme: dark;
-}
+.t-sun { display: none; }
+:root[data-theme="dark"] .t-sun { display: block; }
+:root[data-theme="dark"] .t-moon { display: none; }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -288,7 +278,6 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .btn-primary:hover { filter: brightness(1.08); }
 .btn-primary:active { transform: scale(.985); }
 .btn-primary:disabled { opacity: .5; cursor: default; }
-.is-hub .btn-primary { background: linear-gradient(180deg, #FFC24F, var(--gold-deep)); }
 .btn-line { width: 100%; border: 1px solid var(--line-strong); color: var(--ink); border-radius: 99px; padding: 13px 18px; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; text-align: center; }
 .btn-line:hover { border-color: var(--gold-line); color: var(--gold); }
 .btn-line .ico, .btn-primary .ico { width: 18px; height: 18px; stroke-width: 1.8; }
@@ -340,11 +329,8 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .status-bar span { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; padding: 0 max(16px, env(safe-area-inset-right, 0px)) max(14px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); pointer-events: none; }
 .nav-inner { pointer-events: auto; max-width: 448px; margin: 0 auto; background: var(--band); border-radius: 99px; box-shadow: 0 12px 30px rgba(15,26,15,.28); display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px; }
-.is-hub .nav-inner { background: var(--sheet); border: 1px solid var(--line); }
 .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 4px; border-radius: 99px; color: var(--on-band-muted); font-size: 11px; font-weight: 600; position: relative; text-decoration: none; }
-.is-hub .nav-btn { color: var(--faint); }
 .nav-btn.active { color: var(--orange); }
-.is-hub .nav-btn.active { color: var(--gold); }
 .dot { position: absolute; top: 3px; left: calc(50% + 8px); min-width: 17px; height: 17px; padding: 0 4px; border-radius: 99px; background: var(--orange); color: #1A2F1A; font-size: 10px; line-height: 17px; text-align: center; font-variant-numeric: tabular-nums; }
 
 /* ── hub ── */
@@ -433,6 +419,18 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .toast { position: fixed; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 16px); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 99px; font-size: 13px; font-weight: 500; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 200; max-width: calc(100vw - 32px); text-align: center; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+/* iPad : le hub profite de la largeur, demandes sur deux colonnes */
+@media (min-width: 900px) {
+  .app.wide { max-width: 1100px; }
+  #inbox, #done { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
+  #inbox > .empty { grid-column: 1 / -1; }
+}
+.install { border-color: var(--gold-line); background: var(--gold-soft); flex-direction: row; align-items: center; gap: 14px; padding: 14px 16px; }
+.install img { width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0; }
+.install p { flex: 1; min-width: 0; font-size: 13px; }
+.install .acts { display: flex; gap: 8px; flex-shrink: 0; }
+@media (max-width: 520px) { .install { flex-wrap: wrap; } .install .acts { width: 100%; } .install .acts > * { flex: 1; } }
+
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 
@@ -441,6 +439,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
   <symbol id="i-back" viewBox="0 0 24 24"><path d="M20 12H4m6-6-6 6 6 6"/></symbol>
   <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
   <symbol id="i-theme" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
   <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></symbol>
   <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1v-8Z"/></symbol>
   <symbol id="i-menu" viewBox="0 0 24 24"><path d="M6 3v8a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V3M8 13v8M17 21V3c-2 1.5-3 4-3 7v3h3"/></symbol>
@@ -481,7 +480,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
     <header class="band lift">
       <div class="band-top">
         <span class="brand"><span class="brand-mark"><svg><use href="#i-pin"/></svg></span>La Terrasse de Bourbon</span>
-        <button class="icon-btn" data-theme-toggle aria-label="Changer de thème"><svg class="ico"><use href="#i-theme"/></svg></button>
+        <button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button>
       </div>
       <div class="title-block">
         <p class="hello" id="hello">Bonsoir</p>
@@ -508,7 +507,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <div class="sec-head"><h2 class="h2">À la carte</h2><a href="#carte">Voir la carte →</a></div>
       <div class="dish-scroll" id="home-dishes"></div>
     </section>
-    <div class="foot"><span>Réservations : <b class="num">+262 692 25 35 38</b></span><span>@LaTerrasseDeBourbon</span><a href="#equipe">Espace équipe</a></div>
+    <div class="foot"><span>Réservations : <b class="num">+262 692 25 35 38</b></span><span>@LaTerrasseDeBourbon</span><a href="/equipe">Espace équipe</a></div>
   </div>
 
   <!-- Carte -->
@@ -516,7 +515,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
     <header class="band">
       <div class="band-top">
         <span class="brand"><span class="brand-mark"><svg><use href="#i-pin"/></svg></span>La carte</span>
-        <button class="icon-btn" data-theme-toggle aria-label="Changer de thème"><svg class="ico"><use href="#i-theme"/></svg></button>
+        <button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button>
       </div>
       <label class="search"><svg class="ico"><use href="#i-search"/></svg><input id="menu-search" type="search" placeholder="Un plat, un cocktail…" aria-label="Chercher dans la carte"></label>
       <div class="chips" id="menu-cats" role="group" aria-label="Catégories"></div>
@@ -528,7 +527,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
   <div id="v-book" class="app cpad" hidden>
     <div class="topbar">
       <a class="icon-btn" href="#" aria-label="Accueil"><svg class="ico"><use href="#i-back"/></svg></a>
-      <button class="icon-btn" data-theme-toggle aria-label="Changer de thème"><svg class="ico"><use href="#i-theme"/></svg></button>
+      <button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button>
     </div>
     <div class="title-block"><span class="eyebrow">La Terrasse de Bourbon</span><h1 class="h1">Réserver une table</h1></div>
     <div class="scene framed" id="scene-book" aria-hidden="true"></div>
@@ -580,7 +579,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
   <div id="v-mine" class="app cpad" hidden>
     <div class="topbar">
       <a class="icon-btn" href="#" aria-label="Accueil"><svg class="ico"><use href="#i-back"/></svg></a>
-      <button class="icon-btn" data-theme-toggle aria-label="Changer de thème"><svg class="ico"><use href="#i-theme"/></svg></button>
+      <button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button>
     </div>
     <div class="title-block"><span class="eyebrow">Sur cet appareil</span><h1 class="h1">Mes réservations</h1></div>
     <div class="list" id="mine-list"></div>
@@ -590,7 +589,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
   <div id="v-track" class="app cpad" hidden>
     <div class="topbar">
       <a class="icon-btn" href="#mes-reservations" aria-label="Mes réservations"><svg class="ico"><use href="#i-back"/></svg></a>
-      <button class="icon-btn" data-theme-toggle aria-label="Changer de thème"><svg class="ico"><use href="#i-theme"/></svg></button>
+      <button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button>
     </div>
     <div class="mark" id="t-mark"><svg class="ico"><use href="#i-clock"/></svg></div>
     <div class="title-block">
@@ -624,9 +623,10 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 <!-- ═══════════════ HUB ÉQUIPE ═══════════════ -->
 <div id="view-hub" class="app wide" hidden>
   <div class="topbar">
-    <a class="icon-btn" href="#" aria-label="Page client"><svg class="ico"><use href="#i-back"/></svg></a>
+    <a class="icon-btn" href="/" aria-label="Site client"><svg class="ico"><use href="#i-back"/></svg></a>
     <div class="topbar-right">
       <span class="mode" id="hub-mode">…</span>
+      <button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button>
       <button class="icon-btn" id="btn-alerts" aria-label="Activer les alertes" hidden><svg class="ico"><use href="#i-bell"/></svg></button>
       <button class="icon-btn" id="btn-logout" aria-label="Se déconnecter" hidden><svg class="ico"><use href="#i-out"/></svg></button>
     </div>
@@ -641,6 +641,11 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
   </form>
 
   <div id="hub" class="stack" hidden>
+    <div class="card install" id="install-card" hidden>
+      <img src="/icons/icon-equipe-192.png" alt="">
+      <p id="install-text"></p>
+      <div class="acts"><button class="btn-primary btn-sm" id="btn-install" type="button" hidden>Installer</button><button class="btn-line btn-sm" id="btn-install-off" type="button">Plus tard</button></div>
+    </div>
     <div class="title-block">
       <span class="eyebrow" id="hub-eyebrow">Hub équipe</span>
       <h1 class="h1" id="hub-title">Demandes</h1>
@@ -1122,7 +1127,7 @@ function copyText(text, btn){
   try { navigator.clipboard.writeText(text).then(() => { btn.textContent = 'Copié'; setTimeout(() => btn.innerHTML = label, 1500); }, () => toast('Copie impossible : sélectionnez le texte')); }
   catch(e){ toast('Copie impossible : sélectionnez le texte'); }
 }
-function pageUrl(){ return location.href.split('#')[0]; }
+function pageUrl(){ return /^https?:$/.test(location.protocol) ? location.origin + '/' : location.href.split('#')[0]; }
 function fmtTeamMsg(r){
   return r.guests + 'p ' + dayFr(r.date) + ' ' + SVC[svcOf(r.time)].label.toLowerCase() + ' ' + r.time + ' ' + r.name +
     (zoneShort(r.zone) ? ' ' + zoneShort(r.zone) : '') + (r.table ? ' tbl' + tName(r.table) : '') +
@@ -1346,7 +1351,7 @@ const EMPTY_SVG = '<svg viewBox="0 0 120 70">' + seatsSVG(4, 60, 35, 1.1) + '</s
 const ROUTES = { '': 'home', accueil: 'home', carte: 'menu', reserver: 'book', 'mes-reservations': 'mine', equipe: 'hub' };
 function route(){
   const h = location.hash.slice(1);
-  const view = h.indexOf('suivi-') === 0 ? 'track' : (ROUTES[h] || 'home');
+  const view = location.pathname.indexOf('/equipe') === 0 ? 'hub' : h.indexOf('suivi-') === 0 ? 'track' : (ROUTES[h] || 'home');
   const hub = view === 'hub';
   document.body.classList.toggle('is-hub', hub);
   $('client').hidden = hub; $('view-hub').hidden = !hub;
@@ -1361,13 +1366,19 @@ function route(){
   if(hub) openHub();
   renderStatusBar(view);
   if(!hub) document.title = RESTO;
+  themeColor();
   window.scrollTo(0, 0);
 }
 function toggleTheme(){
   const root = document.documentElement;
-  const cur = root.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  root.dataset.theme = cur === 'dark' ? 'light' : 'dark';
+  root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
   try { localStorage.setItem('tdb_theme', root.dataset.theme); } catch(e){}
+  themeColor();
+}
+/* Couleur de la barre d'état (app installée) : vert du bandeau côté client, fond de page dans le hub. */
+function themeColor(){
+  const m = document.querySelector('meta[name="theme-color"]'); if(!m) return;
+  m.content = getComputedStyle(document.documentElement).getPropertyValue(document.body.classList.contains('is-hub') ? '--bg' : '--band').trim();
 }
 
 /* ── CLIENT : ACCUEIL ───────────────────────────────────── */
@@ -1577,6 +1588,7 @@ async function startHub(){
   $('dash-date').value = V.date; $('a-date').value = V.date;
   if(Store.live) setMode('wait');
   Store.watch(onData, setMode);
+  showInstall();
   switchTab(S.resas.some(r => r.status === 'pending') ? 'inbox' : 'plan');
 }
 async function logout(){ await Store.signOut(); location.reload(); }
@@ -1655,6 +1667,7 @@ function renderAll(){
   const pend = S.resas.filter(r => r.status === 'pending');
   $('pending-dot').hidden = !pend.length; $('pending-dot').textContent = pend.length;
   document.title = (pend.length ? '(' + pend.length + ') ' : '') + 'Hub · ' + RESTO;
+  try { if(navigator.setAppBadge) (pend.length ? navigator.setAppBadge(pend.length) : navigator.clearAppBadge()).catch(() => {}); } catch(e){}   // pastille sur l'icône
   const titles = { inbox: pend.length ? pend.length + ' demande' + (pend.length > 1 ? 's' : '') + ' à confirmer' : 'Aucune demande en attente', add: 'Ajouter une réservation' };
   $('hub-title').textContent = titles[V.tab] || (V.date === today() ? 'Aujourd\'hui, ' + fmtDateFr(V.date).split(' ').slice(1).join(' ') : cap1(fmtDateFr(V.date)));
   $('hub-eyebrow').textContent = V.tab === 'inbox' ? 'Hub équipe · demandes en ligne' : 'Hub équipe · ' + SVC[V.svc].label;
@@ -1674,9 +1687,12 @@ function renderAll(){
 function renderInbox(pend){
   pend = pend.slice().sort((a, b) => a.date.localeCompare(b.date) || String(a.time).localeCompare(String(b.time), 'fr', {numeric:true}));
   const chosen = {}; document.querySelectorAll('[data-req-table]').forEach(s => chosen[s.dataset.reqTable] = s.value);
+  const planned = {};   // tables déjà proposées aux demandes précédentes du même service : une table différente pour chacune
   $('inbox').innerHTML = pend.length ? pend.map(r => {
-    const occ = occupancy(r.date, svcOf(r.time));
-    const sug = chosen[r.id] !== undefined ? chosen[r.id] : (suggestTable(r.guests, r.zone, new Set(Object.keys(occ))) || '');
+    const occ = occupancy(r.date, svcOf(r.time)), key = r.date + '_' + svcOf(r.time);
+    const taken = new Set(Object.keys(occ).concat(planned[key] || []));
+    const sug = chosen[r.id] !== undefined ? chosen[r.id] : (suggestTable(r.guests, r.zone, taken) || '');
+    if(sug) (planned[key] = planned[key] || []).push(sug);
     const isArmed = armed[r.id];
     return '<article class="req"><div class="req-top"><span class="resa-n">' + esc(r.guests) + '</span><div class="req-main">' +
       '<span class="req-name">' + esc(r.name) + '</span><span class="req-when">' + esc(cap1(fmtDateFr(r.date))) + ' · ' + esc(r.time) + ' · ' + SVC[svcOf(r.time)].label + '</span>' +
@@ -1972,7 +1988,33 @@ document.addEventListener('change', e => { if(e.target.id === 'f-date-other' && 
 document.addEventListener('keydown', e => { if(e.key === 'Escape' && !$('overlay').hidden) closeModal(); });
 addEventListener('hashchange', route);
 document.addEventListener('visibilitychange', () => { if(!document.hidden && !$('v-track').hidden) refreshTrack(); });
-setInterval(() => { if(hubReady && V.tab === 'inbox' && !document.hidden) renderAll(); }, 60000);   // âges « il y a x min »
+setInterval(() => { if(hubReady && !document.hidden) refreshHub(); }, 60000);   // filet de sécurité + âges « il y a x min »
+/* Retour sur l'app entre deux commandes : on recharge, et on signale ce qui est arrivé pendant l'absence. */
+async function refreshHub(){
+  if(!hubReady || $('view-hub').hidden) return;
+  const before = new Set(S.resas.map(r => r.id));
+  try { await Store.load(); } catch(e){ return; }
+  onData(S.resas.filter(r => !before.has(r.id) && r.status === 'pending'));
+}
+document.addEventListener('visibilitychange', () => { if(!document.hidden) refreshHub(); });
+addEventListener('pageshow', e => { if(e.persisted) refreshHub(); });
+
+/* Installation : bouton natif (Android, Chrome, Edge), mode d'emploi sur iPad et iPhone. */
+let installEvt = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; showInstall(); });
+function isStandalone(){ return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
+function showInstall(){
+  const card = $('install-card'); if(!hubReady || isStandalone()) { card.hidden = true; return; }
+  try { if(localStorage.getItem('tdb_install_off')) return; } catch(e){}
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if(installEvt){ $('install-text').textContent = 'Installez le hub sur cet appareil : il s\'ouvre en un geste, en plein écran, entre deux commandes.'; $('btn-install').hidden = false; }
+  else if(ios){ $('install-text').innerHTML = 'Installez le hub sur cet appareil : dans Safari, touchez <b>Partager</b> puis <b>Sur l\'écran d\'accueil</b>.'; $('btn-install').hidden = true; }
+  else return;
+  card.hidden = false;
+}
+$('btn-install').onclick = async () => { if(!installEvt) return; installEvt.prompt(); try { await installEvt.userChoice; } catch(e){} installEvt = null; $('install-card').hidden = true; };
+$('btn-install-off').onclick = () => { try { localStorage.setItem('tdb_install_off', '1'); } catch(e){} $('install-card').hidden = true; };
+if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('/sw.js').catch(() => {});
 $('home-search').addEventListener('keydown', e => { if(e.key === 'Enter'){ menuQuery = e.target.value; menuCat = ''; location.hash = 'carte'; } });
 $('menu-search').addEventListener('input', e => { menuQuery = e.target.value; renderMenuBody(); });
 $('book-form').onsubmit = submitBooking;
@@ -1998,7 +2040,6 @@ $('overlay').onclick = e => { if(e.target === $('overlay')) closeModal(); };
 
 /* ── INIT ───────────────────────────────────────────────── */
 (async function(){
-  try { const th = localStorage.getItem('tdb_theme'); if(th) document.documentElement.dataset.theme = th; } catch(e){}
   B.date = today(); V.date = today(); V.svc = autoSvc();
   try { await Store.init(); } catch(e){ toast('Connexion au serveur impossible : réessayez plus tard'); }
   route();

@@ -1,0 +1,17 @@
+{
+  "name": "Terrasse · Hub équipe",
+  "short_name": "Hub Terrasse",
+  "description": "Demandes de réservation, plan de salle et service de La Terrasse de Bourbon.",
+  "lang": "fr",
+  "id": "/equipe",
+  "start_url": "/equipe",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#FFFFFF",
+  "icons": [
+    { "src": "/icons/icon-equipe-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-equipe-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-equipe-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
