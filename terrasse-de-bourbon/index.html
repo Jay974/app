@@ -1557,7 +1557,7 @@ async function cancelTrack(){
 /* ── HUB : ACCÈS ────────────────────────────────────────── */
 async function openHub(){
   if(hubReady){ renderAll(); return; }
-  setMode(Store.live ? 'off' : 'demo');
+  setMode(Store.live ? 'out' : 'demo');
   if(Store.live && !await Store.session()){ $('login').hidden = false; $('hub').hidden = true; $('hub-nav').hidden = true; $('l-email').focus(); return; }
   await startHub();
 }
@@ -1575,11 +1575,12 @@ async function startHub(){
   hubReady = true;
   V.date = V.date || today(); V.svc = autoSvc();
   $('dash-date').value = V.date; $('a-date').value = V.date;
+  if(Store.live) setMode('wait');
   Store.watch(onData, setMode);
   switchTab(S.resas.some(r => r.status === 'pending') ? 'inbox' : 'plan');
 }
 async function logout(){ await Store.signOut(); location.reload(); }
-function setMode(m){ $('hub-mode').className = 'mode ' + m; $('hub-mode').textContent = { live: 'En direct', off: 'Hors ligne', demo: 'Mode démo' }[m]; }
+function setMode(m){ $('hub-mode').className = 'mode ' + m; $('hub-mode').textContent = { live: 'En direct', off: 'Hors ligne', demo: 'Mode démo', out: 'Non connecté', wait: 'Connexion…' }[m]; }
 /* Nouvelle demande : toast, carillon, notification système si autorisée. */
 function onData(fresh){
   renderAll();
