@@ -329,6 +329,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .status-bar span { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; padding: 0 max(16px, env(safe-area-inset-right, 0px)) max(14px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); pointer-events: none; }
 .nav-inner { pointer-events: auto; max-width: 448px; margin: 0 auto; background: var(--band); border-radius: 99px; box-shadow: 0 12px 30px rgba(15,26,15,.28); display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px; }
+#hub-nav .nav-inner { grid-template-columns: repeat(5, 1fr); max-width: 520px; }
 .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 4px; border-radius: 99px; color: var(--on-band-muted); font-size: 11px; font-weight: 600; position: relative; text-decoration: none; }
 .nav-btn.active { color: var(--orange); }
 .dot { position: absolute; top: 3px; left: calc(50% + 8px); min-width: 17px; height: 17px; padding: 0 4px; border-radius: 99px; background: var(--orange); color: #1A2F1A; font-size: 10px; line-height: 17px; text-align: center; font-variant-numeric: tabular-nums; }
@@ -422,6 +423,13 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .toast { position: fixed; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 16px); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 99px; font-size: 13px; font-weight: 500; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 200; max-width: calc(100vw - 32px); text-align: center; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+.consent { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; font-size: 13px; color: var(--ink); cursor: pointer; }
+.consent input { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--primary); }
+.privacy { font-size: 11px; color: var(--faint); }
+.cust-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.cust-tools .input { flex: 1; min-width: 200px; }
+.b-optin { color: var(--ok); background: var(--ok-soft); }
+
 /* Ordinateur et tablette paysage : le site client s'élargit et passe en mise en page à colonnes. */
 @media (min-width: 900px) {
   #v-home, #v-menu, #v-book { max-width: 1120px; }
@@ -488,6 +496,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
   <symbol id="i-plan" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="4.5" ry="3"/><rect x="10" y="3.5" width="4" height="3" rx="1"/><rect x="10" y="17.5" width="4" height="3" rx="1"/><rect x="2.5" y="10.5" width="3" height="3" rx="1"/><rect x="18.5" y="10.5" width="3" height="3" rx="1"/></symbol>
   <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></symbol>
   <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2m8 0h2a2 2 0 0 1 2 2v2m0 8v2a2 2 0 0 1-2 2h-2m-8 0H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.5"/></symbol>
+  <symbol id="i-team" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16.5 14.6c2.3.2 4 1.8 4.5 4.4"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
@@ -605,6 +614,8 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
           <div class="field"><label for="f-tel">Téléphone *</label><input class="input" id="f-tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="0692 00 00 00" maxlength="30" required></div>
         </div>
         <div class="field"><label for="f-notes">Occasion, allergies, demande</label><textarea class="input" id="f-notes" placeholder="Anniversaire, poussette, intolérance…" maxlength="500"></textarea></div>
+        <label class="consent" for="f-optin"><input type="checkbox" id="f-optin"><span>J'accepte de recevoir les offres et l'actualité de La Terrasse de Bourbon par SMS ou WhatsApp. Désinscription possible à tout moment.</span></label>
+        <p class="privacy">Vos coordonnées servent à gérer votre réservation et, seulement si vous cochez la case, à vous envoyer nos offres. Elles ne sont jamais cédées.</p>
       </div>
       <p class="st err" id="f-err" role="alert"></p>
       <button class="btn-primary" type="submit" id="btn-book">Envoyer ma demande</button>
@@ -723,6 +734,16 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 
     <section id="panel-list" hidden><div id="resa-list" class="list"></div></section>
 
+    <section id="panel-clients" class="stack" style="gap:14px" hidden>
+      <p class="note" id="cust-summary"></p>
+      <div class="cust-tools">
+        <input class="input" id="cust-search" type="search" placeholder="Nom ou téléphone" aria-label="Chercher un client">
+        <button class="btn-line btn-sm" id="cust-filter" type="button">Seulement les offres acceptées</button>
+        <button class="btn-primary btn-sm" id="cust-export" type="button">Exporter (CSV)</button>
+      </div>
+      <div id="cust-list" class="list"></div>
+    </section>
+
     <section id="panel-add" class="stack" style="gap:14px" hidden>
       <form class="card" id="add-form" novalidate>
         <h2 class="h3">Réservation prise par l'équipe</h2>
@@ -774,6 +795,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <button class="nav-btn active" data-tab="inbox"><svg class="ico"><use href="#i-inbox"/></svg>Demandes<span class="dot" id="pending-dot" hidden></span></button>
       <button class="nav-btn" data-tab="plan"><svg class="ico"><use href="#i-plan"/></svg>Plan</button>
       <button class="nav-btn" data-tab="list"><svg class="ico"><use href="#i-list"/></svg>Service</button>
+      <button class="nav-btn" data-tab="clients"><svg class="ico"><use href="#i-team"/></svg>Clients</button>
       <button class="nav-btn" data-tab="add"><svg class="ico"><use href="#i-plus"/></svg>Ajouter</button>
     </div>
   </nav>
@@ -1196,7 +1218,7 @@ const Store = {
   /* Client */
   async submit(r){
     if(this.live){
-      const { data, error } = await this.sb.rpc('submit_reservation', { p_name: r.name, p_tel: r.tel, p_guests: r.guests, p_date: r.date, p_time: r.time, p_zone: r.zone, p_notes: r.notes });
+      const { data, error } = await this.sb.rpc('submit_reservation', { p_name: r.name, p_tel: r.tel, p_guests: r.guests, p_date: r.date, p_time: r.time, p_zone: r.zone, p_notes: r.notes, p_opt_in: !!r.optIn });
       if(error) throw error;
       return data.token;
     }
@@ -1278,6 +1300,27 @@ const Store = {
     if(!this.live){ this.saveLocal(S.resas); return; }
     const { error } = await this.sb.from('reservations').delete().eq('id', id);
     if(error){ toast('Suppression impossible : vérifiez la connexion'); await this.load(); }
+  },
+  async customers(){
+    if(this.live){
+      const { data, error } = await this.sb.from('customers').select('*').order('last_seen', { ascending: false }).limit(5000);
+      if(error) throw error;
+      return data;
+    }
+    // Démo : fiches reconstituées à partir des réservations de l'appareil
+    const by = {};
+    this.local().forEach(r => {
+      const ph = intlPhone(r.tel); if(!ph) return;
+      const c = by[ph] = by[ph] || { id: ph, phone: ph, name: r.name, requests: 0, visits: 0, marketing_opt_in: false, last_seen: 0 };
+      c.requests++; if(r.status === 'confirmed') c.visits++; if(r.optIn) c.marketing_opt_in = true;
+      if((r.ts || 0) >= c.last_seen){ c.last_seen = r.ts || 0; c.name = r.name; }
+    });
+    return Object.values(by).map(c => Object.assign(c, { last_seen: new Date(c.last_seen).toISOString() }));
+  },
+  async optOut(id){
+    if(!this.live) return;
+    const { error } = await this.sb.from('customers').update({ marketing_opt_in: false, opt_out_at: new Date().toISOString() }).eq('id', id);
+    if(error) throw error;
   },
   async saveOcc(key){
     if(!this.live){ try { localStorage.setItem('tdb_occ', JSON.stringify(S.occ)); } catch(e){} return; }
@@ -1521,12 +1564,12 @@ async function submitBooking(e){
     return;
   }
   $('f-err').textContent = '';
-  const r = { name, date: B.date, time: B.time, guests: B.guests, zone: B.zone, tel, notes: $('f-notes').value.trim() };
+  const r = { name, date: B.date, time: B.time, guests: B.guests, zone: B.zone, tel, notes: $('f-notes').value.trim(), optIn: $('f-optin').checked };
   $('btn-book').disabled = true; $('btn-book').textContent = 'Envoi…';
   try {
     const token = await Store.submit(r);
     try { const m = mine(); m.push({ token, date: r.date, time: r.time, guests: r.guests }); localStorage.setItem('tdb_mine', JSON.stringify(m.slice(-20))); } catch(e){}
-    ['f-name','f-tel','f-notes'].forEach(i => $(i).value = '');
+    ['f-name','f-tel','f-notes'].forEach(i => $(i).value = ''); $('f-optin').checked = false;
     B.time = '';
     location.hash = 'suivi-' + token;
   } catch(err){
@@ -1703,8 +1746,9 @@ async function enableAlerts(){
 function switchTab(tab){
   V.tab = tab;
   document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  ['inbox','plan','list','add'].forEach(t => $('panel-' + t).hidden = t !== tab);
-  $('svc-ctrl').hidden = tab === 'inbox' || tab === 'add';
+  ['inbox','plan','list','clients','add'].forEach(t => $('panel-' + t).hidden = t !== tab);
+  $('svc-ctrl').hidden = tab === 'inbox' || tab === 'add' || tab === 'clients';
+  if(tab === 'clients') loadCustomers();
   if(tab === 'add') prepAdd();
   renderAll(); window.scrollTo(0, 0);
 }
@@ -1747,9 +1791,9 @@ function renderAll(){
   $('pending-dot').hidden = !pend.length; $('pending-dot').textContent = pend.length;
   document.title = (pend.length ? '(' + pend.length + ') ' : '') + 'Hub · ' + RESTO;
   try { if(navigator.setAppBadge) (pend.length ? navigator.setAppBadge(pend.length) : navigator.clearAppBadge()).catch(() => {}); } catch(e){}   // pastille sur l'icône
-  const titles = { inbox: pend.length ? pend.length + ' demande' + (pend.length > 1 ? 's' : '') + ' à confirmer' : 'Aucune demande en attente', add: 'Ajouter une réservation' };
+  const titles = { inbox: pend.length ? pend.length + ' demande' + (pend.length > 1 ? 's' : '') + ' à confirmer' : 'Aucune demande en attente', add: 'Ajouter une réservation', clients: 'Fichier clients' };
   $('hub-title').textContent = titles[V.tab] || (V.date === today() ? 'Aujourd\'hui, ' + fmtDateFr(V.date).split(' ').slice(1).join(' ') : cap1(fmtDateFr(V.date)));
-  $('hub-eyebrow').textContent = V.tab === 'inbox' ? 'Hub équipe · demandes en ligne' : 'Hub équipe · ' + SVC[V.svc].label;
+  $('hub-eyebrow').textContent = V.tab === 'inbox' ? 'Hub équipe · demandes en ligne' : V.tab === 'clients' ? 'Hub équipe · fidélisation' : 'Hub équipe · ' + SVC[V.svc].label;
   if(V.tab === 'inbox') renderInbox(pend);
   if(V.tab === 'plan' || V.tab === 'list'){
     document.querySelectorAll('[data-svc]').forEach(b => b.classList.toggle('active', b.dataset.svc === V.svc));
@@ -1837,6 +1881,53 @@ async function toggleManual(tid){
   await Store.saveOcc(key);
 }
 function onTableTap(tid){ const o = occupancy()[tid]; if(o && o.resa) openModal(o.resa.id); else toggleManual(tid); }
+
+/* ── HUB : FICHIER CLIENTS ──────────────────────────────── */
+/* Un client par numéro de téléphone, alimenté automatiquement par chaque réservation.
+   Seuls les clients qui ont accepté les offres peuvent recevoir de la prospection : l'export ne contient qu'eux. */
+const C = { list: [], q: '', onlyOptIn: false };
+function fmtPhone(ph){ return ph && ph.indexOf('262') === 0 && ph.length === 12 ? '0' + ph.slice(3).replace(/(\d{3})(\d{2})(\d{2})(\d{2})/, '$1 $2 $3 $4') : '+' + ph; }
+async function loadCustomers(){
+  $('cust-list').innerHTML = '<p class="note">Chargement…</p>';
+  try { C.list = await Store.customers(); } catch(e){ $('cust-list').innerHTML = '<p class="st err">Chargement impossible : vérifiez la connexion.</p>'; return; }
+  renderCustomers();
+}
+function renderCustomers(){
+  const q = norm(C.q).replace(/\s/g, ''), opt = C.list.filter(c => c.marketing_opt_in).length;
+  $('cust-summary').textContent = C.list.length + ' client' + (C.list.length > 1 ? 's' : '') + ' · ' + opt + ' accepte' + (opt > 1 ? 'nt' : '') + ' de recevoir les offres';
+  $('cust-filter').classList.toggle('active', C.onlyOptIn);
+  $('cust-filter').textContent = C.onlyOptIn ? 'Afficher tous les clients' : 'Seulement les offres acceptées';
+  const rows = C.list.filter(c => (!C.onlyOptIn || c.marketing_opt_in) && (!q || norm(c.name).replace(/\s/g, '').indexOf(q) >= 0 || c.phone.indexOf(q.replace(/^0/, '')) >= 0));
+  $('cust-list').innerHTML = rows.length ? rows.slice(0, 300).map(c =>
+    '<div class="resa"><span class="resa-n">' + esc(c.visits) + '</span><span class="resa-main"><span class="resa-name">' + esc(c.name) + '</span>' +
+    '<span class="resa-meta">' + esc(fmtPhone(c.phone)) + ' · ' + c.requests + ' réservation' + (c.requests > 1 ? 's' : '') + ', ' + c.visits + ' confirmée' + (c.visits > 1 ? 's' : '') +
+    ' · dernière le ' + esc(fmtDateFr(String(c.last_seen).slice(0, 10))) + '</span></span><span class="badges">' +
+    (c.marketing_opt_in ? '<span class="badge b-optin">Offres acceptées</span><button class="btn-text" data-optout="' + esc(c.id) + '">' + (armed['o' + c.id] ? 'Confirmer' : 'Désinscrire') + '</button>' : '<span class="badge b-none">Pas d\'offres</span>') +
+    '</span></div>').join('') : '<div class="empty">' + EMPTY_SVG + (C.list.length ? 'Aucun client ne correspond.' : 'Les clients apparaissent ici dès leur première réservation.') + '</div>';
+}
+async function optOutCustomer(id){
+  if(!armed['o' + id]){ armed['o' + id] = true; renderCustomers(); setTimeout(() => { delete armed['o' + id]; renderCustomers(); }, 4000); return; }
+  delete armed['o' + id];
+  try { await Store.optOut(id); const c = C.list.find(x => x.id === id); if(c) c.marketing_opt_in = false; toast('Client désinscrit des offres'); }
+  catch(e){ toast('Désinscription impossible : vérifiez la connexion'); }
+  renderCustomers();
+}
+function exportCustomers(){
+  const rows = C.list.filter(c => c.marketing_opt_in);
+  if(!rows.length){ toast('Aucun client n\'a encore accepté les offres'); return; }
+  const cell = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const csv = '﻿' + ['Nom;Téléphone;Réservations;Confirmées;Dernière réservation;Consentement le']
+    .concat(rows.map(c => [c.name, '+' + c.phone, c.requests, c.visits, String(c.last_seen).slice(0, 10), c.opt_in_at ? String(c.opt_in_at).slice(0, 10) : ''].map(cell).join(';'))).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'clients-terrasse-offres-' + today() + '.csv';
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast(rows.length + ' client' + (rows.length > 1 ? 's' : '') + ' exporté' + (rows.length > 1 ? 's' : ''));
+}
+$('cust-search').addEventListener('input', e => { C.q = e.target.value; renderCustomers(); });
+$('cust-filter').onclick = () => { C.onlyOptIn = !C.onlyOptIn; renderCustomers(); };
+$('cust-export').onclick = exportCustomers;
+$('cust-list').addEventListener('click', e => { const b = e.target.closest('[data-optout]'); if(b) optOutCustomer(b.dataset.optout); });
 
 /* ── HUB : AJOUT PAR L'ÉQUIPE ───────────────────────────── */
 function buildAddTable(){
