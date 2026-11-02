@@ -25,7 +25,17 @@ Statuts : `pending` (en attente) → `confirmed` / `declined`, et `cancelled` si
   L'icône orange « Hub Terrasse » ouvre directement les demandes, en plein écran. La session reste connectée ; à chaque retour sur l'app, les demandes arrivées entre-temps sont rechargées et signalées. Le nombre de demandes en attente s'affiche en pastille sur l'icône quand l'appareil le permet.
 - **Clients** : même manipulation depuis `…/` (icône verte « Terrasse »).
 - Thème : fond blanc par défaut, bouton lune pour le mode nuit (fond noir), mémorisé sur chaque appareil.
-- Les notifications quand l'app est complètement fermée demanderaient un envoi côté serveur (Web Push) : non inclus pour l'instant.
+- Notifications push, même app fermée : dans le hub installé, toucher la **cloche** puis autoriser. Sur iPad / iPhone, il faut iOS 16.4 ou plus récent et ouvrir le hub depuis l'icône de l'écran d'accueil (pas depuis Safari). Se déconnecter du hub désabonne l'appareil.
+
+## Notifications push (mise en place, une seule fois)
+
+1. Supabase > SQL Editor : lancer `supabase-push.sql`. Le résultat affiche **NOTIFY_SECRET**.
+2. Vercel > projet > Settings > Environment Variables (Production), cocher *Sensitive* :
+   - `VAPID_PRIVATE_KEY` : la clé privée VAPID (la clé publique correspondante est dans `index.html` et `api/notify.js`) ;
+   - `NOTIFY_SECRET` : la valeur affichée à l'étape 1.
+3. Redéployer (Deployments > ⋯ > Redeploy) pour que la fonction lise les variables.
+
+Fonctionnement : une nouvelle demande du site déclenche `private.notify_new_request()` dans Supabase, qui appelle `/api/notify` (fonction Vercel) avec le secret ; la fonction envoie la notification à chaque appareil abonné et retire ceux qui ont été désinstallés.
 
 ## Mise en production (Supabase, gratuit à cette échelle)
 

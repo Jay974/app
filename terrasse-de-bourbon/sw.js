@@ -1,6 +1,6 @@
 /* Service worker : ouverture instantanée et page disponible hors connexion.
    Les données (Supabase) ne sont jamais mises en cache : elles restent toujours à jour. */
-const CACHE = 'tdb-v1';
+const CACHE = 'tdb-v3';
 const SHELL = ['/index.html', '/manifest.webmanifest', '/manifest-equipe.webmanifest', '/icons/icon-192.png', '/icons/icon-equipe-192.png'];
 
 self.addEventListener('install', e => {
@@ -25,4 +25,26 @@ self.addEventListener('fetch', e => {
       return hit || net;
     }));
   }
+});
+
+/* Notifications push : nouvelle demande, même quand l'app est fermée. */
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch(err){ d = { body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(Promise.all([
+    self.registration.showNotification(d.title || 'La Terrasse de Bourbon', {
+      body: d.body || '', tag: d.tag, renotify: true,
+      icon: '/icons/icon-equipe-192.png', badge: '/icons/icon-equipe-192.png',
+      data: { url: d.url || '/equipe' }
+    }),
+    d.badge && self.navigator.setAppBadge ? self.navigator.setAppBadge(d.badge).catch(() => {}) : null
+  ]));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || '/equipe', self.location.origin).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for(const c of list) if(c.url.indexOf(self.location.origin + '/equipe') === 0 && 'focus' in c) return c.focus();
+    return self.clients.openWindow(url);
+  }));
 });
