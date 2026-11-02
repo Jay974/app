@@ -5,7 +5,7 @@ Une seule page (`index.html`) pour deux publics :
 | Adresse | Pour qui | Contenu |
 |---|---|---|
 | `…/index.html` | Clients | Accueil, carte digitale, réservation, « Mes résas », suivi du statut |
-| `…/index.html#equipe` | Équipe | Hub : demandes à confirmer, plan de salle, service, ajout manuel |
+| `…/equipe` | Équipe | Hub : demandes à confirmer, plan de salle, service, ajout manuel |
 
 ## Parcours d'une réservation
 
@@ -15,6 +15,17 @@ Une seule page (`index.html`) pour deux publics :
 4. La page de suivi du client passe d'elle-même à « Confirmée » ou « Non disponible ». Un message WhatsApp pré-rédigé reste disponible si l'équipe veut prévenir le client directement.
 
 Statuts : `pending` (en attente) → `confirmed` / `declined`, et `cancelled` si le client ou l'équipe annule.
+
+## Installer l'app (PWA)
+
+- **Équipe** : ouvrir `…/equipe`, puis
+  - iPad / iPhone (Safari) : **Partager → Sur l'écran d'accueil** ;
+  - Android / Chrome / Edge : bouton **Installer** affiché dans le hub (ou menu ⋮ → Installer l'application).
+
+  L'icône orange « Hub Terrasse » ouvre directement les demandes, en plein écran. La session reste connectée ; à chaque retour sur l'app, les demandes arrivées entre-temps sont rechargées et signalées. Le nombre de demandes en attente s'affiche en pastille sur l'icône quand l'appareil le permet.
+- **Clients** : même manipulation depuis `…/` (icône verte « Terrasse »).
+- Thème : fond blanc par défaut, bouton lune pour le mode nuit (fond noir), mémorisé sur chaque appareil.
+- Les notifications quand l'app est complètement fermée demanderaient un envoi côté serveur (Web Push) : non inclus pour l'instant.
 
 ## Mise en production (Supabase, gratuit à cette échelle)
 
