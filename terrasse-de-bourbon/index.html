@@ -738,7 +738,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 
   <form id="login" class="login card" hidden novalidate>
     <div class="title-block"><span class="eyebrow">Hub équipe · La Terrasse de Bourbon</span><h1 class="h2">Connexion</h1></div>
-    <div class="field"><label for="l-email">E-mail</label><input class="input" id="l-email" type="email" autocomplete="username"></div>
+    <div class="field"><label for="l-email">Identifiant ou e-mail</label><input class="input" id="l-email" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="marie"></div>
     <div class="field"><label for="l-pass">Mot de passe</label><input class="input" id="l-pass" type="password" autocomplete="current-password"></div>
     <p class="st err" id="l-err" role="alert"></p>
     <button class="btn-primary" type="submit" id="btn-login">Se connecter</button>
@@ -893,6 +893,9 @@ const SUPABASE_URL = 'https://cffggtvlslfepiihlmpm.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_-zT9LvvD8Fts0dvS4A-uRA_53S7lClf';
 /* Clé publique des notifications push (la clé privée est dans Vercel : VAPID_PRIVATE_KEY). */
 const VAPID_PUBLIC_KEY = 'BLq0pgWzAk1wm4vKIawA2RADZbURpd80QAoR-PRWAJADxUvf1bNLShXyLgKajSEibXOCd8ETxGygTyHW065Ro1w';
+/* Comptes de l'équipe sans vraie adresse : « marie » se connecte avec marie@terrasse.local (compte créé avec Auto Confirm User). */
+const STAFF_DOMAIN = 'terrasse.local';
+const staffLogin = v => { v = String(v || '').trim().toLowerCase(); return v && v.indexOf('@') < 0 ? v + '@' + STAFF_DOMAIN : v; };
 const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js';
 
 let RESTO = 'La Terrasse de Bourbon';
@@ -1300,8 +1303,8 @@ const Store = {
   /* Équipe */
   async session(){ if(!this.live) return true; const { data } = await this.sb.auth.getSession(); return !!data.session; },
   async signIn(email, password){
-    const { error } = await this.sb.auth.signInWithPassword({ email, password });
-    if(error) throw new Error('E-mail ou mot de passe incorrect.');
+    const { error } = await this.sb.auth.signInWithPassword({ email: staffLogin(email), password });
+    if(error) throw new Error('Identifiant ou mot de passe incorrect.');
     const { data } = await this.sb.rpc('is_staff');
     if(!data){ await this.sb.auth.signOut(); throw new Error('Ce compte n\'est pas autorisé dans le hub. Demandez à être ajouté à l\'équipe.'); }
   },
@@ -1407,7 +1410,18 @@ const Store = {
     if(error) throw error;
     return data.map(r => Object.assign(r, { table: r.table_id }));
   },
-  async saveCustomerNotes(id, notes){ if(!this.live) return; const { error } = await this.sb.from('customers').update({ notes }).eq('id', id); if(error) throw error; },
+  async updateCustomer(id, patch){
+    if(!this.live) return;
+    const { data, error } = await this.sb.from('customers').update(patch).eq('id', id).select('id');
+    if(error) throw new Error(error.code === '23505' ? 'Ce numéro appartient déjà à une autre fiche.' : error.message);
+    if(!data || !data.length) throw new Error('droits insuffisants');
+  },
+  async deleteCustomer(id){
+    if(!this.live) return;
+    const { data, error } = await this.sb.from('customers').delete().eq('id', id).select('id');
+    if(error) throw error; if(!data || !data.length) throw new Error('non_autorise');
+  },
+  async setStaffName(id, name){ if(!this.live) return; const { error } = await this.sb.rpc('set_staff_name', { p_user: id, p_name: name }); if(error) throw error; },
   async optOut(id){
     if(!this.live) return;
     const { error } = await this.sb.from('customers').update({ marketing_opt_in: false, opt_out_at: new Date().toISOString() }).eq('id', id);
@@ -2365,14 +2379,14 @@ function saveServices(){
 function renderTablesEditor(){
   const zones = SET.zonesDraft || (SET.zonesDraft = JSON.parse(JSON.stringify(CFG.settings.zones)));
   $('set-body').innerHTML = setHead('Plan de salle') + zones.map((z, zi) => '<div class="card"><div class="row2">' + fieldIn('zn-' + zi, 'Zone', z.label) + fieldIn('zt-' + zi, 'Description pour les clients', z.txt) + '</div>' +
-    '<div class="tbl-row tbl-head"><span>Table</span><span>Places</span><span>Max</span><span>Salon</span><span></span></div>' +
+    '<div class="tbl-row tbl-head"><span>Table</span><span>Places</span><span>Max</span><span>Groupes</span><span></span></div>' +
     z.tables.map((t, ti) => '<div class="tbl-row"><input class="input" data-tb="name" data-z="' + zi + '" data-t="' + ti + '" value="' + esc(t.name) + '" aria-label="Nom de la table">' +
       '<input class="input" type="number" min="1" inputmode="numeric" data-tb="cap" data-z="' + zi + '" data-t="' + ti + '" value="' + esc(t.cap) + '" aria-label="Places">' +
       '<input class="input" type="number" min="1" inputmode="numeric" data-tb="maxCap" data-z="' + zi + '" data-t="' + ti + '" value="' + esc(t.maxCap || '') + '" placeholder="—" aria-label="Places au maximum">' +
-      '<input type="checkbox" data-tb="salon" data-z="' + zi + '" data-t="' + ti + '"' + (t.salon ? ' checked' : '') + ' aria-label="Salon ou grande table">' +
+      '<input type="checkbox" data-tb="salon" data-z="' + zi + '" data-t="' + ti + '"' + (t.salon ? ' checked' : '') + ' aria-label="Réservée en priorité aux groupes">' +
       '<button class="mini" data-act="tb-del" data-z="' + zi + '" data-t="' + ti + '" type="button" aria-label="Supprimer la table">✕</button></div>').join('') +
     '<button class="btn-text" data-act="tb-add" data-z="' + zi + '" type="button" style="align-self:flex-start">+ Ajouter une table</button></div>').join('') +
-    '<p class="note">« Max » : places possibles en ajoutant des chaises ou un bout de table. Une table supprimée reste affichée sur les réservations déjà enregistrées.</p>' +
+    '<p class="note">« Max » : places possibles en ajoutant des chaises ou un bout de table. « Groupes » : grande table, salon ou canapé gardé pour les groupes ; la table proposée automatiquement ne la donne pas à 6 personnes ou moins, mais vous pouvez toujours la choisir à la main. Une table supprimée reste affichée sur les réservations déjà enregistrées.</p>' +
     '<p class="st err" id="st-err" role="alert"></p><div class="modal-actions"><button class="btn-line" data-act="tb-cancel" type="button">Annuler</button><button class="btn-primary" data-act="save-tables" type="button">Enregistrer le plan</button></div>';
 }
 function readTables(){
@@ -2401,22 +2415,27 @@ async function renderTeam(){
 }
 function drawTeam(){
   const ref = SUPABASE_URL.replace(/^https:\/\/([^.]+).*$/, '$1');
-  $('team-card').innerHTML = '<div class="team-list">' + SET.team.map(m => '<div class="team-row"><span class="set-txt"><b>' + esc(m.email) + '</b>' + (m.is_me ? '<small>vous</small>' : '') + '</span>' +
+  const who = m => m.email && m.email.endsWith('@' + STAFF_DOMAIN) ? 'identifiant : ' + m.email.split('@')[0] : m.email;
+  $('team-card').innerHTML = '<div class="team-list">' + SET.team.map(m => '<div class="team-row"><span class="set-txt" style="flex:1;min-width:180px">' +
+    '<input class="input" data-staff-name="' + esc(m.user_id) + '" value="' + esc(m.display_name || '') + '" placeholder="Nom affiché (ex. Marie)" aria-label="Nom affiché">' +
+    '<small>' + esc(who(m)) + (m.is_me ? ' · vous' : '') + '</small></span>' +
     '<span class="ed-acts"><select class="input" data-role="' + esc(m.user_id) + '" aria-label="Rôle">' + [['admin', 'Administrateur'], ['staff', 'Équipe']].map(r => '<option value="' + r[0] + '"' + (m.role === r[0] ? ' selected' : '') + '>' + r[1] + '</option>').join('') + '</select>' +
     '<button class="btn-line btn-sm btn-danger' + (armed['rm' + m.user_id] ? ' armed' : '') + '" data-act="team-rm" data-id="' + esc(m.user_id) + '" type="button">' + (armed['rm' + m.user_id] ? 'Confirmer' : 'Retirer') + '</button></span></div>').join('') + '</div>' +
-    '<h3 class="h3">Ajouter un membre</h3><p class="hint">Créez d\'abord son compte (e-mail et mot de passe) dans Supabase, puis ajoutez son e-mail ici.</p>' +
-    '<div class="row2" style="grid-template-columns:1fr auto"><input class="input" id="team-email" type="email" autocomplete="off" placeholder="prenom@exemple.re" aria-label="E-mail"><select class="input" id="team-role" aria-label="Rôle"><option value="staff">Équipe</option><option value="admin">Administrateur</option></select></div>' +
+    '<h3 class="h3">Ajouter un membre</h3>' +
+    '<ol class="hint" style="padding-left:18px"><li>Bouton <b>Créer un compte</b> ci-dessous, puis <b>Add user</b> dans Supabase.</li><li>E-mail : <b>prenom@' + STAFF_DOMAIN + '</b> (ou une vraie adresse), un mot de passe, et cochez <b>Auto Confirm User</b>.</li><li>Revenez ici et ajoutez son identifiant : <b>prenom</b>.</li></ol>' +
+    '<div class="row2" style="grid-template-columns:1fr auto"><input class="input" id="team-email" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="marie ou marie@exemple.re" aria-label="Identifiant ou e-mail"><select class="input" id="team-role" aria-label="Rôle"><option value="staff">Équipe</option><option value="admin">Administrateur</option></select></div>' +
     '<p class="st err" id="team-err" role="alert"></p><div class="modal-actions"><a class="btn-line" href="https://supabase.com/dashboard/project/' + ref + '/auth/users" target="_blank" rel="noopener">Créer un compte</a><button class="btn-primary" data-act="team-add" type="button">Ajouter</button></div>' +
-    '<p class="note">Administrateur : réglages du restaurant et équipe. Équipe : demandes, plan, clients et carte.</p>';
+    '<p class="note">Avec un identifiant (« marie »), la personne se connecte au hub en tapant juste « marie » et son mot de passe. Mot de passe oublié : un administrateur le change dans Supabase (Users, puis le compte).</p>' +
+    '<p class="note">Administrateur : réglages du restaurant, plan de salle, équipe, suppression de fiches clients. Équipe : demandes, plan, clients et carte.</p>';
 }
 async function teamAction(fn, okMsg){
   try { await fn(); toast(okMsg); SET.team = await Store.listStaff(); drawTeam(); }
   catch(e){ const el = $('team-err'); if(el) el.textContent = errText(e); else toast(errText(e)); drawTeam(); }
 }
 function addMember(){
-  const email = $('team-email').value.trim();
-  if(!/^\S+@\S+\.\S+$/.test(email)){ $('team-err').textContent = 'Indiquez un e-mail valide.'; return; }
-  teamAction(() => Store.addStaff(email, $('team-role').value), email + ' a accès au hub');
+  const login = staffLogin($('team-email').value);
+  if(!/^\S+@\S+\.\S+$/.test(login)){ $('team-err').textContent = 'Indiquez un identifiant (ex. marie) ou un e-mail.'; return; }
+  teamAction(() => Store.addStaff(login, $('team-role').value), login.split('@')[0] + ' a accès au hub');
 }
 function removeMember(id){
   if(!armed['rm' + id]){ armed['rm' + id] = true; drawTeam(); setTimeout(() => { delete armed['rm' + id]; }, 4000); return; }
@@ -2442,25 +2461,42 @@ async function openCustomer(id){
   const c = C.list.find(x => x.id === id); if(!c) return;
   SET.cust = c;
   const num = intlPhone(c.phone);
-  openEditor('<div class="title-block"><span class="eyebrow">' + esc(fmtPhone(c.phone)) + '</span><h2 class="h1" style="font-size:26px">' + esc(c.name) + '</h2></div>' +
+  openEditor('<div class="title-block"><span class="eyebrow">Fiche client</span><h2 class="h1" style="font-size:26px">' + esc(c.name) + '</h2></div>' +
     '<div class="checks"><span class="badge ' + (c.marketing_opt_in ? 'b-optin">Offres acceptées' : 'b-none">Pas d\'offres') + '</span>' +
     '<span class="badge b-none">' + c.requests + ' réservation' + (c.requests > 1 ? 's' : '') + '</span><span class="badge b-table">' + c.visits + ' confirmée' + (c.visits > 1 ? 's' : '') + '</span></div>' +
     (c.first_seen ? '<p class="note">Client depuis le ' + esc(fmtDateFr(String(c.first_seen).slice(0, 10))) + '</p>' : '') +
+    '<div class="row2">' + fieldIn('cu-name', 'Nom', c.name, ' maxlength="80"') + fieldIn('cu-phone', 'Téléphone', fmtPhone(c.phone), ' type="tel" maxlength="30"') + '</div>' +
+    fieldIn('cu-email', 'E-mail', c.email, ' type="email" placeholder="Facultatif"') +
     '<div class="field"><label for="cust-notes">Notes de l\'équipe</label><textarea class="input" id="cust-notes" placeholder="Allergies, préférences, table favorite, occasion…">' + esc(c.notes || '') + '</textarea></div>' +
-    '<button class="btn-line btn-sm" data-act="cust-notes-save" type="button" style="align-self:flex-start">Enregistrer la note</button>' +
+    (c.marketing_opt_in ? '<label class="check" style="align-self:flex-start"><input type="checkbox" id="cu-optin" checked>Accepte de recevoir les offres (décochez si le client le demande)</label>' : '') +
+    '<p class="st err" id="ed-err" role="alert"></p>' +
+    '<div class="modal-actions">' + (IS_ADMIN ? '<button class="btn-line btn-danger' + (armed['cu' + c.id] ? ' armed' : '') + '" data-act="cust-del" type="button">' + (armed['cu' + c.id] ? 'Confirmer la suppression' : 'Supprimer la fiche') + '</button>' : '<span></span>') +
+    '<button class="btn-primary" data-act="cust-save" type="button">Enregistrer</button></div>' +
     '<h3 class="h3">Historique des réservations</h3><div class="hist" id="cust-hist"><p class="note">Chargement…</p></div>' +
     (num ? '<a class="btn-line" href="' + esc(waLink('Bonjour ' + c.name + ', ', num)) + '" target="_blank" rel="noopener">' + ico('i-chat') + 'Écrire sur WhatsApp</a>' : '') +
     '<button class="btn-text" data-act="ed-close" type="button">Fermer</button>');
   let hist = [];
-  try { hist = await Store.customerHistory(c); } catch(e){ $('cust-hist').innerHTML = '<p class="st err">Historique indisponible : vérifiez la connexion.</p>'; return; }
+  try { hist = await Store.customerHistory(c); } catch(e){ if($('cust-hist')) $('cust-hist').innerHTML = '<p class="st err">Historique indisponible : vérifiez la connexion.</p>'; return; }
   if(SET.cust !== c || !$('cust-hist')) return;
   $('cust-hist').innerHTML = hist.length ? hist.map(r => '<div><span><b>' + esc(cap1(fmtDateFr(r.date))) + '</b> · ' + esc(r.time) + ' · ' + esc(r.guests) + ' pers.' + (r.table ? ' · table ' + esc(tName(r.table)) : '') +
     (r.notes ? '<br><span class="note">« ' + esc(r.notes) + ' »</span>' : '') + '</span><span class="status ' + (r.status || 'confirmed') + '">' + STATUS[r.status || 'confirmed'].short + '</span></div>').join('') : '<p class="note">Aucune réservation enregistrée.</p>';
 }
-async function saveCustomerNotes(){
+async function saveCustomer(){
   const c = SET.cust; if(!c) return;
-  const notes = $('cust-notes').value.trim();
-  try { await Store.saveCustomerNotes(c.id, notes || null); c.notes = notes; toast('Note enregistrée'); } catch(e){ toast('Note non enregistrée : ' + errText(e)); }
+  const name = $('cu-name').value.trim(), phone = intlPhone($('cu-phone').value), email = $('cu-email').value.trim();
+  const err = name.length < 2 ? 'Indiquez un nom.' : !phone ? 'Ce numéro semble incomplet.' : email && !/^\S+@\S+\.\S+$/.test(email) ? 'Cet e-mail semble incorrect.' : '';
+  if(err){ $('ed-err').textContent = err; return; }
+  const patch = { name, phone, email: email || null, notes: $('cust-notes').value.trim() || null };
+  if($('cu-optin') && !$('cu-optin').checked){ patch.marketing_opt_in = false; patch.opt_out_at = new Date().toISOString(); }
+  try { await Store.updateCustomer(c.id, patch); Object.assign(c, patch); closeEditor(); renderCustomers(); toast('Fiche enregistrée'); }
+  catch(e){ $('ed-err').textContent = 'Enregistrement impossible : ' + errText(e); }
+}
+async function deleteCustomer(){
+  const c = SET.cust; if(!c) return;
+  if(!armed['cu' + c.id]){ armed['cu' + c.id] = true; openCustomer(c.id); setTimeout(() => { delete armed['cu' + c.id]; }, 5000); return; }
+  delete armed['cu' + c.id];
+  try { await Store.deleteCustomer(c.id); C.list = C.list.filter(x => x.id !== c.id); closeEditor(); renderCustomers(); toast('Fiche supprimée'); }
+  catch(e){ $('ed-err').textContent = 'Suppression impossible : ' + errText(e); }
 }
 
 /* Actions des réglages et des fiches (délégation) */
@@ -2495,7 +2531,8 @@ function setAction(act, t){
     case 'team-rm': removeMember(id); break;
     case 'dev-notif': enableAlerts().then(renderDevice); break;
     case 'dev-logout': logout(); break;
-    case 'cust-notes-save': saveCustomerNotes(); break;
+    case 'cust-save': saveCustomer(); break;
+    case 'cust-del': deleteCustomer(); break;
   }
 }
 document.addEventListener('click', e => {
@@ -2511,6 +2548,7 @@ document.addEventListener('change', e => {
   if(act === 'dev-theme'){ toggleTheme(); return; }
   if(act === 'dev-sound'){ try { localStorage.setItem('tdb_sound', t.checked ? 'on' : 'off'); } catch(err){} if(t.checked) chime(); return; }
   if(t.dataset && t.dataset.role) teamAction(() => Store.setStaffRole(t.dataset.role, t.value), 'Rôle modifié');
+  if(t.dataset && t.dataset.staffName) teamAction(() => Store.setStaffName(t.dataset.staffName, t.value), 'Nom enregistré');
 });
 $('ed-overlay').onclick = e => { if(e.target === $('ed-overlay')) closeEditor(); };
 $('btn-settings').onclick = () => { SET.view = 'home'; switchTab('settings'); };

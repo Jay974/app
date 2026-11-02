@@ -173,8 +173,12 @@ alter table public.reservations add column if not exists customer_id uuid refere
 create index if not exists reservations_customer_idx on public.reservations (customer_id);
 
 alter table public.customers enable row level security;
+-- L'équipe lit et modifie les fiches ; la suppression est réservée aux administrateurs (plus bas, avec les rôles).
 drop policy if exists staff_customers on public.customers;
-create policy staff_customers on public.customers for all to authenticated
+drop policy if exists staff_customers_read on public.customers;
+create policy staff_customers_read on public.customers for select to authenticated using (public.is_staff());
+drop policy if exists staff_customers_update on public.customers;
+create policy staff_customers_update on public.customers for update to authenticated
   using (public.is_staff()) with check (public.is_staff());
 
 create or replace function public.link_customer() returns trigger
@@ -293,6 +297,20 @@ grant execute on function public.list_staff() to authenticated;
 grant execute on function public.add_staff(text, text) to authenticated;
 grant execute on function public.set_staff_role(uuid, text) to authenticated;
 grant execute on function public.remove_staff(uuid) to authenticated;
+
+-- Nom affiché d'un membre (lui-même ou un administrateur).
+create or replace function public.set_staff_name(p_user uuid, p_name text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not (public.is_admin() or p_user = auth.uid()) then raise exception 'non_autorise'; end if;
+  update staff set display_name = nullif(trim(p_name), '') where user_id = p_user;
+end $$;
+revoke all on function public.set_staff_name(uuid, text) from public, anon;
+grant execute on function public.set_staff_name(uuid, text) to authenticated;
+
+-- Suppression d'une fiche client : administrateurs seulement (les réservations restent, sans lien vers la fiche).
+drop policy if exists admin_customers_delete on public.customers;
+create policy admin_customers_delete on public.customers for delete to authenticated using (public.is_admin());
 
 -- ── Réglages du restaurant (lus par le site, modifiés par les administrateurs) ──
 create table if not exists public.settings (
