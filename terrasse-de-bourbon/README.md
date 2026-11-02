@@ -39,7 +39,8 @@ Fonctionnement : une nouvelle demande du site déclenche `private.notify_new_req
 
 ## Prévenir les clients (e-mail et notification)
 
-- Le client peut laisser son **e-mail** (facultatif) : il reçoit « Demande bien reçue » avec son lien de suivi, puis « Réservation confirmée » ou « Créneau non disponible » dès que l'équipe tranche.
+- **Désactivé par défaut** : l'interrupteur « Confirmation par e-mail aux clients » (Réglages → Informations du restaurant) affiche le champ e-mail du formulaire. À activer une fois Brevo configuré.
+- Le client peut alors laisser son **e-mail** (facultatif) : il reçoit « Demande bien reçue » avec son lien de suivi, puis « Réservation confirmée » ou « Créneau non disponible » dès que l'équipe tranche.
 - Sur sa page de suivi, **« Être prévenu sur cet appareil »** active une notification (Android, ordinateur, iPhone si le site est installé). Un appareil qui l'a déjà autorisée est abonné automatiquement à ses nouvelles demandes.
 - Fonctionnement : `private.notify_client()` (dans `supabase-push.sql`) appelle `/api/notify-client`, qui envoie l'e-mail par Brevo et la notification. Rien n'est envoyé pour les réservations saisies par l'équipe.
 - Mise en place : compte Brevo gratuit (300 e-mails par jour), expéditeur validé dans *Senders, Domains & Dedicated IPs*, clé API dans *SMTP & API*. Puis dans Vercel : `BREVO_API_KEY` et `MAIL_FROM` (l'adresse validée). Sans ces variables, les notifications fonctionnent quand même.

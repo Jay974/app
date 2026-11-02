@@ -668,10 +668,10 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
           <div class="field"><label for="f-name">Nom *</label><input class="input" id="f-name" autocomplete="family-name" placeholder="Votre nom" maxlength="80" required></div>
           <div class="field"><label for="f-tel">Téléphone *</label><input class="input" id="f-tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="0692 00 00 00" maxlength="30" required></div>
         </div>
-        <div class="field"><label for="f-email">E-mail (facultatif)</label><input class="input" id="f-email" type="email" inputmode="email" autocomplete="email" placeholder="Pour recevoir la confirmation par e-mail" maxlength="120"></div>
+        <div class="field" id="f-email-field" hidden><label for="f-email">E-mail (facultatif)</label><input class="input" id="f-email" type="email" inputmode="email" autocomplete="email" placeholder="Pour recevoir la confirmation par e-mail" maxlength="120"></div>
         <div class="field"><label for="f-notes">Occasion, allergies, demande</label><textarea class="input" id="f-notes" placeholder="Anniversaire, poussette, intolérance…" maxlength="500"></textarea></div>
         <label class="consent" for="f-optin"><input type="checkbox" id="f-optin"><span>J'accepte de recevoir les offres et l'actualité de La Terrasse de Bourbon par SMS, WhatsApp ou e-mail. Désinscription possible à tout moment.</span></label>
-        <p class="privacy">Vos coordonnées servent à gérer votre réservation (votre e-mail, si vous l'indiquez, à vous envoyer la confirmation) et, seulement si vous cochez la case, à vous envoyer nos offres. Elles ne sont jamais cédées.</p>
+        <p class="privacy">Vos coordonnées servent à gérer votre réservation<span data-email-only hidden> (votre e-mail, si vous l'indiquez, à vous envoyer la confirmation)</span> et, seulement si vous cochez la case, à vous envoyer nos offres. Elles ne sont jamais cédées.</p>
       </div>
       <p class="st err" id="f-err" role="alert"></p>
       <button class="btn-primary" type="submit" id="btn-book">Envoyer ma demande</button>
@@ -900,6 +900,7 @@ const staffLogin = v => { v = String(v || '').trim().toLowerCase(); return v && 
 const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js';
 
 let RESTO = 'La Terrasse de Bourbon';
+let EMAIL_ON = false;   // confirmation par e-mail aux clients : Réglages > Informations (nécessite Brevo dans Vercel)
 let CONTACT = { tagline: 'Restaurant & cocktail bar', city: 'à Saint-Denis', phone: '+262 692 25 35 38', instagram: '@LaTerrasseDeBourbon', address: '',
   hoursText: 'Le midi tous les jours. Le soir du lundi au jeudi jusqu\'à 23h, le vendredi et le samedi jusqu\'à minuit. Fermé le dimanche soir.' };
 let SVC = {
@@ -1650,7 +1651,7 @@ function renderBook(){
 }
 async function submitBooking(e){
   e.preventDefault();
-  const name = $('f-name').value.trim(), tel = $('f-tel').value.trim(), email = $('f-email').value.trim();
+  const name = $('f-name').value.trim(), tel = $('f-tel').value.trim(), email = EMAIL_ON ? $('f-email').value.trim() : '';
   ['f-name', 'f-tel', 'f-email'].forEach(i => $(i).classList.remove('err'));
   // Tout est obligatoire sauf les notes et la préférence d'espace : sans téléphone, l'équipe ne peut pas recontacter le client.
   const bad = !B.date || !B.time ? ['slots', 'Choisissez un jour et une heure.'] :
@@ -2067,6 +2068,9 @@ function rebuildTables(){
 function applySettings(d){
   if(!d) return;
   if(d.name) RESTO = d.name;
+  if(d.emailConfirm != null) EMAIL_ON = !!d.emailConfirm;
+  $('f-email-field').hidden = !EMAIL_ON;
+  document.querySelectorAll('[data-email-only]').forEach(el => { el.hidden = !EMAIL_ON; });
   ['tagline', 'city', 'phone', 'instagram', 'address', 'hoursText'].forEach(k => { if(d[k] != null) CONTACT[k] = d[k]; });
   if(d.services) Object.keys(SVC).forEach(k => { if(d.services[k]) SVC[k] = Object.assign({}, SVC[k], d.services[k]); });
   if(Array.isArray(d.happyHours)) HAPPY_HOURS = d.happyHours;
@@ -2103,7 +2107,7 @@ function applyMenu(raw){
 }
 function buildDefaultCfg(){
   const settings = {
-    name: RESTO, tagline: CONTACT.tagline, city: CONTACT.city, phone: CONTACT.phone, instagram: CONTACT.instagram, address: CONTACT.address, hoursText: CONTACT.hoursText,
+    name: RESTO, emailConfirm: EMAIL_ON, tagline: CONTACT.tagline, city: CONTACT.city, phone: CONTACT.phone, instagram: CONTACT.instagram, address: CONTACT.address, hoursText: CONTACT.hoursText,
     services: JSON.parse(JSON.stringify(SVC)), happyHours: HAPPY_HOURS.map(h => h.slice()), closed: JSON.parse(JSON.stringify(CLOSED)),
     zones: ZONES.map(z => ({ short: z.short, label: z.label, txt: ZONE_TXT[z.short], tables: z.tables.map(t => {
       const o = { id: t.id, name: t.name, cap: t.cap }; if(t.maxCap) o.maxCap = t.maxCap; if(t.salon) o.salon = true; return o; }) }))
@@ -2354,12 +2358,14 @@ function renderInfoEditor(){
     '<div class="row2">' + fieldIn('st-tagline', 'Accroche de l\'accueil', s.tagline) + fieldIn('st-city', 'Suite en couleur', s.city) + '</div>' +
     '<div class="row2">' + fieldIn('st-phone', 'Téléphone des réservations', s.phone, ' type="tel"') + fieldIn('st-insta', 'Instagram', s.instagram) + '</div>' +
     fieldIn('st-address', 'Adresse', s.address, ' placeholder="Affichée en bas de l\'accueil"') +
+    '<label class="check" style="align-self:flex-start"><input type="checkbox" id="st-email"' + (s.emailConfirm ? ' checked' : '') + '>Confirmation par e-mail aux clients</label>' +
+    '<p class="note">Ajoute un champ e-mail facultatif au formulaire : le client reçoit « demande reçue » puis « confirmée » ou « non disponible ». À activer une fois Brevo configuré dans Vercel (BREVO_API_KEY et MAIL_FROM).</p>' +
     '<p class="st err" id="st-err" role="alert"></p><button class="btn-primary" data-act="save-info" type="button">Enregistrer</button></div>';
 }
 function saveInfo(){
   const v = id => $(id).value.trim();
   if(!v('st-name')){ $('st-err').textContent = 'Indiquez le nom du restaurant.'; return; }
-  saveSettingsPatch({ name: v('st-name'), tagline: v('st-tagline'), city: v('st-city'), phone: v('st-phone'), instagram: v('st-insta'), address: v('st-address') }, 'Informations enregistrées');
+  saveSettingsPatch({ emailConfirm: $('st-email').checked, name: v('st-name'), tagline: v('st-tagline'), city: v('st-city'), phone: v('st-phone'), instagram: v('st-insta'), address: v('st-address') }, 'Informations enregistrées');
 }
 function renderServicesEditor(){
   const s = CFG.settings;
