@@ -80,6 +80,11 @@ declare
   v_today date := (now() at time zone 'Indian/Reunion')::date;
   v_out   json;
 begin
+  -- Champs obligatoires : nom, téléphone joignable, nombre de personnes, date et heure.
+  if char_length(trim(coalesce(p_name, ''))) < 2 then raise exception 'nom_requis'; end if;
+  if length(regexp_replace(coalesce(p_tel, ''), '[^0-9]', '', 'g')) not between 9 and 15 then raise exception 'tel_requis'; end if;
+  if p_guests is null or p_guests < 1 then raise exception 'personnes_requis'; end if;
+  if p_date is null or p_time is null then raise exception 'creneau_requis'; end if;
   if p_date < v_today or p_date > v_today + 180 then
     raise exception 'date_invalide';
   end if;
