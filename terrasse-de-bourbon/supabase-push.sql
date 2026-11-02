@@ -84,5 +84,45 @@ drop trigger if exists reservations_notify on public.reservations;
 create trigger reservations_notify after insert on public.reservations
   for each row execute function private.notify_new_request();
 
+-- ── Prévenir le client (e-mail s'il l'a laissé, notification s'il l'a activée) ──
+-- Envoi par /api/notify-client : « demande reçue » à l'envoi, puis « confirmée » ou « non disponible ».
+insert into private.config (key, value) values
+  ('notify_client_url', 'https://app-terrasse-de-bourbon.vercel.app/api/notify-client')
+on conflict (key) do nothing;
+
+create or replace function private.notify_client() returns trigger
+language plpgsql security definer set search_path = public, private, extensions as $$
+declare v_kind text; v_url text; v_secret text;
+begin
+  if new.src <> 'web' then return new; end if;
+  if tg_op = 'INSERT' then
+    if new.email is null then return new; end if;
+    v_kind := 'received';
+  elsif new.status is distinct from old.status and new.status in ('confirmed', 'declined') then
+    if new.email is null and new.client_push is null then return new; end if;
+    v_kind := new.status;
+  else
+    return new;
+  end if;
+  select value into v_url from private.config where key = 'notify_client_url';
+  select value into v_secret from private.config where key = 'notify_secret';
+  if v_url is null then return new; end if;
+  perform net.http_post(
+    url := v_url,
+    body := jsonb_build_object('kind', v_kind,
+      'reservation', jsonb_build_object('id', new.id, 'token', new.access_token, 'name', new.name, 'guests', new.guests,
+                                        'date', new.date, 'time', new.time, 'email', new.email),
+      'push', new.client_push),
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-notify-secret', v_secret),
+    timeout_milliseconds := 8000);
+  return new;
+exception when others then
+  return new;   -- un envoi raté ne doit jamais bloquer une réservation
+end $$;
+
+drop trigger if exists reservations_notify_client on public.reservations;
+create trigger reservations_notify_client after insert or update of status on public.reservations
+  for each row execute function private.notify_client();
+
 -- ── À copier dans Vercel (variable NOTIFY_SECRET) ──────────
 select value as "NOTIFY_SECRET" from private.config where key = 'notify_secret';
