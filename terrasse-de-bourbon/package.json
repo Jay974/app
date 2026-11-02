@@ -1,0 +1,9 @@
+{
+  "name": "terrasse-de-bourbon",
+  "private": true,
+  "description": "Réservations, carte et hub équipe de La Terrasse de Bourbon",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "web-push": "3.6.7"
+  }
+}
