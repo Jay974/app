@@ -422,6 +422,40 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .toast { position: fixed; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 16px); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 99px; font-size: 13px; font-weight: 500; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 200; max-width: calc(100vw - 32px); text-align: center; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+/* Ordinateur et tablette paysage : le site client s'élargit et passe en mise en page à colonnes. */
+@media (min-width: 900px) {
+  #v-home, #v-menu, #v-book { max-width: 1120px; }
+  #v-mine, #v-track { max-width: 640px; }
+  .band { margin: 16px 0 0; border-radius: 28px; padding: 22px 28px 26px; }
+  .band.lift { padding-bottom: 26px; }
+  .band .h1 { font-size: 40px; }
+  /* Accueil : présentation à gauche, scène à droite, puis les sections sur toute la largeur */
+  #v-home { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; row-gap: 32px; }
+  #v-home > :not(.band):not(.hero) { grid-column: 1 / -1; }
+  #v-home .band { justify-content: center; gap: 18px; }
+  .band.lift + .hero { margin-top: 16px; }
+  .hero, .hero .scene { height: 100%; }
+  .hero .scene svg { height: 100%; min-height: 300px; }
+  .hero-title { font-size: 30px; }
+  .zone-card .scene svg { aspect-ratio: 16 / 10; }
+  .svc-card, .zone-card div.txt { padding: 16px 18px; }
+  .svc-card b { font-size: 20px; }
+  .dish-scroll { grid-auto-flow: row; grid-template-columns: repeat(6, 1fr); overflow: visible; margin-inline: 0; padding-inline: 0; }
+  /* Carte : rubriques en 8 colonnes, plats sur deux colonnes */
+  .cat-grid { grid-template-columns: repeat(8, 1fr); }
+  .chips { margin-inline: 0; padding-inline: 0; flex-wrap: wrap; overflow: visible; }
+  .items { column-count: 2; column-gap: 36px; padding: 4px 20px; }
+  .item { break-inside: avoid; border-top: 0; border-bottom: 1px solid var(--line); }
+  /* Réserver : la scène à gauche, le formulaire à droite */
+  #v-book { display: grid; grid-template-columns: 1fr 440px; column-gap: 32px; row-gap: 18px; align-items: start;
+    grid-template-areas: "top top" "title form" "scene form" "cap form" ". form"; grid-template-rows: auto auto auto auto 1fr; }
+  #v-book > .topbar { grid-area: top; }
+  #v-book > .title-block { grid-area: title; }
+  #v-book > .scene { grid-area: scene; }
+  #v-book > .scene-cap { grid-area: cap; margin-top: 0; }
+  #v-book > .sheet { grid-area: form; }
+}
+
 /* iPad : le hub profite de la largeur, demandes sur deux colonnes */
 @media (min-width: 900px) {
   .app.wide { max-width: 1100px; }
@@ -567,8 +601,8 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <div class="divider"></div>
       <div class="fields">
         <div class="row2">
-          <div class="field"><label for="f-name">Nom</label><input class="input" id="f-name" autocomplete="family-name" placeholder="Votre nom" maxlength="80"></div>
-          <div class="field"><label for="f-tel">Téléphone</label><input class="input" id="f-tel" type="tel" autocomplete="tel" placeholder="0692 00 00 00" maxlength="30"></div>
+          <div class="field"><label for="f-name">Nom *</label><input class="input" id="f-name" autocomplete="family-name" placeholder="Votre nom" maxlength="80" required></div>
+          <div class="field"><label for="f-tel">Téléphone *</label><input class="input" id="f-tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="0692 00 00 00" maxlength="30" required></div>
         </div>
         <div class="field"><label for="f-notes">Occasion, allergies, demande</label><textarea class="input" id="f-notes" placeholder="Anniversaire, poussette, intolérance…" maxlength="500"></textarea></div>
       </div>
@@ -1473,12 +1507,21 @@ function renderBook(){
 }
 async function submitBooking(e){
   e.preventDefault();
-  const name = $('f-name').value.trim();
-  $('f-name').classList.remove('err');
-  const err = !B.time ? 'Choisissez une heure.' : !name ? 'Indiquez votre nom.' : '';
-  if(err){ $('f-err').textContent = err; if(!name && B.time){ $('f-name').classList.add('err'); $('f-name').focus(); } else $('slots').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+  const name = $('f-name').value.trim(), tel = $('f-tel').value.trim();
+  ['f-name', 'f-tel'].forEach(i => $(i).classList.remove('err'));
+  // Tout est obligatoire sauf les notes et la préférence d'espace : sans téléphone, l'équipe ne peut pas recontacter le client.
+  const bad = !B.date || !B.time ? ['slots', 'Choisissez un jour et une heure.'] :
+    !(B.guests >= 1) ? ['guest-count', 'Indiquez le nombre de personnes.'] :
+    name.length < 2 ? ['f-name', 'Indiquez votre nom.'] :
+    !intlPhone(tel) ? ['f-tel', tel ? 'Ce numéro de téléphone semble incomplet. Exemple : 0692 12 34 56.' : 'Indiquez un numéro de téléphone : l\'équipe en a besoin pour vous joindre.'] : null;
+  if(bad){
+    $('f-err').textContent = bad[1];
+    if(bad[0] === 'f-name' || bad[0] === 'f-tel'){ $(bad[0]).classList.add('err'); $(bad[0]).focus(); }
+    else $(bad[0]).scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
   $('f-err').textContent = '';
-  const r = { name, date: B.date, time: B.time, guests: B.guests, zone: B.zone, tel: $('f-tel').value.trim(), notes: $('f-notes').value.trim() };
+  const r = { name, date: B.date, time: B.time, guests: B.guests, zone: B.zone, tel, notes: $('f-notes').value.trim() };
   $('btn-book').disabled = true; $('btn-book').textContent = 'Envoi…';
   try {
     const token = await Store.submit(r);
@@ -1489,6 +1532,9 @@ async function submitBooking(e){
   } catch(err){
     const m = String(err && err.message || '');
     $('f-err').textContent = m.indexOf('trop_de_demandes') >= 0 ? 'Plusieurs demandes viennent d\'être envoyées. Patientez un peu ou appelez-nous.' :
+      m.indexOf('tel_requis') >= 0 ? 'Indiquez un numéro de téléphone valide pour que l\'équipe puisse vous joindre.' :
+      m.indexOf('nom_requis') >= 0 ? 'Indiquez votre nom.' :
+      m.indexOf('personnes_requis') >= 0 || m.indexOf('creneau_requis') >= 0 ? 'Choisissez un jour, une heure et le nombre de personnes.' :
       m.indexOf('ferme_dimanche_soir') >= 0 ? 'Le restaurant est fermé le dimanche soir. Choisissez le midi ou un autre jour.' :
       m.indexOf('date_invalide') >= 0 ? 'Cette date n\'est pas réservable en ligne. Choisissez une date dans les 6 prochains mois.' :
       'L\'envoi n\'a pas abouti. Vérifiez votre connexion et réessayez, ou appelez le 0692 25 35 38.';
