@@ -2,24 +2,16 @@
    Appelée par Supabase (déclencheur sur les nouvelles demandes, voir supabase-push.sql), jamais par le navigateur.
    Variables d'environnement Vercel : VAPID_PRIVATE_KEY et NOTIFY_SECRET. */
 const webpush = require('web-push');
-
-const VAPID_PUBLIC_KEY = 'BLq0pgWzAk1wm4vKIawA2RADZbURpd80QAoR-PRWAJADxUvf1bNLShXyLgKajSEibXOCd8ETxGygTyHW065Ro1w';
-const SITE = 'https://app-terrasse-de-bourbon.vercel.app';
-const SUPABASE_URL = 'https://cffggtvlslfepiihlmpm.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_-zT9LvvD8Fts0dvS4A-uRA_53S7lClf';
-
-const JOURS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
-const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
-function dateFr(iso){ const d = new Date(iso + 'T12:00:00Z'); return JOURS[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MOIS[d.getUTCMonth()]; }
+const { VAPID_PUBLIC_KEY, SITE, SUPABASE_URL, SUPABASE_KEY, dateFr, authorized, body: readBody } = require('./_shared');
 
 module.exports = async (req, res) => {
   if(req.method !== 'POST') return res.status(405).end();
+  if(!authorized(req)) return res.status(401).end();
   const secret = process.env.NOTIFY_SECRET;
-  if(!secret || req.headers['x-notify-secret'] !== secret) return res.status(401).end();
   if(!process.env.VAPID_PRIVATE_KEY) return res.status(500).json({ error: 'VAPID_PRIVATE_KEY manquante' });
   webpush.setVapidDetails(SITE, VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
 
-  const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+  const body = readBody(req);
   const r = body.reservation || {}, subs = Array.isArray(body.subscriptions) ? body.subscriptions : [];
   const payload = JSON.stringify({
     title: 'Nouvelle demande de réservation',

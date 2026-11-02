@@ -1,6 +1,6 @@
 /* Service worker : ouverture instantanée et page disponible hors connexion.
    Les données (Supabase) ne sont jamais mises en cache : elles restent toujours à jour. */
-const CACHE = 'tdb-v4';
+const CACHE = 'tdb-v5';
 const SHELL = ['/index.html', '/manifest.webmanifest', '/manifest-equipe.webmanifest', '/icons/icon-192.png', '/icons/icon-equipe-192.png'];
 
 self.addEventListener('install', e => {
@@ -34,7 +34,7 @@ self.addEventListener('push', e => {
   e.waitUntil(Promise.all([
     self.registration.showNotification(d.title || 'La Terrasse de Bourbon', {
       body: d.body || '', tag: d.tag, renotify: true,
-      icon: '/icons/icon-equipe-192.png', badge: '/icons/icon-equipe-192.png',
+      icon: d.icon || '/icons/icon-equipe-192.png', badge: d.icon || '/icons/icon-equipe-192.png',
       data: { url: d.url || '/equipe' }
     }),
     d.badge && self.navigator.setAppBadge ? self.navigator.setAppBadge(d.badge).catch(() => {}) : null
@@ -42,9 +42,13 @@ self.addEventListener('push', e => {
 });
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const url = new URL((e.notification.data && e.notification.data.url) || '/equipe', self.location.origin).href;
+  // Équipe : ouvre le hub ; client : ouvre sa page de suivi. Réutilise une fenêtre déjà ouverte sur la même page.
+  const url = new URL((e.notification.data && e.notification.data.url) || '/equipe', self.location.origin);
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-    for(const c of list) if(c.url.indexOf(self.location.origin + '/equipe') === 0 && 'focus' in c) return c.focus();
-    return self.clients.openWindow(url);
+    for(const c of list){
+      if(new URL(c.url).pathname !== url.pathname || !('focus' in c)) continue;
+      return (url.hash && 'navigate' in c ? c.navigate(url.href).catch(() => c) : Promise.resolve(c)).then(w => (w || c).focus());
+    }
+    return self.clients.openWindow(url.href);
   }));
 });

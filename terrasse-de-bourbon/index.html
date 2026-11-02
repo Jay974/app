@@ -668,9 +668,10 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
           <div class="field"><label for="f-name">Nom *</label><input class="input" id="f-name" autocomplete="family-name" placeholder="Votre nom" maxlength="80" required></div>
           <div class="field"><label for="f-tel">Téléphone *</label><input class="input" id="f-tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="0692 00 00 00" maxlength="30" required></div>
         </div>
+        <div class="field"><label for="f-email">E-mail (facultatif)</label><input class="input" id="f-email" type="email" inputmode="email" autocomplete="email" placeholder="Pour recevoir la confirmation par e-mail" maxlength="120"></div>
         <div class="field"><label for="f-notes">Occasion, allergies, demande</label><textarea class="input" id="f-notes" placeholder="Anniversaire, poussette, intolérance…" maxlength="500"></textarea></div>
-        <label class="consent" for="f-optin"><input type="checkbox" id="f-optin"><span>J'accepte de recevoir les offres et l'actualité de La Terrasse de Bourbon par SMS ou WhatsApp. Désinscription possible à tout moment.</span></label>
-        <p class="privacy">Vos coordonnées servent à gérer votre réservation et, seulement si vous cochez la case, à vous envoyer nos offres. Elles ne sont jamais cédées.</p>
+        <label class="consent" for="f-optin"><input type="checkbox" id="f-optin"><span>J'accepte de recevoir les offres et l'actualité de La Terrasse de Bourbon par SMS, WhatsApp ou e-mail. Désinscription possible à tout moment.</span></label>
+        <p class="privacy">Vos coordonnées servent à gérer votre réservation (votre e-mail, si vous l'indiquez, à vous envoyer la confirmation) et, seulement si vous cochez la case, à vous envoyer nos offres. Elles ne sont jamais cédées.</p>
       </div>
       <p class="st err" id="f-err" role="alert"></p>
       <button class="btn-primary" type="submit" id="btn-book">Envoyer ma demande</button>
@@ -705,6 +706,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <div class="steps-lbl" id="t-steps-lbl"><span>Envoyée</span><span>Vue par l'équipe</span><span>Confirmée</span></div>
       <dl class="recap" id="t-recap"></dl>
       <p class="note" id="t-note"></p>
+      <button class="btn-primary" id="btn-client-push" type="button" hidden><svg class="ico"><use href="#i-bell"/></svg>Être prévenu sur cet appareil</button>
       <button class="btn-line" id="btn-copy-link" type="button"><svg class="ico"><use href="#i-copy"/></svg>Copier le lien de suivi</button>
       <button class="btn-line btn-danger" id="btn-cancel" type="button">Annuler ma réservation</button>
       <div class="phone-line"><span class="note">Une question ?</span><b data-c="phone">+262 692 25 35 38</b></div>
@@ -1265,7 +1267,7 @@ const Store = {
     this.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     this.live = true;
   },
-  fromRow(x){ return { id: x.id, token: x.access_token, name: x.name, tel: x.tel || '', guests: x.guests, date: x.date, time: x.time, zone: x.zone || '', notes: x.notes || '', table: x.table_id || '', status: x.status, src: x.src, ts: Date.parse(x.created_at) || Date.now(), upd: Date.parse(x.updated_at) || 0 }; },
+  fromRow(x){ return { id: x.id, token: x.access_token, name: x.name, tel: x.tel || '', guests: x.guests, date: x.date, time: x.time, zone: x.zone || '', notes: x.notes || '', table: x.table_id || '', email: x.email || '', status: x.status, src: x.src, ts: Date.parse(x.created_at) || Date.now(), upd: Date.parse(x.updated_at) || 0 }; },
   toRow(r){ return { id: r.id, name: r.name, tel: r.tel || null, guests: r.guests, date: r.date, time: r.time, zone: r.zone || '', notes: r.notes || null, table_id: r.table || '', status: r.status, src: r.src || 'staff' }; },
   local(){ try { return JSON.parse(localStorage.getItem('tdb_resas') || '[]'); } catch(e){ return []; } },
   saveLocal(list){ try { localStorage.setItem('tdb_resas', JSON.stringify(list)); } catch(e){} },
@@ -1273,7 +1275,7 @@ const Store = {
   /* Client */
   async submit(r){
     if(this.live){
-      const { data, error } = await this.sb.rpc('submit_reservation', { p_name: r.name, p_tel: r.tel, p_guests: r.guests, p_date: r.date, p_time: r.time, p_zone: r.zone, p_notes: r.notes, p_opt_in: !!r.optIn });
+      const { data, error } = await this.sb.rpc('submit_reservation', { p_name: r.name, p_tel: r.tel, p_guests: r.guests, p_date: r.date, p_time: r.time, p_zone: r.zone, p_notes: r.notes, p_opt_in: !!r.optIn, p_email: r.email || null });
       if(error) throw error;
       return data.token;
     }
@@ -1648,31 +1650,34 @@ function renderBook(){
 }
 async function submitBooking(e){
   e.preventDefault();
-  const name = $('f-name').value.trim(), tel = $('f-tel').value.trim();
-  ['f-name', 'f-tel'].forEach(i => $(i).classList.remove('err'));
+  const name = $('f-name').value.trim(), tel = $('f-tel').value.trim(), email = $('f-email').value.trim();
+  ['f-name', 'f-tel', 'f-email'].forEach(i => $(i).classList.remove('err'));
   // Tout est obligatoire sauf les notes et la préférence d'espace : sans téléphone, l'équipe ne peut pas recontacter le client.
   const bad = !B.date || !B.time ? ['slots', 'Choisissez un jour et une heure.'] :
     !(B.guests >= 1) ? ['guest-count', 'Indiquez le nombre de personnes.'] :
     name.length < 2 ? ['f-name', 'Indiquez votre nom.'] :
-    !intlPhone(tel) ? ['f-tel', tel ? 'Ce numéro de téléphone semble incomplet. Exemple : 0692 12 34 56.' : 'Indiquez un numéro de téléphone : l\'équipe en a besoin pour vous joindre.'] : null;
+    !intlPhone(tel) ? ['f-tel', tel ? 'Ce numéro de téléphone semble incomplet. Exemple : 0692 12 34 56.' : 'Indiquez un numéro de téléphone : l\'équipe en a besoin pour vous joindre.'] :
+    email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? ['f-email', 'Cette adresse e-mail semble incorrecte.'] : null;
   if(bad){
     $('f-err').textContent = bad[1];
-    if(bad[0] === 'f-name' || bad[0] === 'f-tel'){ $(bad[0]).classList.add('err'); $(bad[0]).focus(); }
+    if(bad[0] === 'f-name' || bad[0] === 'f-tel' || bad[0] === 'f-email'){ $(bad[0]).classList.add('err'); $(bad[0]).focus(); }
     else $(bad[0]).scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
   $('f-err').textContent = '';
-  const r = { name, date: B.date, time: B.time, guests: B.guests, zone: B.zone, tel, notes: $('f-notes').value.trim(), optIn: $('f-optin').checked };
+  const r = { name, date: B.date, time: B.time, guests: B.guests, zone: B.zone, tel, email, notes: $('f-notes').value.trim(), optIn: $('f-optin').checked };
   $('btn-book').disabled = true; $('btn-book').textContent = 'Envoi…';
   try {
     const token = await Store.submit(r);
     try { const m = mine(); m.push({ token, date: r.date, time: r.time, guests: r.guests }); localStorage.setItem('tdb_mine', JSON.stringify(m.slice(-20))); } catch(e){}
-    ['f-name','f-tel','f-notes'].forEach(i => $(i).value = ''); $('f-optin').checked = false;
+    ['f-name','f-tel','f-email','f-notes'].forEach(i => $(i).value = ''); $('f-optin').checked = false;
+    clientPushAttach(token, true);   // appareil déjà autorisé : prévenu sans rien demander
     B.time = '';
     location.hash = 'suivi-' + token;
   } catch(err){
     const m = String(err && err.message || '');
     $('f-err').textContent = m.indexOf('trop_de_demandes') >= 0 ? 'Plusieurs demandes viennent d\'être envoyées. Patientez un peu ou appelez-nous.' :
+      m.indexOf('email_invalide') >= 0 ? 'Cette adresse e-mail semble incorrecte.' :
       m.indexOf('tel_requis') >= 0 ? 'Indiquez un numéro de téléphone valide pour que l\'équipe puisse vous joindre.' :
       m.indexOf('nom_requis') >= 0 ? 'Indiquez votre nom.' :
       m.indexOf('personnes_requis') >= 0 || m.indexOf('creneau_requis') >= 0 ? 'Choisissez un jour, une heure et le nombre de personnes.' :
@@ -1750,6 +1755,25 @@ async function refreshTrack(){
     cancelled: 'Cette réservation est annulée. Vous pouvez en faire une nouvelle à tout moment.'
   }[st];
   $('btn-cancel').hidden = !(st === 'pending' || st === 'confirmed');
+  if(r.has_email && st === 'pending') $('t-note').innerHTML += ' Vous recevrez aussi la réponse <strong>par e-mail</strong>.';
+  const canPush = Store.live && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && Notification.permission !== 'denied';
+  $('btn-client-push').hidden = !(canPush && st === 'pending' && !r.has_push && !pushedTokens().includes(trackToken));
+}
+/* Notification au client (si son appareil le permet) : confirmée ou non disponible, même page fermée. */
+function pushedTokens(){ try { return JSON.parse(localStorage.getItem('tdb_pushed') || '[]'); } catch(e){ return []; } }
+async function clientPushAttach(token, silent){
+  try {
+    if(!Store.live || !('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return false;
+    if(silent && Notification.permission !== 'granted') return false;
+    if(!silent && (await Notification.requestPermission()) !== 'granted'){ toast('Notifications refusées : vous verrez la réponse ici et par e-mail'); return false; }
+    const reg = await navigator.serviceWorker.ready;
+    const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(VAPID_PUBLIC_KEY) });
+    const { error } = await Store.sb.rpc('save_client_push', { p_token: token, p_sub: sub.toJSON() });
+    if(error) throw error;
+    try { localStorage.setItem('tdb_pushed', JSON.stringify(pushedTokens().concat(token).slice(-20))); } catch(e){}
+    if(!silent) toast('Vous serez prévenu sur cet appareil');
+    return true;
+  } catch(e){ if(!silent) toast('Activation impossible sur cet appareil'); return false; }
 }
 async function cancelTrack(){
   if(!cancelArmed){ cancelArmed = true; $('btn-cancel').textContent = 'Confirmer l\'annulation'; $('btn-cancel').classList.add('armed'); return; }
@@ -2018,8 +2042,8 @@ function exportCustomers(){
   const rows = C.list.filter(c => c.marketing_opt_in);
   if(!rows.length){ toast('Aucun client n\'a encore accepté les offres'); return; }
   const cell = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-  const csv = '﻿' + ['Nom;Téléphone;Réservations;Confirmées;Dernière réservation;Consentement le']
-    .concat(rows.map(c => [c.name, '+' + c.phone, c.requests, c.visits, String(c.last_seen).slice(0, 10), c.opt_in_at ? String(c.opt_in_at).slice(0, 10) : ''].map(cell).join(';'))).join('\r\n');
+  const csv = '﻿' + ['Nom;Téléphone;E-mail;Réservations;Confirmées;Dernière réservation;Consentement le']
+    .concat(rows.map(c => [c.name, '+' + c.phone, c.email || '', c.requests, c.visits, String(c.last_seen).slice(0, 10), c.opt_in_at ? String(c.opt_in_at).slice(0, 10) : ''].map(cell).join(';'))).join('\r\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   a.download = 'clients-terrasse-offres-' + today() + '.csv';
@@ -2708,7 +2732,7 @@ function openModal(id){
   $('m-meta').textContent = cap1(fmtDateFr(r.date)) + ' · ' + r.time + ' · ' + r.guests + ' pers.';
   $('m-status').className = 'status ' + st; $('m-status').textContent = STATUS[st].label;
   const it = (l, v) => '<dt>' + l + '</dt><dd>' + esc(v) + '</dd>';
-  $('m-recap').innerHTML = it('Service', SVC[svcOf(r.time)].label) + it('Zone', zoneLabel(r.zone) || '—') + it('Téléphone', r.tel || '—') +
+  $('m-recap').innerHTML = it('Service', SVC[svcOf(r.time)].label) + it('Zone', zoneLabel(r.zone) || '—') + it('Téléphone', r.tel || '—') + (r.email ? it('E-mail', r.email) : '') +
     (r.notes ? it('Notes', r.notes) : '') + it('Origine', ({web:'Site · ' + ago(r.ts), staff:'Équipe', scan:'Scanner'})[r.src] || '—');
   $('m-table').innerHTML = tableOptions(occupancy(r.date, svcOf(r.time)), '', r.table, '<option value="">Aucune</option>');
   $('m-table').value = r.table || '';
@@ -2798,6 +2822,7 @@ $('menu-search').addEventListener('input', e => { menuQuery = e.target.value; re
 $('book-form').onsubmit = submitBooking;
 $('btn-copy-link').onclick = e => copyText(pageUrl() + '#suivi-' + trackToken, e.currentTarget);
 $('btn-cancel').onclick = cancelTrack;
+$('btn-client-push').onclick = async () => { $('btn-client-push').disabled = true; if(await clientPushAttach(trackToken, false)) $('btn-client-push').hidden = true; $('btn-client-push').disabled = false; };
 $('login').onsubmit = login;
 $('btn-logout').onclick = logout;
 $('btn-alerts').onclick = enableAlerts;

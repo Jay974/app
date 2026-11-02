@@ -32,6 +32,8 @@ create table if not exists public.reservations (
   updated_at   timestamptz not null default now()
 );
 alter table public.reservations add column if not exists marketing_opt_in boolean not null default false;
+alter table public.reservations add column if not exists email text;          -- facultatif : confirmation par e-mail
+alter table public.reservations add column if not exists client_push jsonb;   -- notification sur l'appareil du client, s'il l'a activée
 create index if not exists reservations_date_idx   on public.reservations (date);
 create index if not exists reservations_status_idx on public.reservations (status);
 
@@ -74,8 +76,9 @@ create policy staff_occupancy on public.occupancy for all to authenticated
 
 -- ── Fonctions publiques (page client) ──────────────────────
 drop function if exists public.submit_reservation(text, text, int, date, text, text, text);
+drop function if exists public.submit_reservation(text, text, int, date, text, text, text, boolean);
 create or replace function public.submit_reservation(
-  p_name text, p_tel text, p_guests int, p_date date, p_time text, p_zone text, p_notes text, p_opt_in boolean default false
+  p_name text, p_tel text, p_guests int, p_date date, p_time text, p_zone text, p_notes text, p_opt_in boolean default false, p_email text default null
 ) returns json
 language plpgsql security definer set search_path = public as $$
 declare
@@ -89,6 +92,7 @@ begin
   if length(regexp_replace(coalesce(p_tel, ''), '[^0-9]', '', 'g')) not between 9 and 15 then raise exception 'tel_requis'; end if;
   if p_guests is null or p_guests < 1 then raise exception 'personnes_requis'; end if;
   if p_date is null or p_time is null then raise exception 'creneau_requis'; end if;
+  if nullif(trim(p_email), '') is not null and (char_length(trim(p_email)) > 120 or trim(p_email) !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$') then raise exception 'email_invalide'; end if;
   if p_date < v_today or p_date > v_today + 180 then
     raise exception 'date_invalide';
   end if;
@@ -109,9 +113,9 @@ begin
     raise exception 'trop_de_demandes';
   end if;
 
-  insert into reservations (name, tel, guests, date, time, zone, notes, src, status, marketing_opt_in)
+  insert into reservations (name, tel, guests, date, time, zone, notes, src, status, marketing_opt_in, email)
   values (trim(p_name), nullif(trim(p_tel), ''), p_guests, p_date, p_time,
-          coalesce(p_zone, ''), nullif(trim(p_notes), ''), 'web', 'pending', coalesce(p_opt_in, false))
+          coalesce(p_zone, ''), nullif(trim(p_notes), ''), 'web', 'pending', coalesce(p_opt_in, false), lower(nullif(trim(p_email), '')))
   returning json_build_object('id', id, 'token', access_token) into v_out;
   return v_out;
 end $$;
@@ -119,9 +123,20 @@ end $$;
 create or replace function public.reservation_status(p_token uuid) returns json
 language sql stable security definer set search_path = public as $$
   select json_build_object('name', name, 'guests', guests, 'date', date, 'time', time,
-                           'zone', zone, 'notes', notes, 'tel', tel, 'status', status, 'updated_at', updated_at)
+                           'zone', zone, 'notes', notes, 'tel', tel, 'status', status, 'updated_at', updated_at,
+                           'has_email', email is not null, 'has_push', client_push is not null)
   from reservations where access_token = p_token;
 $$;
+
+-- Le client active les notifications sur son appareil depuis sa page de suivi (jeton secret = sa réservation).
+create or replace function public.save_client_push(p_token uuid, p_sub jsonb) returns boolean
+language plpgsql security definer set search_path = public as $$
+begin
+  if p_sub->>'endpoint' is null or char_length(p_sub::text) > 4000 then raise exception 'abonnement_invalide'; end if;
+  update reservations set client_push = p_sub where access_token = p_token and status in ('pending', 'confirmed');
+  return found;
+end $$;
+grant execute on function public.save_client_push(uuid, jsonb) to anon, authenticated;
 
 create or replace function public.cancel_reservation(p_token uuid) returns json
 language plpgsql security definer set search_path = public as $$
@@ -133,7 +148,7 @@ begin
   return v_out;
 end $$;
 
-grant execute on function public.submit_reservation(text, text, int, date, text, text, text, boolean) to anon, authenticated;
+grant execute on function public.submit_reservation(text, text, int, date, text, text, text, boolean, text) to anon, authenticated;
 grant execute on function public.reservation_status(uuid) to anon, authenticated;
 grant execute on function public.cancel_reservation(uuid) to anon, authenticated;
 grant execute on function public.is_staff() to authenticated;
@@ -186,11 +201,12 @@ language plpgsql security definer set search_path = public as $$
 declare v_phone text := public.norm_phone(new.tel); v_id uuid;
 begin
   if v_phone is null then return new; end if;
-  insert into customers (phone, name, marketing_opt_in, opt_in_at, requests, visits)
-  values (v_phone, new.name, new.marketing_opt_in, case when new.marketing_opt_in then now() end, 1,
+  insert into customers (phone, name, email, marketing_opt_in, opt_in_at, requests, visits)
+  values (v_phone, new.name, new.email, new.marketing_opt_in, case when new.marketing_opt_in then now() end, 1,
           case when new.status = 'confirmed' then 1 else 0 end)
   on conflict (phone) do update set
     name = excluded.name,
+    email = coalesce(excluded.email, customers.email),
     requests = customers.requests + 1,
     visits = customers.visits + excluded.visits,
     last_seen = now(),
