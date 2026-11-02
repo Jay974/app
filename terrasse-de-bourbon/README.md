@@ -12,7 +12,7 @@ Une seule page (`index.html`) pour deux publics :
 1. Le client choisit jour, heure, nombre de personnes et préférence d'espace, puis envoie sa demande.
 2. La demande arrive **automatiquement** dans le hub (onglet Demandes), avec alerte sonore, badge et notification si activée.
 3. Un membre de l'équipe **confirme ou refuse à la main**. Une table est proposée, mais c'est l'équipe qui décide (ou place plus tard).
-4. La page de suivi du client passe d'elle-même à « Confirmée » ou « Non disponible ». Un message WhatsApp pré-rédigé reste disponible si l'équipe veut prévenir le client directement.
+4. La page de suivi du client passe d'elle-même à « Confirmée » ou « Non disponible ». L'équipe ne contacte pas les clients par message ; un résumé de la réservation reste à copier pour le groupe WhatsApp de l'équipe.
 
 Statuts : `pending` (en attente) → `confirmed` / `declined`, et `cancelled` si le client ou l'équipe annule.
 

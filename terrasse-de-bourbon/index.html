@@ -872,7 +872,6 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <div class="row2" style="grid-template-columns:1fr auto"><select class="input" id="m-table"></select><button class="btn-line btn-sm" id="btn-m-table" type="button">OK</button></div>
     </div>
     <div class="modal-actions" id="m-actions"></div>
-    <a class="btn-line" id="m-client-wa" href="#" target="_blank" rel="noopener"><svg class="ico"><use href="#i-chat"/></svg><span id="m-client-wa-label">Écrire au client sur WhatsApp</span></a>
     <div class="modal-actions">
       <button class="btn-line" id="btn-m-copy" type="button"><svg class="ico"><use href="#i-copy"/></svg>Copier le résumé</button>
       <button class="btn-line btn-danger" id="btn-m-del" type="button">Supprimer</button>
@@ -1235,7 +1234,6 @@ function zoneLabel(z){ return ({int:'Intérieur', ter:'Terrasse', rof:'Rooftop',
 function tName(id){ return TBY[id] ? TBY[id].name : (id || ''); }
 function capTxt(t){ return t.cap + (t.maxCap ? '–' + t.maxCap : '') + ' pl.'; }
 const isActive = r => r.status === 'pending' || r.status === 'confirmed' || !r.status;
-function waLink(msg, num){ return 'https://wa.me/' + num + '?text=' + encodeURIComponent(msg); }
 /* Numéro saisi -> format international pour wa.me (La Réunion par défaut). */
 function intlPhone(tel){
   const d = String(tel || '').replace(/[^\d+]/g, '');
@@ -1256,12 +1254,6 @@ function fmtTeamMsg(r){
   return r.guests + 'p ' + dayFr(r.date) + ' ' + SVC[svcOf(r.time)].label.toLowerCase() + ' ' + r.time + ' ' + r.name +
     (zoneShort(r.zone) ? ' ' + zoneShort(r.zone) : '') + (r.table ? ' tbl' + tName(r.table) : '') +
     (r.tel ? ' ' + r.tel : '') + (r.notes ? ' · ' + r.notes : '');
-}
-function fmtClientMsg(r){
-  const when = fmtDateFr(r.date) + ' à ' + r.time + ', ' + r.guests + ' personne' + (r.guests > 1 ? 's' : '');
-  if(r.status === 'confirmed') return 'Bonjour ' + r.name + ', votre réservation à ' + RESTO + ' est confirmée : ' + when + '. À très bientôt !';
-  if(r.status === 'declined') return 'Bonjour ' + r.name + ', nous sommes désolés : nous ne pouvons pas vous accueillir ' + when + '. Vous pouvez choisir un autre créneau ici : ' + pageUrl() + '#reserver';
-  return 'Bonjour ' + r.name + ', nous avons bien reçu votre demande pour ' + when + '. Nous revenons vers vous rapidement.';
 }
 
 /* ── STOCKAGE : Supabase en production, cet appareil en démo ── */
@@ -1941,11 +1933,9 @@ function renderInbox(pend){
   const done = S.resas.filter(r => r.src === 'web' && r.status !== 'pending' && Date.now() - (r.upd || 0) < 864e5).sort((a, b) => (b.upd || 0) - (a.upd || 0)).slice(0, 8);
   $('done-lbl').hidden = !done.length;
   $('done').innerHTML = done.map(r => {
-    const num = intlPhone(r.tel);
     return '<article class="req done"><button class="resa" data-rid="' + esc(r.id) + '" style="border:0;padding:0;background:none"><span class="resa-n">' + esc(r.guests) + '</span><span class="resa-main"><span class="resa-name">' + esc(r.name) + '</span>' +
       '<span class="resa-meta">' + esc(cap1(fmtDateFr(r.date))) + ' · ' + esc(r.time) + (r.table ? ' · table ' + esc(tName(r.table)) : '') + '</span></span>' +
-      '<span class="badges"><span class="badge ' + (r.status === 'confirmed' ? 'b-table' : 'b-no') + '">' + STATUS[r.status].short + '</span></span></button>' +
-      (num && (r.status === 'confirmed' || r.status === 'declined') ? '<a class="btn-line btn-sm" style="align-self:flex-start" target="_blank" rel="noopener" href="' + esc(waLink(fmtClientMsg(r), num)) + '">' + ico('i-chat') + 'Prévenir sur WhatsApp</a>' : '') + '</article>';
+      '<span class="badges"><span class="badge ' + (r.status === 'confirmed' ? 'b-table' : 'b-no') + '">' + STATUS[r.status].short + '</span></span></button></article>';
   }).join('');
 }
 async function confirmReq(id){
@@ -2460,7 +2450,6 @@ function renderDevice(){
 async function openCustomer(id){
   const c = C.list.find(x => x.id === id); if(!c) return;
   SET.cust = c;
-  const num = intlPhone(c.phone);
   openEditor('<div class="title-block"><span class="eyebrow">Fiche client</span><h2 class="h1" style="font-size:26px">' + esc(c.name) + '</h2></div>' +
     '<div class="checks"><span class="badge ' + (c.marketing_opt_in ? 'b-optin">Offres acceptées' : 'b-none">Pas d\'offres') + '</span>' +
     '<span class="badge b-none">' + c.requests + ' réservation' + (c.requests > 1 ? 's' : '') + '</span><span class="badge b-table">' + c.visits + ' confirmée' + (c.visits > 1 ? 's' : '') + '</span></div>' +
@@ -2473,7 +2462,6 @@ async function openCustomer(id){
     '<div class="modal-actions">' + (IS_ADMIN ? '<button class="btn-line btn-danger' + (armed['cu' + c.id] ? ' armed' : '') + '" data-act="cust-del" type="button">' + (armed['cu' + c.id] ? 'Confirmer la suppression' : 'Supprimer la fiche') + '</button>' : '<span></span>') +
     '<button class="btn-primary" data-act="cust-save" type="button">Enregistrer</button></div>' +
     '<h3 class="h3">Historique des réservations</h3><div class="hist" id="cust-hist"><p class="note">Chargement…</p></div>' +
-    (num ? '<a class="btn-line" href="' + esc(waLink('Bonjour ' + c.name + ', ', num)) + '" target="_blank" rel="noopener">' + ico('i-chat') + 'Écrire sur WhatsApp</a>' : '') +
     '<button class="btn-text" data-act="ed-close" type="button">Fermer</button>');
   let hist = [];
   try { hist = await Store.customerHistory(c); } catch(e){ if($('cust-hist')) $('cust-hist').innerHTML = '<p class="st err">Historique indisponible : vérifiez la connexion.</p>'; return; }
@@ -2732,10 +2720,6 @@ function openModal(id){
   }[st];
   $('m-actions').innerHTML = act.map(a => '<button class="' + a[2] + '" data-set-status="' + a[0] + '" type="button">' + a[1] + '</button>').join('');
   modalMsg = fmtTeamMsg(r);
-  const num = intlPhone(r.tel);
-  $('m-client-wa').hidden = !num;
-  if(num) $('m-client-wa').href = waLink(fmtClientMsg(r), num);
-  $('m-client-wa-label').textContent = st === 'confirmed' ? 'Envoyer la confirmation sur WhatsApp' : st === 'declined' ? 'Prévenir le client sur WhatsApp' : 'Écrire au client sur WhatsApp';
   $('overlay').hidden = false;
   $('btn-m-close').focus();
 }
