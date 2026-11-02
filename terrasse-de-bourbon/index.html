@@ -329,6 +329,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .status-bar span { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; padding: 0 max(16px, env(safe-area-inset-right, 0px)) max(14px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); pointer-events: none; }
 .nav-inner { pointer-events: auto; max-width: 448px; margin: 0 auto; background: var(--band); border-radius: 99px; box-shadow: 0 12px 30px rgba(15,26,15,.28); display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px; }
+#hub-nav .nav-inner { grid-template-columns: repeat(5, 1fr); max-width: 520px; }
 .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 4px; border-radius: 99px; color: var(--on-band-muted); font-size: 11px; font-weight: 600; position: relative; text-decoration: none; }
 .nav-btn.active { color: var(--orange); }
 .dot { position: absolute; top: 3px; left: calc(50% + 8px); min-width: 17px; height: 17px; padding: 0 4px; border-radius: 99px; background: var(--orange); color: #1A2F1A; font-size: 10px; line-height: 17px; text-align: center; font-variant-numeric: tabular-nums; }
@@ -422,6 +423,67 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .toast { position: fixed; left: 50%; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 16px); background: var(--ink); color: var(--bg); padding: 10px 18px; border-radius: 99px; font-size: 13px; font-weight: 500; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 200; max-width: calc(100vw - 32px); text-align: center; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
+.consent { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; font-size: 13px; color: var(--ink); cursor: pointer; }
+.consent input { width: 18px; height: 18px; margin-top: 1px; accent-color: var(--primary); }
+.privacy { font-size: 11px; color: var(--faint); }
+.cust-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.cust-tools .input { flex: 1; min-width: 200px; }
+.b-optin { color: var(--ok); background: var(--ok-soft); }
+
+/* ── photos de la carte ── */
+.item.has-photo { grid-template-columns: 64px 1fr auto; }
+.item-photo { width: 64px; height: 64px; border-radius: 12px; object-fit: cover; background: var(--field); }
+.item.out b, .item.out .item-price { opacity: .5; }
+.tag.out { background: var(--busy-soft); color: var(--busy); }
+.dish-card img.ph { width: 100%; aspect-ratio: 1.2; object-fit: cover; border-radius: 12px; background: var(--field); }
+/* ── réglages du hub ── */
+.icon-btn.active { color: var(--gold); border-color: var(--gold-line); }
+.set-list { display: flex; flex-direction: column; gap: 10px; }
+.set-row { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; color: var(--ink); }
+.set-row:hover { border-color: var(--gold-line); }
+.ico-wrap { width: 40px; height: 40px; border-radius: 12px; background: var(--field); display: grid; place-items: center; flex-shrink: 0; }
+.set-txt { min-width: 0; display: flex; flex-direction: column; }
+.set-txt b { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.set-txt small { color: var(--muted); font-size: 12px; }
+.set-row .chev { margin-left: auto; color: var(--faint); }
+.set-head { display: flex; align-items: center; gap: 10px; }
+.ed-item { display: grid; grid-template-columns: 52px 1fr auto; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; }
+.ed-item.out .ed-main b { opacity: .55; }
+.ed-thumb { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; background: var(--field); display: grid; place-items: center; }
+.ed-thumb svg { width: 24px; height: 24px; }
+.ed-main { text-align: left; min-width: 0; display: flex; flex-direction: column; color: var(--ink); }
+.ed-main b { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.ed-acts { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+.ed-acts select.input { width: auto; padding: 8px 32px 8px 12px; font-size: 13px; }
+.mini { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line-strong); display: grid; place-items: center; color: var(--ink); font-size: 14px; flex-shrink: 0; }
+.mini:disabled { opacity: .3; cursor: default; }
+.switch { position: relative; width: 44px; height: 26px; flex-shrink: 0; display: inline-block; }
+.switch input { opacity: 0; position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; z-index: 1; }
+.switch span { position: absolute; inset: 0; border-radius: 99px; background: var(--line-strong); transition: background .15s; }
+.switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform .15s; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.switch input:checked + span { background: var(--ok); }
+.switch input:checked + span::after { transform: translateX(18px); }
+.switch input:focus-visible + span { outline: 2px solid var(--gold); outline-offset: 2px; }
+.photo-edit { display: grid; grid-template-columns: 112px 1fr; gap: 14px; align-items: center; }
+.photo-edit .ph { width: 112px; height: 112px; border-radius: 14px; object-fit: cover; background: var(--field); display: grid; place-items: center; }
+.photo-edit .ph svg { width: 40%; height: 40%; }
+.checks { display: flex; flex-wrap: wrap; gap: 8px; }
+.check { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 99px; background: var(--field); font-size: 13px; cursor: pointer; }
+.check input { accent-color: var(--primary); width: 16px; height: 16px; }
+.field label.check { text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 500; color: var(--ink); }
+.fmt-row { display: grid; grid-template-columns: 1fr 100px 34px; gap: 8px; align-items: center; }
+.tbl-row { display: grid; grid-template-columns: minmax(0, 1fr) 64px 64px 44px 34px; gap: 8px; align-items: center; }
+.tbl-row .input { padding: 9px 10px; font-size: 14px; }
+.tbl-row input[type=checkbox] { width: 18px; height: 18px; justify-self: center; accent-color: var(--primary); }
+.tbl-head { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
+.team-list { display: flex; flex-direction: column; }
+.team-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.hist { display: flex; flex-direction: column; }
+.hist > div { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.cust-open { background: none; border: 0; padding: 0; text-align: left; color: var(--ink); cursor: pointer; }
+.cust-open:hover .resa-name { text-decoration: underline; text-underline-offset: 3px; }
+#ed-body { gap: 14px; }
+
 /* Ordinateur et tablette paysage : le site client s'élargit et passe en mise en page à colonnes. */
 @media (min-width: 900px) {
   #v-home, #v-menu, #v-book { max-width: 1120px; }
@@ -488,6 +550,8 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
   <symbol id="i-plan" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="4.5" ry="3"/><rect x="10" y="3.5" width="4" height="3" rx="1"/><rect x="10" y="17.5" width="4" height="3" rx="1"/><rect x="2.5" y="10.5" width="3" height="3" rx="1"/><rect x="18.5" y="10.5" width="3" height="3" rx="1"/></symbol>
   <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></symbol>
   <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2m8 0h2a2 2 0 0 1 2 2v2m0 8v2a2 2 0 0 1-2 2h-2m-8 0H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3.5"/></symbol>
+  <symbol id="i-team" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19.5c.6-3.2 3-5 6-5s5.4 1.8 6 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16.5 14.6c2.3.2 4 1.8 4.5 4.4"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
@@ -516,12 +580,12 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
   <div id="v-home" class="app cpad" hidden>
     <header class="band lift">
       <div class="band-top">
-        <span class="brand"><span class="brand-mark"><svg><use href="#i-pin"/></svg></span>La Terrasse de Bourbon</span>
+        <span class="brand"><span class="brand-mark"><svg><use href="#i-pin"/></svg></span><span data-c="name">La Terrasse de Bourbon</span></span>
         <button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button>
       </div>
       <div class="title-block">
         <p class="hello" id="hello">Bonsoir</p>
-        <h1 class="h1">Restaurant &amp; cocktail bar <em>à Saint-Denis</em></h1>
+        <h1 class="h1"><span data-c="tagline">Restaurant &amp; cocktail bar</span> <em data-c="city">à Saint-Denis</em></h1>
       </div>
       <label class="search"><svg class="ico"><use href="#i-search"/></svg><input id="home-search" type="search" placeholder="Un plat, un cocktail…" aria-label="Chercher dans la carte" enterkeyhint="search"></label>
     </header>
@@ -534,7 +598,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
     <section class="sec">
       <div class="sec-head"><h2 class="h2">Les services</h2></div>
       <div class="svc-row" id="svc-row"></div>
-      <p class="note">Le midi tous les jours. Le soir du lundi au jeudi jusqu'à 23h, le vendredi et le samedi jusqu'à minuit. Fermé le dimanche soir.</p>
+      <p class="note" data-c="hoursText" data-hide-empty></p>
     </section>
     <section class="sec">
       <div class="sec-head"><h2 class="h2">Où vous installer</h2></div>
@@ -544,7 +608,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <div class="sec-head"><h2 class="h2">À la carte</h2><a href="#carte">Voir la carte →</a></div>
       <div class="dish-scroll" id="home-dishes"></div>
     </section>
-    <div class="foot"><span>Réservations : <b class="num">+262 692 25 35 38</b></span><span>@LaTerrasseDeBourbon</span><a href="/equipe">Espace équipe</a></div>
+    <div class="foot"><span>Réservations : <b class="num" data-c="phone">+262 692 25 35 38</b></span><span data-c="address" data-hide-empty></span><span data-c="instagram" data-hide-empty>@LaTerrasseDeBourbon</span><a href="/equipe">Espace équipe</a></div>
   </div>
 
   <!-- Carte -->
@@ -605,6 +669,8 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
           <div class="field"><label for="f-tel">Téléphone *</label><input class="input" id="f-tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="0692 00 00 00" maxlength="30" required></div>
         </div>
         <div class="field"><label for="f-notes">Occasion, allergies, demande</label><textarea class="input" id="f-notes" placeholder="Anniversaire, poussette, intolérance…" maxlength="500"></textarea></div>
+        <label class="consent" for="f-optin"><input type="checkbox" id="f-optin"><span>J'accepte de recevoir les offres et l'actualité de La Terrasse de Bourbon par SMS ou WhatsApp. Désinscription possible à tout moment.</span></label>
+        <p class="privacy">Vos coordonnées servent à gérer votre réservation et, seulement si vous cochez la case, à vous envoyer nos offres. Elles ne sont jamais cédées.</p>
       </div>
       <p class="st err" id="f-err" role="alert"></p>
       <button class="btn-primary" type="submit" id="btn-book">Envoyer ma demande</button>
@@ -641,7 +707,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <p class="note" id="t-note"></p>
       <button class="btn-line" id="btn-copy-link" type="button"><svg class="ico"><use href="#i-copy"/></svg>Copier le lien de suivi</button>
       <button class="btn-line btn-danger" id="btn-cancel" type="button">Annuler ma réservation</button>
-      <div class="phone-line"><span class="note">Une question ?</span><b>0692 25 35 38</b></div>
+      <div class="phone-line"><span class="note">Une question ?</span><b data-c="phone">+262 692 25 35 38</b></div>
     </div>
     <a class="btn-text" href="#reserver">Faire une autre réservation</a>
   </div>
@@ -664,6 +730,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
     <div class="topbar-right">
       <span class="mode" id="hub-mode">…</span>
       <button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button>
+      <button class="icon-btn" id="btn-settings" aria-label="Réglages" hidden><svg class="ico"><use href="#i-gear"/></svg></button>
       <button class="icon-btn" id="btn-alerts" aria-label="Activer les alertes" hidden><svg class="ico"><use href="#i-bell"/></svg></button>
       <button class="icon-btn" id="btn-logout" aria-label="Se déconnecter" hidden><svg class="ico"><use href="#i-out"/></svg></button>
     </div>
@@ -723,6 +790,18 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 
     <section id="panel-list" hidden><div id="resa-list" class="list"></div></section>
 
+    <section id="panel-clients" class="stack" style="gap:14px" hidden>
+      <p class="note" id="cust-summary"></p>
+      <div class="cust-tools">
+        <input class="input" id="cust-search" type="search" placeholder="Nom ou téléphone" aria-label="Chercher un client">
+        <button class="btn-line btn-sm" id="cust-filter" type="button">Seulement les offres acceptées</button>
+        <button class="btn-primary btn-sm" id="cust-export" type="button">Exporter (CSV)</button>
+      </div>
+      <div id="cust-list" class="list"></div>
+    </section>
+
+    <section id="panel-settings" class="stack" style="gap:14px" hidden><div id="set-body" class="stack" style="gap:14px"></div></section>
+
     <section id="panel-add" class="stack" style="gap:14px" hidden>
       <form class="card" id="add-form" novalidate>
         <h2 class="h3">Réservation prise par l'équipe</h2>
@@ -774,6 +853,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <button class="nav-btn active" data-tab="inbox"><svg class="ico"><use href="#i-inbox"/></svg>Demandes<span class="dot" id="pending-dot" hidden></span></button>
       <button class="nav-btn" data-tab="plan"><svg class="ico"><use href="#i-plan"/></svg>Plan</button>
       <button class="nav-btn" data-tab="list"><svg class="ico"><use href="#i-list"/></svg>Service</button>
+      <button class="nav-btn" data-tab="clients"><svg class="ico"><use href="#i-team"/></svg>Clients</button>
       <button class="nav-btn" data-tab="add"><svg class="ico"><use href="#i-plus"/></svg>Ajouter</button>
     </div>
   </nav>
@@ -800,6 +880,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
     <button class="btn-text" id="btn-m-close" type="button">Fermer</button>
   </div>
 </div>
+<div class="overlay" id="ed-overlay" hidden><div class="sheet modal" id="ed-body" role="dialog" aria-modal="true" aria-label="Édition"></div></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -814,22 +895,25 @@ const SUPABASE_ANON_KEY = 'sb_publishable_-zT9LvvD8Fts0dvS4A-uRA_53S7lClf';
 const VAPID_PUBLIC_KEY = 'BLq0pgWzAk1wm4vKIawA2RADZbURpd80QAoR-PRWAJADxUvf1bNLShXyLgKajSEibXOCd8ETxGygTyHW065Ro1w';
 const SUPABASE_JS = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js';
 
-const RESTO = 'La Terrasse de Bourbon';
-const SVC = {
+let RESTO = 'La Terrasse de Bourbon';
+let CONTACT = { tagline: 'Restaurant & cocktail bar', city: 'à Saint-Denis', phone: '+262 692 25 35 38', instagram: '@LaTerrasseDeBourbon', address: '',
+  hoursText: 'Le midi tous les jours. Le soir du lundi au jeudi jusqu\'à 23h, le vendredi et le samedi jusqu\'à minuit. Fermé le dimanche soir.' };
+let SVC = {
   midi: { label: 'Midi', time: '12h30', hours: '12h–14h30', what: 'Déjeuner & Happy Hour', slots: ['12h00','12h30','13h00','13h30'] },
   hh:   { label: 'Happy Hour', time: '18h00', hours: '17h–19h', what: 'Cocktails & tapas', slots: ['17h00','17h30','18h00','18h30'] },
   soir: { label: 'Soir', time: '19h30', hours: '19h–23h', what: 'Dîner', slots: ['19h00','19h30','20h00','20h30','21h00'] }
 };
 /* Fermé le dimanche soir (happy hour de 17h et dîner). */
-function svcClosed(date, svc){ return svc !== 'midi' && dt(date).getDay() === 0; }
-const HAPPY_HOURS = [['12h00', '14h30'], ['17h00', '19h00']];
+let CLOSED = { midi: [], hh: [0], soir: [0] };   // jours fermés par service (0 = dimanche)
+function svcClosed(date, svc){ return (CLOSED[svc] || []).indexOf(dt(date).getDay()) >= 0; }
+let HAPPY_HOURS = [['12h00', '14h30'], ['17h00', '19h00']];
 const STATUS = {
   pending:   { label: 'En attente de confirmation', short: 'À confirmer' },
   confirmed: { label: 'Confirmée', short: 'Confirmée' },
   declined:  { label: 'Non disponible', short: 'Refusée' },
   cancelled: { label: 'Annulée', short: 'Annulée' }
 };
-const ZONE_TXT = { int: 'Salle & bar', ter: 'En plein air', rof: 'Vue sur la ville' };
+let ZONE_TXT = { int: 'Salle & bar', ter: 'En plein air', rof: 'Vue sur la ville' };
 
 /* ── CARTE ─────────────────────────────────────────────────
    Transcrite de la carte papier. Chaque ligne : [nom, prix, description, allergènes, mise en avant sur l'accueil (1)].
@@ -840,7 +924,7 @@ const ALLERGENS = { G: ['Gluten', 'yellow'], MO: ['Moutarde', 'yellow'], O: ['Œ
 const vin = (verre, bouteille) => verre ? [['12,5 cl', verre], ['75 cl', bouteille]] : [['75 cl', bouteille]];
 const pression = (a, b) => [['25 cl', a], ['50 cl', b]];
 const SUP_FRUITS = 'Sup. 1 € : fruits rouges, passion ou pêche';
-const MENU_CATS = [
+let MENU_CATS = [
   { id: 'tapas', label: 'Tapas', icon: 'c-entrees', color: 'orange', food: true, note: 'À partir de 17h', groups: [['', [
     ['Assiette de frites', 5, 'Frites classiques ou frites de patate douce'],
     ['Gyozas aux légumes', 8, '8 pièces', 'G SO'],
@@ -1079,7 +1163,7 @@ const MENU_CATS = [
   ] }
 ];
 
-const ZONES = [
+let ZONES = [
   { short:'int', label:'Intérieur', tables:[
     {id:'bar1',name:'Bar 1',cap:2},{id:'bar2',name:'Bar 2',cap:2},{id:'bar3',name:'Bar 3',cap:2},
     {id:'t100',name:'100',cap:8},{id:'t101',name:'101',cap:6,maxCap:7},
@@ -1101,9 +1185,7 @@ const ZONES = [
     {id:'t307',name:'Canapé 307',cap:10,maxCap:20,salon:true},
     {id:'t308',name:'308',cap:4},{id:'t310',name:'310',cap:4,maxCap:6},{id:'t312',name:'312',cap:4} ]}
 ];
-const TLIST = [];
-ZONES.forEach(z => z.tables.forEach(t => { t.zone = z.short; TLIST.push(t); }));
-const TBY = Object.fromEntries(TLIST.map(t => [t.id, t]));
+let TLIST = [], TBY = {};
 
 /* ── STATE ──────────────────────────────────────────────── */
 const S = { resas: [], occ: {} };                 // hub : réservations et tables marquées (occ[date_svc] = { tableId: 1 })
@@ -1196,7 +1278,7 @@ const Store = {
   /* Client */
   async submit(r){
     if(this.live){
-      const { data, error } = await this.sb.rpc('submit_reservation', { p_name: r.name, p_tel: r.tel, p_guests: r.guests, p_date: r.date, p_time: r.time, p_zone: r.zone, p_notes: r.notes });
+      const { data, error } = await this.sb.rpc('submit_reservation', { p_name: r.name, p_tel: r.tel, p_guests: r.guests, p_date: r.date, p_time: r.time, p_zone: r.zone, p_notes: r.notes, p_opt_in: !!r.optIn });
       if(error) throw error;
       return data.token;
     }
@@ -1278,6 +1360,58 @@ const Store = {
     if(!this.live){ this.saveLocal(S.resas); return; }
     const { error } = await this.sb.from('reservations').delete().eq('id', id);
     if(error){ toast('Suppression impossible : vérifiez la connexion'); await this.load(); }
+  },
+  async customers(){
+    if(this.live){
+      const { data, error } = await this.sb.from('customers').select('*').order('last_seen', { ascending: false }).limit(5000);
+      if(error) throw error;
+      return data;
+    }
+    // Démo : fiches reconstituées à partir des réservations de l'appareil
+    const by = {};
+    this.local().forEach(r => {
+      const ph = intlPhone(r.tel); if(!ph) return;
+      const c = by[ph] = by[ph] || { id: ph, phone: ph, name: r.name, requests: 0, visits: 0, marketing_opt_in: false, last_seen: 0 };
+      c.requests++; if(r.status === 'confirmed') c.visits++; if(r.optIn) c.marketing_opt_in = true;
+      if((r.ts || 0) >= c.last_seen){ c.last_seen = r.ts || 0; c.name = r.name; }
+    });
+    return Object.values(by).map(c => Object.assign(c, { last_seen: new Date(c.last_seen).toISOString() }));
+  },
+  isAdmin: async function(){ if(!this.live) return true; const { data } = await this.sb.rpc('is_admin'); return !!data; },
+  async saveSettings(data){
+    if(!this.live) return;
+    const { data: rows, error } = await this.sb.from('settings').update({ data }).eq('id', 1).select('id');
+    if(error) throw error; if(!rows || !rows.length) throw new Error('non_autorise');
+  },
+  async saveCategory(rec){ if(!this.live) return; const { data, error } = await this.sb.from('menu_categories').upsert(rec).select('id'); if(error) throw error; if(!data || !data.length) throw new Error('droits insuffisants'); },
+  async updateCategory(id, patch){ if(!this.live) return; const { error } = await this.sb.from('menu_categories').update(patch).eq('id', id); if(error) throw error; },
+  async deleteCategory(id){ if(!this.live) return; const { error } = await this.sb.from('menu_categories').delete().eq('id', id); if(error) throw error; },
+  async saveItem(rec){ if(!this.live) return; const { data, error } = await this.sb.from('menu_items').upsert(rec).select('id'); if(error) throw error; if(!data || !data.length) throw new Error('droits insuffisants'); },
+  async updateItem(id, patch){ if(!this.live) return; const { data, error } = await this.sb.from('menu_items').update(patch).eq('id', id).select('id'); if(error) throw error; if(!data || !data.length) throw new Error('droits insuffisants'); },
+  async deleteItem(id){ if(!this.live) return; const { error } = await this.sb.from('menu_items').delete().eq('id', id); if(error) throw error; },
+  async uploadPhoto(blob){
+    if(!this.live) return await new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(blob); });
+    const path = 'items/' + uuid() + '.jpg';
+    const { error } = await this.sb.storage.from('menu-photos').upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000', upsert: false });
+    if(error) throw error;
+    return this.sb.storage.from('menu-photos').getPublicUrl(path).data.publicUrl;
+  },
+  saveDemo(cfg){ try { localStorage.setItem('tdb_demo_cfg', JSON.stringify(cfg)); } catch(e){ toast('Mémoire de l\'appareil pleine : photo trop lourde pour le mode démo'); } },
+  async listStaff(){ if(!this.live) return [{ user_id: 'demo', email: 'Compte de démonstration', role: 'admin', is_me: true }]; const { data, error } = await this.sb.rpc('list_staff'); if(error) throw error; return data; },
+  async addStaff(email, role){ if(!this.live) throw new Error('indisponible en mode démo'); const { error } = await this.sb.rpc('add_staff', { p_email: email, p_role: role }); if(error) throw error; },
+  async setStaffRole(id, role){ if(!this.live) throw new Error('indisponible en mode démo'); const { error } = await this.sb.rpc('set_staff_role', { p_user: id, p_role: role }); if(error) throw error; },
+  async removeStaff(id){ if(!this.live) throw new Error('indisponible en mode démo'); const { error } = await this.sb.rpc('remove_staff', { p_user: id }); if(error) throw error; },
+  async customerHistory(c){
+    if(!this.live) return this.local().filter(r => intlPhone(r.tel) === c.phone).sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+    const { data, error } = await this.sb.from('reservations').select('date,time,guests,status,table_id,notes,src').eq('customer_id', c.id).order('date', { ascending: false }).limit(200);
+    if(error) throw error;
+    return data.map(r => Object.assign(r, { table: r.table_id }));
+  },
+  async saveCustomerNotes(id, notes){ if(!this.live) return; const { error } = await this.sb.from('customers').update({ notes }).eq('id', id); if(error) throw error; },
+  async optOut(id){
+    if(!this.live) return;
+    const { error } = await this.sb.from('customers').update({ marketing_opt_in: false, opt_out_at: new Date().toISOString() }).eq('id', id);
+    if(error) throw error;
   },
   async saveOcc(key){
     if(!this.live){ try { localStorage.setItem('tdb_occ', JSON.stringify(S.occ)); } catch(e){} return; }
@@ -1430,23 +1564,24 @@ function renderHome(){
   $('zone-row').innerHTML = ['int','ter','rof'].map(z => '<button class="zone-card" data-pick-zone="' + z + '"><div class="scene">' + sceneSVG('z' + z, svc, z, svc === 'midi' ? 0 : 14) + '</div><div class="txt"><b>' + zoneLabel(z) + '</b><span>' + ZONE_TXT[z] + '</span></div></button>').join('');
   $('home-hh').innerHTML = hhBanner();
   const featured = [];
-  MENU_CATS.forEach(c => c.groups.forEach(g => g[1].forEach(it => { if(it[4]) featured.push([c, it]); })));
-  $('home-dishes').innerHTML = featured.map(([c, it]) => '<a class="dish-card" href="#carte" data-pick-cat="' + c.id + '" style="text-decoration:none"><div class="thumb c-' + c.color + '">' + ico(c.icon, '') + '</div><b>' + esc(it[0]) + '</b><span class="note" style="font-size:11px;margin-top:-6px">' + esc(c.label) + '</span><div class="dish-meta"><span class="price">' + fmtPrice(it[1]) + '</span></div></a>').join('');
+  MENU_CATS.forEach(c => c.groups.forEach(g => g[1].forEach(it => { if(it[4] && !(it[5] && it[5].available === false)) featured.push([c, it]); })));
+  $('home-dishes').innerHTML = featured.map(([c, it]) => '<a class="dish-card" href="#carte" data-pick-cat="' + c.id + '" style="text-decoration:none">' + (it[5] && it[5].photo ? '<img class="ph" src="' + esc(it[5].photo) + '" alt="" loading="lazy">' : '<div class="thumb c-' + c.color + '">' + ico(c.icon, '') + '</div>') + '<b>' + esc(it[0]) + '</b><span class="note" style="font-size:11px;margin-top:-6px">' + esc(c.label) + '</span><div class="dish-meta"><span class="price">' + (Array.isArray(it[1]) ? fmtPrice(+it[1][0][1]) : fmtPrice(it[1])) + '</span></div></a>').join('');
 }
 
 /* ── CLIENT : CARTE ─────────────────────────────────────── */
 const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const toMin = t => { const [h, m] = t.split('h').map(Number); return h * 60 + m; };
-function hhNow(){ const n = new Date(), m = n.getHours() * 60 + n.getMinutes(); return n.getDay() === 0 && m >= toMin('17h00') ? null : HAPPY_HOURS.find(([a, b]) => m >= toMin(a) && m < toMin(b)); }
+function hhNow(){ const n = new Date(), m = n.getHours() * 60 + n.getMinutes(), h = HAPPY_HOURS.find(([a, b]) => m >= toMin(a) && m < toMin(b)); return h && !svcClosed(today(), svcOf(h[0])) ? h : null; }
 function hhBanner(){
   const h = hhNow();
   return h ? '<a class="hh-banner" href="#carte" data-pick-cat="hh">' + ico('c-cocktails') + '<div><b>Happy Hour en cours</b><span>Jusqu\'à ' + h[1] + ' · cocktails dès 5 €</span></div>' + ico('i-arrow') + '</a>' : '';
 }
 function itemHTML(it){
-  const [name, price, desc, al] = it;
+  const [name, price, desc, al] = it, meta = it[5] || {};
   const prices = Array.isArray(price) ? price.map(([l, p]) => '<span><small>' + l + '</small>' + fmtPrice(p) + '</span>').join('') : '<span>' + fmtPrice(price) + '</span>';
   const als = al ? '<div class="als">' + al.split(' ').map(k => '<span class="al al-' + ALLERGENS[k][1] + '">' + ALLERGENS[k][0] + '</span>').join('') + '</div>' : '';
-  return '<div class="item"><div style="min-width:0"><b>' + esc(name) + '</b>' + (desc ? '<p>' + esc(desc) + '</p>' : '') + als + '</div><div class="item-price">' + prices + '</div></div>';
+  return '<div class="item' + (meta.photo ? ' has-photo' : '') + (meta.available === false ? ' out' : '') + '">' + (meta.photo ? '<img class="item-photo" src="' + esc(meta.photo) + '" alt="" loading="lazy">' : '') +
+    '<div style="min-width:0"><b>' + esc(name) + '</b>' + (meta.available === false ? ' <span class="tag out">Épuisé</span>' : '') + (desc ? '<p>' + esc(desc) + '</p>' : '') + als + '</div><div class="item-price">' + prices + '</div></div>';
 }
 function catFoot(c){
   return c.food ? '<p class="legal">Allergènes indiqués selon notre carte. Signalez toute allergie ou restriction alimentaire à nos serveurs.</p>' :
@@ -1498,7 +1633,7 @@ function renderBook(){
   $('slots').innerHTML = Object.keys(SVC).map(k => {
     const all = SVC[k].slots, open = all.filter(t => !slotPast(B.date, t)), closed = svcClosed(B.date, k);
     return '<div class="slot-group"><span>' + SVC[k].label + ' · ' + SVC[k].what + '</span><div class="slots">' +
-      (closed ? '<span class="note">Fermé le dimanche soir</span>' : open.length ? all.map(t => '<button type="button" class="chip' + (t === B.time ? ' active' : '') + '" data-slot="' + t + '"' + (slotPast(B.date, t) ? ' disabled' : '') + '>' + t + '</button>').join('') : '<span class="note">Service passé pour aujourd\'hui</span>') + '</div></div>';
+      (closed ? '<span class="note">Fermé ce jour-là</span>' : open.length ? all.map(t => '<button type="button" class="chip' + (t === B.time ? ' active' : '') + '" data-slot="' + t + '"' + (slotPast(B.date, t) ? ' disabled' : '') + '>' + t + '</button>').join('') : '<span class="note">Service passé pour aujourd\'hui</span>') + '</div></div>';
   }).join('');
   $('guest-count').textContent = B.guests;
   document.querySelectorAll('[data-zone]').forEach(b => b.classList.toggle('active', b.dataset.zone === B.zone));
@@ -1521,12 +1656,12 @@ async function submitBooking(e){
     return;
   }
   $('f-err').textContent = '';
-  const r = { name, date: B.date, time: B.time, guests: B.guests, zone: B.zone, tel, notes: $('f-notes').value.trim() };
+  const r = { name, date: B.date, time: B.time, guests: B.guests, zone: B.zone, tel, notes: $('f-notes').value.trim(), optIn: $('f-optin').checked };
   $('btn-book').disabled = true; $('btn-book').textContent = 'Envoi…';
   try {
     const token = await Store.submit(r);
     try { const m = mine(); m.push({ token, date: r.date, time: r.time, guests: r.guests }); localStorage.setItem('tdb_mine', JSON.stringify(m.slice(-20))); } catch(e){}
-    ['f-name','f-tel','f-notes'].forEach(i => $(i).value = '');
+    ['f-name','f-tel','f-notes'].forEach(i => $(i).value = ''); $('f-optin').checked = false;
     B.time = '';
     location.hash = 'suivi-' + token;
   } catch(err){
@@ -1535,9 +1670,10 @@ async function submitBooking(e){
       m.indexOf('tel_requis') >= 0 ? 'Indiquez un numéro de téléphone valide pour que l\'équipe puisse vous joindre.' :
       m.indexOf('nom_requis') >= 0 ? 'Indiquez votre nom.' :
       m.indexOf('personnes_requis') >= 0 || m.indexOf('creneau_requis') >= 0 ? 'Choisissez un jour, une heure et le nombre de personnes.' :
+      m.indexOf('service_ferme') >= 0 ? 'Ce service est fermé ce jour-là. Choisissez un autre créneau.' :
       m.indexOf('ferme_dimanche_soir') >= 0 ? 'Le restaurant est fermé le dimanche soir. Choisissez le midi ou un autre jour.' :
       m.indexOf('date_invalide') >= 0 ? 'Cette date n\'est pas réservable en ligne. Choisissez une date dans les 6 prochains mois.' :
-      'L\'envoi n\'a pas abouti. Vérifiez votre connexion et réessayez, ou appelez le 0692 25 35 38.';
+      'L\'envoi n\'a pas abouti. Vérifiez votre connexion et réessayez, ou appelez le ' + CONTACT.phone + '.';
   }
   $('btn-book').disabled = false; $('btn-book').textContent = 'Envoyer ma demande';
 }
@@ -1641,6 +1777,8 @@ async function startHub(){
   if(Store.live) setMode('wait');
   Store.watch(onData, setMode);
   showInstall();
+  IS_ADMIN = await Store.isAdmin().catch(() => false); $('btn-settings').hidden = false;
+  loadConfig();
   switchTab(S.resas.some(r => r.status === 'pending') ? 'inbox' : 'plan');
 }
 async function logout(){
@@ -1663,6 +1801,7 @@ function onData(fresh){
 }
 let audioCtx = null;
 function chime(){
+  if(!soundOn()) return;
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     [880, 1318].forEach((f, i) => {
@@ -1703,8 +1842,11 @@ async function enableAlerts(){
 function switchTab(tab){
   V.tab = tab;
   document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  ['inbox','plan','list','add'].forEach(t => $('panel-' + t).hidden = t !== tab);
-  $('svc-ctrl').hidden = tab === 'inbox' || tab === 'add';
+  ['inbox','plan','list','clients','add','settings'].forEach(t => $('panel-' + t).hidden = t !== tab);
+  $('svc-ctrl').hidden = tab === 'inbox' || tab === 'add' || tab === 'clients' || tab === 'settings';
+  $('btn-settings').classList.toggle('active', tab === 'settings');
+  if(tab === 'clients') loadCustomers();
+  if(tab === 'settings'){ closeEditor(); renderSettings(); loadConfig(); }
   if(tab === 'add') prepAdd();
   renderAll(); window.scrollTo(0, 0);
 }
@@ -1747,9 +1889,9 @@ function renderAll(){
   $('pending-dot').hidden = !pend.length; $('pending-dot').textContent = pend.length;
   document.title = (pend.length ? '(' + pend.length + ') ' : '') + 'Hub · ' + RESTO;
   try { if(navigator.setAppBadge) (pend.length ? navigator.setAppBadge(pend.length) : navigator.clearAppBadge()).catch(() => {}); } catch(e){}   // pastille sur l'icône
-  const titles = { inbox: pend.length ? pend.length + ' demande' + (pend.length > 1 ? 's' : '') + ' à confirmer' : 'Aucune demande en attente', add: 'Ajouter une réservation' };
+  const titles = { inbox: pend.length ? pend.length + ' demande' + (pend.length > 1 ? 's' : '') + ' à confirmer' : 'Aucune demande en attente', add: 'Ajouter une réservation', clients: 'Fichier clients', settings: 'Réglages' };
   $('hub-title').textContent = titles[V.tab] || (V.date === today() ? 'Aujourd\'hui, ' + fmtDateFr(V.date).split(' ').slice(1).join(' ') : cap1(fmtDateFr(V.date)));
-  $('hub-eyebrow').textContent = V.tab === 'inbox' ? 'Hub équipe · demandes en ligne' : 'Hub équipe · ' + SVC[V.svc].label;
+  $('hub-eyebrow').textContent = V.tab === 'inbox' ? 'Hub équipe · demandes en ligne' : V.tab === 'clients' ? 'Hub équipe · fidélisation' : V.tab === 'settings' ? 'Hub équipe · ' + (IS_ADMIN ? 'administrateur' : 'équipe') : 'Hub équipe · ' + SVC[V.svc].label;
   if(V.tab === 'inbox') renderInbox(pend);
   if(V.tab === 'plan' || V.tab === 'list'){
     document.querySelectorAll('[data-svc]').forEach(b => b.classList.toggle('active', b.dataset.svc === V.svc));
@@ -1838,6 +1980,541 @@ async function toggleManual(tid){
 }
 function onTableTap(tid){ const o = occupancy()[tid]; if(o && o.resa) openModal(o.resa.id); else toggleManual(tid); }
 
+/* ── HUB : FICHIER CLIENTS ──────────────────────────────── */
+/* Un client par numéro de téléphone, alimenté automatiquement par chaque réservation.
+   Seuls les clients qui ont accepté les offres peuvent recevoir de la prospection : l'export ne contient qu'eux. */
+const C = { list: [], q: '', onlyOptIn: false };
+function fmtPhone(ph){ return ph && ph.indexOf('262') === 0 && ph.length === 12 ? '0' + ph.slice(3).replace(/(\d{3})(\d{2})(\d{2})(\d{2})/, '$1 $2 $3 $4') : '+' + ph; }
+async function loadCustomers(){
+  $('cust-list').innerHTML = '<p class="note">Chargement…</p>';
+  try { C.list = await Store.customers(); } catch(e){ $('cust-list').innerHTML = '<p class="st err">Chargement impossible : vérifiez la connexion.</p>'; return; }
+  renderCustomers();
+}
+function renderCustomers(){
+  const q = norm(C.q).replace(/\s/g, ''), opt = C.list.filter(c => c.marketing_opt_in).length;
+  $('cust-summary').textContent = C.list.length + ' client' + (C.list.length > 1 ? 's' : '') + ' · ' + opt + ' accepte' + (opt > 1 ? 'nt' : '') + ' de recevoir les offres';
+  $('cust-filter').classList.toggle('active', C.onlyOptIn);
+  $('cust-filter').textContent = C.onlyOptIn ? 'Afficher tous les clients' : 'Seulement les offres acceptées';
+  const rows = C.list.filter(c => (!C.onlyOptIn || c.marketing_opt_in) && (!q || norm(c.name).replace(/\s/g, '').indexOf(q) >= 0 || c.phone.indexOf(q.replace(/^0/, '')) >= 0));
+  $('cust-list').innerHTML = rows.length ? rows.slice(0, 300).map(c =>
+    '<div class="resa"><span class="resa-n">' + esc(c.visits) + '</span><button type="button" class="resa-main cust-open" data-cust="' + esc(c.id) + '"><span class="resa-name">' + esc(c.name) + '</span>' +
+    '<span class="resa-meta">' + esc(fmtPhone(c.phone)) + ' · ' + c.requests + ' réservation' + (c.requests > 1 ? 's' : '') + ', ' + c.visits + ' confirmée' + (c.visits > 1 ? 's' : '') +
+    ' · dernière le ' + esc(fmtDateFr(String(c.last_seen).slice(0, 10))) + '</span></button><span class="badges">' +
+    (c.marketing_opt_in ? '<span class="badge b-optin">Offres acceptées</span><button class="btn-text" data-optout="' + esc(c.id) + '">' + (armed['o' + c.id] ? 'Confirmer' : 'Désinscrire') + '</button>' : '<span class="badge b-none">Pas d\'offres</span>') +
+    '</span></div>').join('') : '<div class="empty">' + EMPTY_SVG + (C.list.length ? 'Aucun client ne correspond.' : 'Les clients apparaissent ici dès leur première réservation.') + '</div>';
+}
+async function optOutCustomer(id){
+  if(!armed['o' + id]){ armed['o' + id] = true; renderCustomers(); setTimeout(() => { delete armed['o' + id]; renderCustomers(); }, 4000); return; }
+  delete armed['o' + id];
+  try { await Store.optOut(id); const c = C.list.find(x => x.id === id); if(c) c.marketing_opt_in = false; toast('Client désinscrit des offres'); }
+  catch(e){ toast('Désinscription impossible : vérifiez la connexion'); }
+  renderCustomers();
+}
+function exportCustomers(){
+  const rows = C.list.filter(c => c.marketing_opt_in);
+  if(!rows.length){ toast('Aucun client n\'a encore accepté les offres'); return; }
+  const cell = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const csv = '﻿' + ['Nom;Téléphone;Réservations;Confirmées;Dernière réservation;Consentement le']
+    .concat(rows.map(c => [c.name, '+' + c.phone, c.requests, c.visits, String(c.last_seen).slice(0, 10), c.opt_in_at ? String(c.opt_in_at).slice(0, 10) : ''].map(cell).join(';'))).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'clients-terrasse-offres-' + today() + '.csv';
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast(rows.length + ' client' + (rows.length > 1 ? 's' : '') + ' exporté' + (rows.length > 1 ? 's' : ''));
+}
+$('cust-search').addEventListener('input', e => { C.q = e.target.value; renderCustomers(); });
+$('cust-filter').onclick = () => { C.onlyOptIn = !C.onlyOptIn; renderCustomers(); };
+$('cust-export').onclick = exportCustomers;
+$('cust-list').addEventListener('click', e => { const b = e.target.closest('[data-optout]'); if(b) return optOutCustomer(b.dataset.optout); const r = e.target.closest('[data-cust]'); if(r) openCustomer(r.dataset.cust); });
+
+/* ── CONFIGURATION CHARGÉE DEPUIS LA BASE ───────────────── */
+/* Les réglages du restaurant et la carte sont modifiables dans le hub (Réglages).
+   Les valeurs écrites dans ce fichier ne servent qu'au premier chargement et en mode démo. */
+let CFG = null, DEFAULT_CFG = null, MENU_RAW = null;
+function rebuildTables(){
+  TLIST = [];
+  ZONES.forEach(z => z.tables.forEach(t => { t.zone = z.short; TLIST.push(t); }));
+  TBY = Object.fromEntries(TLIST.map(t => [t.id, t]));
+}
+function applySettings(d){
+  if(!d) return;
+  if(d.name) RESTO = d.name;
+  ['tagline', 'city', 'phone', 'instagram', 'address', 'hoursText'].forEach(k => { if(d[k] != null) CONTACT[k] = d[k]; });
+  if(d.services) Object.keys(SVC).forEach(k => { if(d.services[k]) SVC[k] = Object.assign({}, SVC[k], d.services[k]); });
+  if(Array.isArray(d.happyHours)) HAPPY_HOURS = d.happyHours;
+  if(d.closed) CLOSED = Object.assign({ midi: [], hh: [], soir: [] }, d.closed);
+  if(Array.isArray(d.zones) && d.zones.length){
+    ZONES = d.zones.map(z => ({ short: z.short, label: z.label, tables: (z.tables || []).map(t => Object.assign({}, t)) }));
+    d.zones.forEach(z => { if(z.txt != null) ZONE_TXT[z.short] = z.txt; });
+  }
+  rebuildTables();
+  document.querySelectorAll('[data-c]').forEach(el => {
+    const v = el.dataset.c === 'name' ? RESTO : CONTACT[el.dataset.c];
+    el.textContent = v || '';
+    if('hideEmpty' in el.dataset) el.hidden = !v;
+  });
+  document.querySelectorAll('.pill[data-svc]').forEach(b => {
+    const k = b.dataset.svc, hh = k === 'midi' && HAPPY_HOURS.some(h => svcOf(h[0]) === 'midi');
+    b.innerHTML = esc(SVC[k].label) + '<small>' + esc(SVC[k].hours) + (hh ? ' · HH' : '') + '</small>';
+  });
+}
+/* Carte : lignes de la base -> structure d'affichage (rubriques > sous-titres > lignes). */
+function applyMenu(raw){
+  if(!raw || !raw.cats || !raw.cats.length) return;
+  MENU_RAW = raw;
+  MENU_CATS = raw.cats.filter(c => c.visible !== false).sort((a, b) => a.sort - b.sort).map(c => {
+    const groups = [];
+    raw.items.filter(i => i.category_id === c.id).sort((a, b) => a.sort - b.sort).forEach(i => {
+      let g = groups.find(x => x[0] === (i.grp || ''));
+      if(!g){ g = [i.grp || '', []]; groups.push(g); }
+      g[1].push([i.name, i.prices && i.prices.length ? i.prices : +i.price, i.description || '', (i.allergens || []).join(' '), i.featured ? 1 : 0,
+        { id: i.id, photo: i.photo_url || '', available: i.available !== false }]);
+    });
+    return { id: c.id, label: c.label, icon: c.icon, color: c.color, note: c.note || '', food: c.food, alcohol: c.alcohol, groups };
+  });
+}
+function buildDefaultCfg(){
+  const settings = {
+    name: RESTO, tagline: CONTACT.tagline, city: CONTACT.city, phone: CONTACT.phone, instagram: CONTACT.instagram, address: CONTACT.address, hoursText: CONTACT.hoursText,
+    services: JSON.parse(JSON.stringify(SVC)), happyHours: HAPPY_HOURS.map(h => h.slice()), closed: JSON.parse(JSON.stringify(CLOSED)),
+    zones: ZONES.map(z => ({ short: z.short, label: z.label, txt: ZONE_TXT[z.short], tables: z.tables.map(t => {
+      const o = { id: t.id, name: t.name, cap: t.cap }; if(t.maxCap) o.maxCap = t.maxCap; if(t.salon) o.salon = true; return o; }) }))
+  };
+  const cats = [], items = [];
+  MENU_CATS.forEach((c, i) => {
+    cats.push({ id: c.id, label: c.label, icon: c.icon, color: c.color, note: c.note || null, food: !!c.food, alcohol: !!c.alcohol, sort: i, visible: true });
+    let n = 0;
+    c.groups.forEach(([grp, its]) => its.forEach(it => items.push({ id: c.id + '-' + n, category_id: c.id, grp, name: it[0], description: it[2] || null,
+      price: Array.isArray(it[1]) ? null : it[1], prices: Array.isArray(it[1]) ? it[1] : null, allergens: it[3] ? it[3].split(' ') : [],
+      photo_url: null, featured: !!it[4], available: true, sort: n++ })));
+  });
+  return { settings, cats, items };
+}
+const Config = {
+  async load(){
+    if(!Store.live){ try { return JSON.parse(localStorage.getItem('tdb_demo_cfg') || 'null'); } catch(e){ return null; } }
+    const [st, cats, items] = await Promise.all([
+      Store.sb.from('settings').select('data').eq('id', 1).maybeSingle(),
+      Store.sb.from('menu_categories').select('*').order('sort'),
+      Store.sb.from('menu_items').select('*').order('sort')
+    ]);
+    if(st.error || cats.error || items.error) throw st.error || cats.error || items.error;
+    return { settings: st.data && st.data.data, cats: cats.data, items: items.data };
+  },
+  apply(cfg){ if(!cfg) return; applySettings(cfg.settings); applyMenu({ cats: cfg.cats, items: cfg.items }); },
+  cache(cfg){ try { localStorage.setItem('tdb_cfg', JSON.stringify(cfg)); } catch(e){} },
+  cached(){ try { return JSON.parse(localStorage.getItem('tdb_cfg') || 'null'); } catch(e){ return null; } }
+};
+async function loadConfig(){
+  try {
+    const got = await Config.load();
+    if(got){
+      const hasMenu = got.cats && got.cats.length;
+      CFG = { settings: Object.assign({}, DEFAULT_CFG.settings, got.settings || {}), cats: hasMenu ? got.cats : DEFAULT_CFG.cats, items: hasMenu ? got.items : DEFAULT_CFG.items };
+    }
+  } catch(e){ /* base injoignable : on garde la dernière configuration connue */ }
+  Config.apply(CFG); Config.cache(CFG); refreshView();
+}
+/* Réaffiche la vue en cours sans changer de page ni remonter en haut. */
+function refreshView(){
+  if(!$('client').hidden){
+    if(!$('v-home').hidden) renderHome();
+    if(!$('v-menu').hidden) renderMenu();
+    if(!$('v-book').hidden) renderBook();
+  } else if(hubReady){ renderAll(); if(V.tab === 'settings') renderSettings(); }
+}
+
+/* ── HUB : RÉGLAGES ─────────────────────────────────────── */
+/* Carte et photos : toute l'équipe. Restaurant, horaires, plan de salle, équipe : administrateurs. */
+let IS_ADMIN = false;
+const SET = { view: 'home', cat: '', team: [], draft: null, catDraft: null, zonesDraft: null };
+const DAYS = [['1', 'Lun'], ['2', 'Mar'], ['3', 'Mer'], ['4', 'Jeu'], ['5', 'Ven'], ['6', 'Sam'], ['0', 'Dim']];
+const ICONS = [['c-entrees', 'Bol'], ['c-burger', 'Burger'], ['c-leaf', 'Feuille'], ['c-plats', 'Assiette'], ['c-fish', 'Poisson'], ['c-star', 'Étoile'],
+  ['c-desserts', 'Dessert'], ['c-cocktails', 'Cocktail'], ['c-softs', 'Verre'], ['c-beer', 'Bière'], ['c-cup', 'Tasse'], ['c-wine', 'Vin']];
+const fieldIn = (id, label, val, attrs) => '<div class="field"><label for="' + id + '">' + label + '</label><input class="input" id="' + id + '" value="' + esc(val == null ? '' : val) + '"' + (attrs || '') + '></div>';
+const setHead = title => '<div class="set-head"><button class="btn-line btn-sm" data-act="set-home" type="button">' + ico('i-back') + 'Réglages</button></div><h2 class="h2">' + esc(title) + '</h2>';
+const errText = e => { const m = String(e && e.message || ''); return m.indexOf('compte_introuvable') >= 0 ? 'Aucun compte avec cet e-mail : créez-le d\'abord dans Supabase.' :
+  m.indexOf('dernier_admin') >= 0 ? 'Il doit rester au moins un administrateur.' : m.indexOf('non_autorise') >= 0 ? 'Réservé aux administrateurs.' : m || 'vérifiez la connexion'; };
+function soundOn(){ try { return localStorage.getItem('tdb_sound') !== 'off'; } catch(e){ return true; } }
+
+function renderSettings(){
+  const v = SET.view;
+  if(v === 'menu') return renderMenuEditor();
+  if(v === 'info' && IS_ADMIN) return renderInfoEditor();
+  if(v === 'services' && IS_ADMIN) return renderServicesEditor();
+  if(v === 'tables' && IS_ADMIN) return renderTablesEditor();
+  if(v === 'team' && IS_ADMIN) return renderTeam();
+  if(v === 'device') return renderDevice();
+  const row = (k, icon, t, sub, admin) => admin && !IS_ADMIN ? '' : '<button class="set-row" data-act="set-open" data-v="' + k + '" type="button"><span class="ico-wrap">' + ico(icon) + '</span><span class="set-txt"><b>' + t + '</b><small>' + sub + '</small></span><span class="chev">' + ico('i-arrow') + '</span></button>';
+  $('set-body').innerHTML = '<div class="set-list">' +
+    row('menu', 'i-menu', 'Carte et photos', CFG.cats.length + ' rubriques · ' + CFG.items.length + ' lignes · épuisés, prix, photos', false) +
+    row('info', 'i-pin', 'Informations du restaurant', 'Nom, téléphone, Instagram, adresse', true) +
+    row('services', 'i-clock', 'Services et horaires', 'Créneaux, jours de fermeture, happy hour', true) +
+    row('tables', 'i-plan', 'Plan de salle', TLIST.length + ' tables', true) +
+    row('team', 'i-team', 'Équipe', 'Comptes et rôles', true) +
+    row('device', 'i-theme', 'Cet appareil', 'Mode nuit, son, notifications, déconnexion', false) + '</div>' +
+    (IS_ADMIN ? '' : '<p class="note">Les réglages du restaurant et de l\'équipe sont réservés aux administrateurs.</p>');
+}
+
+/* Carte et photos */
+function priceTxt(i){ return i.prices && i.prices.length ? i.prices.map(p => p[0] + ' ' + fmtPrice(+p[1])).join(' · ') : (i.price != null ? fmtPrice(+i.price) : '—'); }
+function renderMenuEditor(){
+  const cats = CFG.cats.slice().sort((a, b) => a.sort - b.sort);
+  if(!cats.some(c => c.id === SET.cat)) SET.cat = cats.length ? cats[0].id : '';
+  const c = cats.find(x => x.id === SET.cat);
+  const items = CFG.items.filter(i => i.category_id === SET.cat).sort((a, b) => a.sort - b.sort);
+  $('set-body').innerHTML = setHead('Carte et photos') +
+    '<div class="checks">' + cats.map(x => '<button class="chip' + (x.id === SET.cat ? ' active' : '') + '" data-act="ed-cat" data-id="' + esc(x.id) + '" type="button">' + esc(x.label) + (x.visible === false ? ' · masquée' : '') + '</button>').join('') +
+    '<button class="chip" data-act="cat-new" type="button">+ Rubrique</button></div>' +
+    (c ? '<div class="card" style="gap:12px"><div class="row-between" style="flex-wrap:wrap"><h3 class="h3">' + esc(c.label) + '</h3><button class="btn-line btn-sm" data-act="cat-edit" type="button">Modifier la rubrique</button></div>' +
+      (c.note ? '<p class="note">' + esc(c.note) + '</p>' : '') +
+      '<button class="btn-primary btn-sm" data-act="item-new" type="button" style="align-self:flex-start">' + ico('i-plus') + 'Ajouter une ligne</button>' +
+      '<div class="list">' + (items.length ? items.map((i, k) => edItemRow(i, c, k, items.length)).join('') : '<p class="note">Aucune ligne dans cette rubrique.</p>') + '</div>' +
+      '<p class="note">L\'interrupteur vert indique « disponible ». Désactivé, la ligne s\'affiche « Épuisé » sur la carte.</p></div>' : '');
+}
+function edItemRow(i, c, k, n){
+  return '<div class="ed-item' + (i.available === false ? ' out' : '') + '">' +
+    (i.photo_url ? '<img class="ed-thumb" src="' + esc(i.photo_url) + '" alt="">' : '<span class="ed-thumb thumb c-' + c.color + '">' + ico(c.icon, '') + '</span>') +
+    '<button class="ed-main" type="button" data-act="item-edit" data-id="' + esc(i.id) + '"><b>' + esc(i.name) + (i.featured ? ' ★' : '') + '</b><span class="note">' + esc((i.grp ? i.grp + ' · ' : '') + priceTxt(i)) + (i.available === false ? ' · Épuisé' : '') + '</span></button>' +
+    '<div class="ed-acts"><label class="switch" title="Disponible"><input type="checkbox" data-act="item-avail" data-id="' + esc(i.id) + '"' + (i.available !== false ? ' checked' : '') + ' aria-label="Disponible : ' + esc(i.name) + '"><span></span></label>' +
+    '<button class="mini" data-act="item-move" data-dir="-1" data-id="' + esc(i.id) + '" type="button" aria-label="Monter"' + (k === 0 ? ' disabled' : '') + '>↑</button>' +
+    '<button class="mini" data-act="item-move" data-dir="1" data-id="' + esc(i.id) + '" type="button" aria-label="Descendre"' + (k === n - 1 ? ' disabled' : '') + '>↓</button></div></div>';
+}
+function upsertLocal(kind, rec){ const list = CFG[kind], i = list.findIndex(x => x.id === rec.id); if(i >= 0) list[i] = Object.assign({}, list[i], rec); else list.push(rec); }
+function afterMenuChange(){ applyMenu({ cats: CFG.cats, items: CFG.items }); Config.cache(CFG); if(!Store.live) Store.saveDemo(CFG); if(V.tab === 'settings') renderSettings(); }
+function openEditor(html){ $('ed-body').innerHTML = '<div class="sheet-handle"></div>' + html; $('ed-overlay').hidden = false; $('ed-body').scrollTop = 0; }
+function closeEditor(){ $('ed-overlay').hidden = true; SET.draft = null; SET.catDraft = null; }
+
+function openItemEditor(id){
+  const src = id ? CFG.items.find(i => i.id === id) : { id: uuid(), category_id: SET.cat, grp: '', name: '', description: '', price: null, prices: null, allergens: [], photo_url: '', featured: false, available: true, sort: 0, _new: true };
+  if(!src) return;
+  SET.draft = JSON.parse(JSON.stringify(src));
+  renderItemEditor();
+}
+function renderItemEditor(){
+  const d = SET.draft, multi = !!(d.prices && d.prices.length), cat = CFG.cats.find(c => c.id === d.category_id) || {};
+  const groups = [...new Set(CFG.items.filter(i => i.category_id === d.category_id && i.grp).map(i => i.grp))];
+  openEditor('<h2 class="h2">' + (d._new ? 'Nouvelle ligne' : 'Modifier « ' + esc(d.name) + ' »') + '</h2>' +
+    '<div class="photo-edit">' + (d.photo_url ? '<img class="ph" src="' + esc(d.photo_url) + '" alt="Photo actuelle">' : '<span class="ph thumb c-' + (cat.color || 'green') + '">' + ico(cat.icon || 'c-plats', '') + '</span>') +
+      '<div class="stack" style="gap:8px"><input type="file" id="ed-photo" accept="image/*" hidden>' +
+      '<button class="btn-line btn-sm" data-act="photo-pick" type="button">' + ico('i-scan') + (d.photo_url ? 'Changer la photo' : 'Ajouter une photo') + '</button>' +
+      (d.photo_url ? '<button class="btn-text" data-act="photo-del" type="button" style="align-self:flex-start">Retirer la photo</button>' : '') +
+      '<p class="st" id="ed-photo-st">Photo prise sur place ou choisie dans la galerie.</p></div></div>' +
+    fieldIn('ed-name', 'Nom', d.name, ' maxlength="120"') +
+    '<div class="field"><label for="ed-desc">Description</label><textarea class="input" id="ed-desc" maxlength="400">' + esc(d.description || '') + '</textarea></div>' +
+    '<div class="row2"><div class="field"><label for="ed-cat">Rubrique</label><select class="input" id="ed-cat">' +
+      CFG.cats.slice().sort((a, b) => a.sort - b.sort).map(c => '<option value="' + esc(c.id) + '"' + (c.id === d.category_id ? ' selected' : '') + '>' + esc(c.label) + '</option>').join('') + '</select></div>' +
+      '<div class="field"><label for="ed-grp">Sous-titre</label><input class="input" id="ed-grp" list="ed-grps" value="' + esc(d.grp || '') + '" placeholder="Facultatif"><datalist id="ed-grps">' + groups.map(g => '<option value="' + esc(g) + '">').join('') + '</datalist></div></div>' +
+    '<div class="field"><label>Prix</label><label class="check" style="align-self:flex-start"><input type="checkbox" id="ed-multi"' + (multi ? ' checked' : '') + '>Plusieurs formats (verre / bouteille, 25 cl / 50 cl…)</label>' +
+      (multi ? '<div class="stack" style="gap:8px">' + d.prices.map((p, k) => '<div class="fmt-row"><input class="input" data-fmt="l" data-k="' + k + '" value="' + esc(p[0]) + '" placeholder="Format (ex. 75 cl)"><input class="input" data-fmt="p" data-k="' + k + '" type="number" step="0.1" min="0" inputmode="decimal" value="' + (p[1] == null ? '' : esc(p[1])) + '" placeholder="€"><button class="mini" data-act="fmt-del" data-k="' + k + '" type="button" aria-label="Retirer ce format">✕</button></div>').join('') +
+        '<button class="btn-text" data-act="fmt-add" type="button" style="align-self:flex-start">+ Ajouter un format</button></div>'
+      : '<input class="input" id="ed-price" type="number" step="0.1" min="0" inputmode="decimal" value="' + (d.price == null ? '' : esc(d.price)) + '" placeholder="Prix en €">') + '</div>' +
+    '<div class="field"><label>Allergènes</label><div class="checks">' + Object.keys(ALLERGENS).map(k => '<label class="check"><input type="checkbox" data-al="' + k + '"' + (d.allergens.indexOf(k) >= 0 ? ' checked' : '') + '>' + ALLERGENS[k][0] + '</label>').join('') + '</div></div>' +
+    '<div class="checks"><label class="check"><input type="checkbox" id="ed-avail"' + (d.available !== false ? ' checked' : '') + '>Disponible</label><label class="check"><input type="checkbox" id="ed-feat"' + (d.featured ? ' checked' : '') + '>Mis en avant sur l\'accueil</label></div>' +
+    '<p class="st err" id="ed-err" role="alert"></p>' +
+    '<div class="modal-actions">' + (d._new ? '<button class="btn-line" data-act="ed-close" type="button">Annuler</button>' : '<button class="btn-line btn-danger' + (armed['del' + d.id] ? ' armed' : '') + '" data-act="item-del" type="button">' + (armed['del' + d.id] ? 'Confirmer la suppression' : 'Supprimer') + '</button>') +
+    '<button class="btn-primary" data-act="item-save" type="button">Enregistrer</button></div><button class="btn-text" data-act="ed-close" type="button">Fermer</button>');
+}
+function readDraft(){
+  const d = SET.draft; if(!d || !$('ed-name')) return d;
+  d.name = $('ed-name').value.trim(); d.description = $('ed-desc').value.trim(); d.category_id = $('ed-cat').value; d.grp = $('ed-grp').value.trim();
+  if($('ed-price')) d.price = $('ed-price').value === '' ? null : +$('ed-price').value;
+  document.querySelectorAll('#ed-body [data-fmt]').forEach(i => { const p = d.prices[+i.dataset.k]; if(i.dataset.fmt === 'l') p[0] = i.value.trim(); else p[1] = i.value === '' ? null : +i.value; });
+  d.allergens = Array.from(document.querySelectorAll('#ed-body [data-al]')).filter(x => x.checked).map(x => x.dataset.al);
+  d.available = $('ed-avail').checked; d.featured = $('ed-feat').checked;
+  return d;
+}
+function toggleMulti(on){
+  const d = readDraft();
+  if(on){ d.prices = [['', d.price]]; d.price = null; } else { d.price = d.prices && d.prices[0] ? d.prices[0][1] : null; d.prices = null; }
+  renderItemEditor();
+}
+async function pickPhoto(file){
+  readDraft(); const st = $('ed-photo-st'); st.className = 'st'; st.textContent = 'Envoi de la photo…';
+  try {
+    const prep = await toJpegBlob(file, 1400);
+    SET.draft.photo_url = await Store.uploadPhoto(prep.blob);
+    renderItemEditor(); $('ed-photo-st').textContent = 'Photo prête : pensez à enregistrer.';
+  } catch(e){ st.className = 'st err'; st.textContent = 'Envoi impossible : ' + errText(e); }
+}
+async function saveDraft(){
+  const d = readDraft();
+  const err = !d.name ? 'Indiquez un nom.' : d.prices ? (d.prices.some(p => !p[0] || p[1] == null || isNaN(p[1])) ? 'Complétez chaque format : nom et prix.' : '') : (d.price == null || isNaN(d.price) ? 'Indiquez un prix.' : '');
+  if(err){ $('ed-err').textContent = err; return; }
+  const prev = CFG.items.find(i => i.id === d.id);
+  const sort = prev && prev.category_id === d.category_id ? prev.sort : CFG.items.filter(i => i.category_id === d.category_id && i.id !== d.id).reduce((m, i) => Math.max(m, i.sort + 1), 0);
+  const rec = { id: d.id, category_id: d.category_id, grp: d.grp, name: d.name, description: d.description || null, price: d.prices ? null : d.price, prices: d.prices || null,
+    allergens: d.allergens, photo_url: d.photo_url || null, featured: d.featured, available: d.available, sort };
+  $('ed-err').textContent = '';
+  try { await Store.saveItem(rec); upsertLocal('items', rec); SET.cat = rec.category_id; closeEditor(); afterMenuChange(); toast('« ' + rec.name + ' » enregistré'); }
+  catch(e){ $('ed-err').textContent = 'Enregistrement impossible : ' + errText(e); }
+}
+async function deleteDraft(){
+  const d = SET.draft;
+  if(!armed['del' + d.id]){ armed['del' + d.id] = true; readDraft(); renderItemEditor(); setTimeout(() => { delete armed['del' + d.id]; }, 5000); return; }
+  delete armed['del' + d.id];
+  try { await Store.deleteItem(d.id); CFG.items = CFG.items.filter(i => i.id !== d.id); closeEditor(); afterMenuChange(); toast('Ligne supprimée'); }
+  catch(e){ $('ed-err').textContent = 'Suppression impossible : ' + errText(e); }
+}
+async function toggleAvail(id, on){
+  const i = CFG.items.find(x => x.id === id); if(!i) return;
+  try { await Store.updateItem(id, { available: on }); i.available = on; afterMenuChange(); toast(i.name + (on ? ' : de nouveau disponible' : ' : marqué épuisé')); }
+  catch(e){ toast('Modification impossible : ' + errText(e)); renderSettings(); }
+}
+/* Réordonne une liste après déplacement et enregistre les rangs qui ont changé. */
+async function reorder(list, id, dir, save){
+  const i = list.findIndex(x => x.id === id), j = i + dir; if(i < 0 || j < 0 || j >= list.length) return;
+  [list[i], list[j]] = [list[j], list[i]];
+  const changed = list.filter((x, k) => x.sort !== k);
+  list.forEach((x, k) => { x.sort = k; });
+  try { for(const x of changed) await save(x.id, { sort: x.sort }); } catch(e){ toast('Ordre non enregistré : ' + errText(e)); }
+  afterMenuChange();
+}
+const moveItem = (id, dir) => reorder(CFG.items.filter(i => i.category_id === SET.cat).sort((a, b) => a.sort - b.sort), id, dir, (k, p) => Store.updateItem(k, p));
+
+function openCatEditor(id){
+  const c = id ? CFG.cats.find(x => x.id === id) : { id: 'r-' + Date.now().toString(36), label: '', icon: 'c-plats', color: 'green', note: '', food: true, alcohol: false, visible: true, sort: CFG.cats.reduce((m, x) => Math.max(m, x.sort + 1), 0), _new: true };
+  if(!c) return;
+  SET.catDraft = Object.assign({}, c);
+  const n = CFG.items.filter(i => i.category_id === c.id).length;
+  openEditor('<h2 class="h2">' + (c._new ? 'Nouvelle rubrique' : 'Rubrique « ' + esc(c.label) + ' »') + '</h2>' +
+    fieldIn('cat-label', 'Nom', c.label, ' maxlength="60"') + fieldIn('cat-note', 'Précision sous le titre', c.note, ' placeholder="Ex. : servis avec 2 accompagnements au choix"') +
+    '<div class="row2"><div class="field"><label for="cat-icon">Icône</label><select class="input" id="cat-icon">' + ICONS.map(([v, l]) => '<option value="' + v + '"' + (c.icon === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></div>' +
+    '<div class="field"><label for="cat-color">Couleur</label><select class="input" id="cat-color">' + [['green', 'Vert'], ['orange', 'Orange'], ['rose', 'Rose']].map(([v, l]) => '<option value="' + v + '"' + (c.color === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></div></div>' +
+    '<div class="checks"><label class="check"><input type="checkbox" id="cat-visible"' + (c.visible !== false ? ' checked' : '') + '>Visible sur la carte</label>' +
+    '<label class="check"><input type="checkbox" id="cat-food"' + (c.food ? ' checked' : '') + '>Plats (mention allergies)</label>' +
+    '<label class="check"><input type="checkbox" id="cat-alcohol"' + (c.alcohol ? ' checked' : '') + '>Alcool (mention légale)</label></div>' +
+    (c._new ? '' : '<div class="modal-actions"><button class="btn-line" data-act="cat-move" data-dir="-1" type="button">Placer avant</button><button class="btn-line" data-act="cat-move" data-dir="1" type="button">Placer après</button></div>') +
+    '<p class="st err" id="ed-err" role="alert"></p><div class="modal-actions">' +
+    (c._new ? '<button class="btn-line" data-act="ed-close" type="button">Annuler</button>' : n ? '<button class="btn-line" type="button" disabled>' + n + ' ligne' + (n > 1 ? 's' : '') + ' dedans</button>' :
+      '<button class="btn-line btn-danger' + (armed['cat' + c.id] ? ' armed' : '') + '" data-act="cat-del" type="button">' + (armed['cat' + c.id] ? 'Confirmer' : 'Supprimer') + '</button>') +
+    '<button class="btn-primary" data-act="cat-save" type="button">Enregistrer</button></div><button class="btn-text" data-act="ed-close" type="button">Fermer</button>');
+}
+async function saveCat(){
+  const d = SET.catDraft, label = $('cat-label').value.trim();
+  if(!label){ $('ed-err').textContent = 'Indiquez un nom.'; return; }
+  const rec = { id: d.id, label, note: $('cat-note').value.trim() || null, icon: $('cat-icon').value, color: $('cat-color').value,
+    visible: $('cat-visible').checked, food: $('cat-food').checked, alcohol: $('cat-alcohol').checked, sort: d.sort };
+  try { await Store.saveCategory(rec); upsertLocal('cats', rec); SET.cat = rec.id; closeEditor(); afterMenuChange(); toast('Rubrique enregistrée'); }
+  catch(e){ $('ed-err').textContent = 'Enregistrement impossible : ' + errText(e); }
+}
+async function deleteCat(){
+  const d = SET.catDraft;
+  if(!armed['cat' + d.id]){ armed['cat' + d.id] = true; openCatEditor(d.id); setTimeout(() => { delete armed['cat' + d.id]; }, 5000); return; }
+  delete armed['cat' + d.id];
+  try { await Store.deleteCategory(d.id); CFG.cats = CFG.cats.filter(c => c.id !== d.id); SET.cat = ''; closeEditor(); afterMenuChange(); toast('Rubrique supprimée'); }
+  catch(e){ $('ed-err').textContent = 'Suppression impossible : ' + errText(e); }
+}
+async function moveCat(dir){
+  await reorder(CFG.cats.slice().sort((a, b) => a.sort - b.sort), SET.catDraft.id, dir, (k, p) => Store.updateCategory(k, p));
+  openCatEditor(SET.catDraft.id);
+}
+
+/* Restaurant (administrateurs) */
+async function saveSettingsPatch(patch, okMsg){
+  const next = Object.assign({}, CFG.settings, patch);
+  try {
+    await Store.saveSettings(next);
+    CFG.settings = next; applySettings(next); Config.cache(CFG); if(!Store.live) Store.saveDemo(CFG);
+    toast(okMsg); SET.zonesDraft = null; renderAll(); renderSettings();
+  } catch(e){ const el = $('st-err'); if(el) el.textContent = 'Enregistrement impossible : ' + errText(e); }
+}
+function renderInfoEditor(){
+  const s = CFG.settings;
+  $('set-body').innerHTML = setHead('Informations du restaurant') + '<div class="card">' +
+    fieldIn('st-name', 'Nom du restaurant', s.name) +
+    '<div class="row2">' + fieldIn('st-tagline', 'Accroche de l\'accueil', s.tagline) + fieldIn('st-city', 'Suite en couleur', s.city) + '</div>' +
+    '<div class="row2">' + fieldIn('st-phone', 'Téléphone des réservations', s.phone, ' type="tel"') + fieldIn('st-insta', 'Instagram', s.instagram) + '</div>' +
+    fieldIn('st-address', 'Adresse', s.address, ' placeholder="Affichée en bas de l\'accueil"') +
+    '<p class="st err" id="st-err" role="alert"></p><button class="btn-primary" data-act="save-info" type="button">Enregistrer</button></div>';
+}
+function saveInfo(){
+  const v = id => $(id).value.trim();
+  if(!v('st-name')){ $('st-err').textContent = 'Indiquez le nom du restaurant.'; return; }
+  saveSettingsPatch({ name: v('st-name'), tagline: v('st-tagline'), city: v('st-city'), phone: v('st-phone'), instagram: v('st-insta'), address: v('st-address') }, 'Informations enregistrées');
+}
+function renderServicesEditor(){
+  const s = CFG.settings;
+  $('set-body').innerHTML = setHead('Services et horaires') + Object.keys(SVC).map(k => {
+    const v = (s.services && s.services[k]) || SVC[k], closed = (s.closed && s.closed[k]) || [];
+    return '<div class="card"><h3 class="h3">' + esc(v.label) + '</h3><div class="row2">' + fieldIn('sv-' + k + '-label', 'Nom', v.label) + fieldIn('sv-' + k + '-hours', 'Horaires affichés', v.hours) + '</div>' +
+      fieldIn('sv-' + k + '-what', 'Description', v.what) + fieldIn('sv-' + k + '-slots', 'Créneaux proposés aux clients', (v.slots || []).join(', '), ' placeholder="12h00, 12h30, 13h00"') +
+      '<div class="field"><label>Fermé le</label><div class="checks">' + DAYS.map(([d, n]) => '<label class="check"><input type="checkbox" data-closed="' + k + '" value="' + d + '"' + (closed.indexOf(+d) >= 0 ? ' checked' : '') + '>' + n + '</label>').join('') + '</div></div></div>';
+  }).join('') +
+    '<div class="card"><h3 class="h3">Happy hour et texte des horaires</h3>' + fieldIn('sv-hh', 'Plages de happy hour', (s.happyHours || HAPPY_HOURS).map(h => h[0] + '-' + h[1]).join(', '), ' placeholder="12h00-14h30, 17h00-19h00"') +
+    '<div class="field"><label for="sv-text">Texte des horaires sur l\'accueil</label><textarea class="input" id="sv-text">' + esc(s.hoursText || '') + '</textarea></div>' +
+    '<p class="note">Les créneaux avant 16h comptent pour le midi, de 16h à 19h pour l\'happy hour, à partir de 19h pour le soir.</p>' +
+    '<p class="st err" id="st-err" role="alert"></p><button class="btn-primary" data-act="save-services" type="button">Enregistrer</button></div>';
+}
+function saveServices(){
+  const services = {}, closed = {}; let err = '';
+  Object.keys(SVC).forEach(k => {
+    const label = $('sv-' + k + '-label').value.trim() || SVC[k].label;
+    const slots = $('sv-' + k + '-slots').value.split(/[,;\s]+/).filter(Boolean).map(normTime);
+    if(slots.some(t => !t)) err = 'Créneau illisible dans « ' + label + ' » : écrivez par exemple 19h30.';
+    else if(slots.some(t => svcOf(t) !== k)) err = 'Un créneau de « ' + label + ' » sort de ses heures (midi avant 16h, happy hour de 16h à 19h, soir à partir de 19h).';
+    const uniq = [...new Set(slots)].sort();
+    services[k] = { label, hours: $('sv-' + k + '-hours').value.trim(), what: $('sv-' + k + '-what').value.trim(), slots: uniq, time: uniq[Math.floor(uniq.length / 2)] || SVC[k].time };
+    closed[k] = Array.from(document.querySelectorAll('[data-closed="' + k + '"]')).filter(x => x.checked).map(x => +x.value);
+  });
+  const hh = $('sv-hh').value.split(',').map(x => x.trim()).filter(Boolean).map(x => x.split(/\s*(?:-|–|à)\s*/).map(normTime));
+  if(hh.some(h => h.length !== 2 || !h[0] || !h[1])) err = 'Plages de happy hour : écrivez par exemple 12h00-14h30, 17h00-19h00.';
+  if(err){ $('st-err').textContent = err; return; }
+  saveSettingsPatch({ services, closed, happyHours: hh, hoursText: $('sv-text').value.trim() }, 'Services enregistrés');
+}
+function renderTablesEditor(){
+  const zones = SET.zonesDraft || (SET.zonesDraft = JSON.parse(JSON.stringify(CFG.settings.zones)));
+  $('set-body').innerHTML = setHead('Plan de salle') + zones.map((z, zi) => '<div class="card"><div class="row2">' + fieldIn('zn-' + zi, 'Zone', z.label) + fieldIn('zt-' + zi, 'Description pour les clients', z.txt) + '</div>' +
+    '<div class="tbl-row tbl-head"><span>Table</span><span>Places</span><span>Max</span><span>Salon</span><span></span></div>' +
+    z.tables.map((t, ti) => '<div class="tbl-row"><input class="input" data-tb="name" data-z="' + zi + '" data-t="' + ti + '" value="' + esc(t.name) + '" aria-label="Nom de la table">' +
+      '<input class="input" type="number" min="1" inputmode="numeric" data-tb="cap" data-z="' + zi + '" data-t="' + ti + '" value="' + esc(t.cap) + '" aria-label="Places">' +
+      '<input class="input" type="number" min="1" inputmode="numeric" data-tb="maxCap" data-z="' + zi + '" data-t="' + ti + '" value="' + esc(t.maxCap || '') + '" placeholder="—" aria-label="Places au maximum">' +
+      '<input type="checkbox" data-tb="salon" data-z="' + zi + '" data-t="' + ti + '"' + (t.salon ? ' checked' : '') + ' aria-label="Salon ou grande table">' +
+      '<button class="mini" data-act="tb-del" data-z="' + zi + '" data-t="' + ti + '" type="button" aria-label="Supprimer la table">✕</button></div>').join('') +
+    '<button class="btn-text" data-act="tb-add" data-z="' + zi + '" type="button" style="align-self:flex-start">+ Ajouter une table</button></div>').join('') +
+    '<p class="note">« Max » : places possibles en ajoutant des chaises ou un bout de table. Une table supprimée reste affichée sur les réservations déjà enregistrées.</p>' +
+    '<p class="st err" id="st-err" role="alert"></p><div class="modal-actions"><button class="btn-line" data-act="tb-cancel" type="button">Annuler</button><button class="btn-primary" data-act="save-tables" type="button">Enregistrer le plan</button></div>';
+}
+function readTables(){
+  const zones = SET.zonesDraft;
+  document.querySelectorAll('#set-body [data-tb]').forEach(i => {
+    const t = zones[+i.dataset.z].tables[+i.dataset.t], f = i.dataset.tb;
+    if(f === 'salon') t.salon = i.checked || undefined; else if(f === 'name') t.name = i.value.trim(); else t[f] = i.value === '' ? undefined : +i.value;
+  });
+  zones.forEach((z, zi) => { if($('zn-' + zi)) z.label = $('zn-' + zi).value.trim() || z.label; if($('zt-' + zi)) z.txt = $('zt-' + zi).value.trim(); });
+}
+function saveTables(){
+  readTables();
+  const all = SET.zonesDraft.flatMap(z => z.tables), names = all.map(t => t.name.toLowerCase());
+  const err = all.some(t => !t.name) ? 'Chaque table doit avoir un nom.' : names.some((n, k) => names.indexOf(n) !== k) ? 'Deux tables portent le même nom.' :
+    all.some(t => !(t.cap >= 1)) ? 'Indiquez le nombre de places de chaque table.' : all.some(t => t.maxCap && t.maxCap < t.cap) ? 'Le maximum doit être supérieur ou égal au nombre de places.' : '';
+  if(err){ $('st-err').textContent = err; return; }
+  const zones = SET.zonesDraft.map(z => ({ short: z.short, label: z.label, txt: z.txt, tables: z.tables.map(t => { const o = { id: t.id, name: t.name, cap: t.cap }; if(t.maxCap) o.maxCap = t.maxCap; if(t.salon) o.salon = true; return o; }) }));
+  saveSettingsPatch({ zones }, 'Plan de salle enregistré');
+}
+
+/* Équipe (administrateurs) */
+async function renderTeam(){
+  $('set-body').innerHTML = setHead('Équipe') + '<div class="card" id="team-card"><p class="note">Chargement…</p></div>';
+  try { SET.team = await Store.listStaff(); } catch(e){ $('team-card').innerHTML = '<p class="st err">Chargement impossible : ' + esc(errText(e)) + '</p>'; return; }
+  drawTeam();
+}
+function drawTeam(){
+  const ref = SUPABASE_URL.replace(/^https:\/\/([^.]+).*$/, '$1');
+  $('team-card').innerHTML = '<div class="team-list">' + SET.team.map(m => '<div class="team-row"><span class="set-txt"><b>' + esc(m.email) + '</b>' + (m.is_me ? '<small>vous</small>' : '') + '</span>' +
+    '<span class="ed-acts"><select class="input" data-role="' + esc(m.user_id) + '" aria-label="Rôle">' + [['admin', 'Administrateur'], ['staff', 'Équipe']].map(r => '<option value="' + r[0] + '"' + (m.role === r[0] ? ' selected' : '') + '>' + r[1] + '</option>').join('') + '</select>' +
+    '<button class="btn-line btn-sm btn-danger' + (armed['rm' + m.user_id] ? ' armed' : '') + '" data-act="team-rm" data-id="' + esc(m.user_id) + '" type="button">' + (armed['rm' + m.user_id] ? 'Confirmer' : 'Retirer') + '</button></span></div>').join('') + '</div>' +
+    '<h3 class="h3">Ajouter un membre</h3><p class="hint">Créez d\'abord son compte (e-mail et mot de passe) dans Supabase, puis ajoutez son e-mail ici.</p>' +
+    '<div class="row2" style="grid-template-columns:1fr auto"><input class="input" id="team-email" type="email" autocomplete="off" placeholder="prenom@exemple.re" aria-label="E-mail"><select class="input" id="team-role" aria-label="Rôle"><option value="staff">Équipe</option><option value="admin">Administrateur</option></select></div>' +
+    '<p class="st err" id="team-err" role="alert"></p><div class="modal-actions"><a class="btn-line" href="https://supabase.com/dashboard/project/' + ref + '/auth/users" target="_blank" rel="noopener">Créer un compte</a><button class="btn-primary" data-act="team-add" type="button">Ajouter</button></div>' +
+    '<p class="note">Administrateur : réglages du restaurant et équipe. Équipe : demandes, plan, clients et carte.</p>';
+}
+async function teamAction(fn, okMsg){
+  try { await fn(); toast(okMsg); SET.team = await Store.listStaff(); drawTeam(); }
+  catch(e){ const el = $('team-err'); if(el) el.textContent = errText(e); else toast(errText(e)); drawTeam(); }
+}
+function addMember(){
+  const email = $('team-email').value.trim();
+  if(!/^\S+@\S+\.\S+$/.test(email)){ $('team-err').textContent = 'Indiquez un e-mail valide.'; return; }
+  teamAction(() => Store.addStaff(email, $('team-role').value), email + ' a accès au hub');
+}
+function removeMember(id){
+  if(!armed['rm' + id]){ armed['rm' + id] = true; drawTeam(); setTimeout(() => { delete armed['rm' + id]; }, 4000); return; }
+  delete armed['rm' + id];
+  teamAction(() => Store.removeStaff(id), 'Accès retiré');
+}
+
+/* Cet appareil */
+function renderDevice(){
+  const perm = 'Notification' in window ? Notification.permission : 'unsupported';
+  const sw = (act, on) => '<label class="switch"><input type="checkbox" data-act="' + act + '"' + (on ? ' checked' : '') + '><span></span></label>';
+  $('set-body').innerHTML = setHead('Cet appareil') + '<div class="card">' +
+    '<div class="row-between"><span class="set-txt"><b>Mode nuit</b><small>Fond noir</small></span>' + sw('dev-theme', document.documentElement.dataset.theme === 'dark') + '</div>' +
+    '<div class="row-between"><span class="set-txt"><b>Son des nouvelles demandes</b><small>Quand le hub est ouvert</small></span>' + sw('dev-sound', soundOn()) + '</div>' +
+    '<div class="row-between"><span class="set-txt"><b>Notifications</b><small>' + ({ granted: 'Activées sur cet appareil', denied: 'Refusées : à autoriser dans les réglages de l\'appareil', default: 'Pas encore activées',
+      unsupported: isIOS() && !isStandalone() ? 'Installez d\'abord l\'app sur l\'écran d\'accueil' : 'Non disponibles sur cet appareil' })[perm] + '</small></span>' +
+      (perm === 'default' ? '<button class="btn-line btn-sm" data-act="dev-notif" type="button">Activer</button>' : '') + '</div>' +
+    (Store.live ? '<button class="btn-line btn-danger" data-act="dev-logout" type="button">' + ico('i-out') + 'Se déconnecter de cet appareil</button>' : '') + '</div>';
+}
+
+/* Historique d'un client */
+async function openCustomer(id){
+  const c = C.list.find(x => x.id === id); if(!c) return;
+  SET.cust = c;
+  const num = intlPhone(c.phone);
+  openEditor('<div class="title-block"><span class="eyebrow">' + esc(fmtPhone(c.phone)) + '</span><h2 class="h1" style="font-size:26px">' + esc(c.name) + '</h2></div>' +
+    '<div class="checks"><span class="badge ' + (c.marketing_opt_in ? 'b-optin">Offres acceptées' : 'b-none">Pas d\'offres') + '</span>' +
+    '<span class="badge b-none">' + c.requests + ' réservation' + (c.requests > 1 ? 's' : '') + '</span><span class="badge b-table">' + c.visits + ' confirmée' + (c.visits > 1 ? 's' : '') + '</span></div>' +
+    (c.first_seen ? '<p class="note">Client depuis le ' + esc(fmtDateFr(String(c.first_seen).slice(0, 10))) + '</p>' : '') +
+    '<div class="field"><label for="cust-notes">Notes de l\'équipe</label><textarea class="input" id="cust-notes" placeholder="Allergies, préférences, table favorite, occasion…">' + esc(c.notes || '') + '</textarea></div>' +
+    '<button class="btn-line btn-sm" data-act="cust-notes-save" type="button" style="align-self:flex-start">Enregistrer la note</button>' +
+    '<h3 class="h3">Historique des réservations</h3><div class="hist" id="cust-hist"><p class="note">Chargement…</p></div>' +
+    (num ? '<a class="btn-line" href="' + esc(waLink('Bonjour ' + c.name + ', ', num)) + '" target="_blank" rel="noopener">' + ico('i-chat') + 'Écrire sur WhatsApp</a>' : '') +
+    '<button class="btn-text" data-act="ed-close" type="button">Fermer</button>');
+  let hist = [];
+  try { hist = await Store.customerHistory(c); } catch(e){ $('cust-hist').innerHTML = '<p class="st err">Historique indisponible : vérifiez la connexion.</p>'; return; }
+  if(SET.cust !== c || !$('cust-hist')) return;
+  $('cust-hist').innerHTML = hist.length ? hist.map(r => '<div><span><b>' + esc(cap1(fmtDateFr(r.date))) + '</b> · ' + esc(r.time) + ' · ' + esc(r.guests) + ' pers.' + (r.table ? ' · table ' + esc(tName(r.table)) : '') +
+    (r.notes ? '<br><span class="note">« ' + esc(r.notes) + ' »</span>' : '') + '</span><span class="status ' + (r.status || 'confirmed') + '">' + STATUS[r.status || 'confirmed'].short + '</span></div>').join('') : '<p class="note">Aucune réservation enregistrée.</p>';
+}
+async function saveCustomerNotes(){
+  const c = SET.cust; if(!c) return;
+  const notes = $('cust-notes').value.trim();
+  try { await Store.saveCustomerNotes(c.id, notes || null); c.notes = notes; toast('Note enregistrée'); } catch(e){ toast('Note non enregistrée : ' + errText(e)); }
+}
+
+/* Actions des réglages et des fiches (délégation) */
+function setAction(act, t){
+  const id = t.dataset.id;
+  switch(act){
+    case 'set-home': SET.view = 'home'; SET.zonesDraft = null; renderSettings(); window.scrollTo(0, 0); break;
+    case 'set-open': SET.view = t.dataset.v; renderSettings(); window.scrollTo(0, 0); break;
+    case 'ed-cat': SET.cat = id; renderSettings(); break;
+    case 'cat-new': openCatEditor(null); break;
+    case 'cat-edit': openCatEditor(SET.cat); break;
+    case 'cat-save': saveCat(); break;
+    case 'cat-del': deleteCat(); break;
+    case 'cat-move': moveCat(+t.dataset.dir); break;
+    case 'item-new': openItemEditor(null); break;
+    case 'item-edit': openItemEditor(id); break;
+    case 'item-move': moveItem(id, +t.dataset.dir); break;
+    case 'item-save': saveDraft(); break;
+    case 'item-del': deleteDraft(); break;
+    case 'photo-pick': $('ed-photo').click(); break;
+    case 'photo-del': readDraft(); SET.draft.photo_url = ''; renderItemEditor(); break;
+    case 'fmt-add': readDraft(); SET.draft.prices.push(['', null]); renderItemEditor(); break;
+    case 'fmt-del': readDraft(); SET.draft.prices.splice(+t.dataset.k, 1); if(!SET.draft.prices.length) SET.draft.prices = [['', null]]; renderItemEditor(); break;
+    case 'ed-close': closeEditor(); break;
+    case 'save-info': saveInfo(); break;
+    case 'save-services': saveServices(); break;
+    case 'tb-add': readTables(); SET.zonesDraft[+t.dataset.z].tables.push({ id: 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: '', cap: 2 }); renderTablesEditor(); break;
+    case 'tb-del': readTables(); SET.zonesDraft[+t.dataset.z].tables.splice(+t.dataset.t, 1); renderTablesEditor(); break;
+    case 'tb-cancel': SET.zonesDraft = null; SET.view = 'home'; renderSettings(); break;
+    case 'save-tables': saveTables(); break;
+    case 'team-add': addMember(); break;
+    case 'team-rm': removeMember(id); break;
+    case 'dev-notif': enableAlerts().then(renderDevice); break;
+    case 'dev-logout': logout(); break;
+    case 'cust-notes-save': saveCustomerNotes(); break;
+  }
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]');
+  if(!t || t.tagName === 'INPUT' || t.tagName === 'SELECT' || !(t.closest('#set-body') || t.closest('#ed-body'))) return;
+  setAction(t.dataset.act, t);
+});
+document.addEventListener('change', e => {
+  const t = e.target, act = t.dataset && t.dataset.act;
+  if(t.id === 'ed-photo'){ if(t.files && t.files[0]) pickPhoto(t.files[0]); return; }
+  if(t.id === 'ed-multi'){ toggleMulti(t.checked); return; }
+  if(act === 'item-avail'){ toggleAvail(t.dataset.id, t.checked); return; }
+  if(act === 'dev-theme'){ toggleTheme(); return; }
+  if(act === 'dev-sound'){ try { localStorage.setItem('tdb_sound', t.checked ? 'on' : 'off'); } catch(err){} if(t.checked) chime(); return; }
+  if(t.dataset && t.dataset.role) teamAction(() => Store.setStaffRole(t.dataset.role, t.value), 'Rôle modifié');
+});
+$('ed-overlay').onclick = e => { if(e.target === $('ed-overlay')) closeEditor(); };
+$('btn-settings').onclick = () => { SET.view = 'home'; switchTab('settings'); };
+
 /* ── HUB : AJOUT PAR L'ÉQUIPE ───────────────────────────── */
 function buildAddTable(){
   const date = $('a-date').value || V.date, time = normTime($('a-time').value) || SVC[V.svc].time;
@@ -1911,11 +2588,11 @@ async function quickFill(){
   } catch(e){ st.textContent = aiError(e); st.className = 'st err'; }
   $('btn-qf').disabled = false;
 }
-function toJpegBlob(file){
+function toJpegBlob(file, maxSide){
   return new Promise((res, rej) => {
     const url = URL.createObjectURL(file), img = new Image();
     img.onload = () => {
-      const k = Math.min(1, 1800 / Math.max(img.naturalWidth, img.naturalHeight));
+      const k = Math.min(1, (maxSide || 1800) / Math.max(img.naturalWidth, img.naturalHeight));
       const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
       c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
       c.toBlob(b => { URL.revokeObjectURL(url); b ? res({ blob: b, url: URL.createObjectURL(b) }) : rej(new Error('blob')); }, 'image/jpeg', 0.85);
@@ -2064,7 +2741,7 @@ document.addEventListener('click', e => {
   else if(d.setStatus) setModalStatus(d.setStatus);
 });
 document.addEventListener('change', e => { if(e.target.id === 'f-date-other' && e.target.value){ B.date = e.target.value; renderBook(); } });
-document.addEventListener('keydown', e => { if(e.key === 'Escape' && !$('overlay').hidden) closeModal(); });
+document.addEventListener('keydown', e => { if(e.key !== 'Escape') return; if(!$('ed-overlay').hidden) closeEditor(); else if(!$('overlay').hidden) closeModal(); });
 addEventListener('hashchange', route);
 document.addEventListener('visibilitychange', () => { if(!document.hidden && !$('v-track').hidden) refreshTrack(); });
 setInterval(() => { if(hubReady && !document.hidden) refreshHub(); }, 60000);   // filet de sécurité + âges « il y a x min »
@@ -2120,8 +2797,13 @@ $('overlay').onclick = e => { if(e.target === $('overlay')) closeModal(); };
 /* ── INIT ───────────────────────────────────────────────── */
 (async function(){
   B.date = today(); V.date = today(); V.svc = autoSvc();
+  rebuildTables();
+  DEFAULT_CFG = buildDefaultCfg();
+  CFG = Config.cached() || DEFAULT_CFG;          // dernière configuration connue : affichage immédiat, même hors connexion
+  Config.apply(CFG);
   try { await Store.init(); } catch(e){ toast('Connexion au serveur impossible : réessayez plus tard'); }
   route();
+  loadConfig();
 })();
 </script>
 

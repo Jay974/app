@@ -5,7 +5,7 @@ Une seule page (`index.html`) pour deux publics :
 | Adresse | Pour qui | Contenu |
 |---|---|---|
 | `…/index.html` | Clients | Accueil, carte digitale, réservation, « Mes résas », suivi du statut |
-| `…/equipe` | Équipe | Hub : demandes à confirmer, plan de salle, service, ajout manuel |
+| `…/equipe` | Équipe | Hub : demandes à confirmer, plan de salle, service, fichier clients, ajout manuel |
 
 ## Parcours d'une réservation
 
@@ -75,3 +75,21 @@ Sans ces deux valeurs, la page tourne en **mode démo** : tout reste dans le nav
 
 - Le scanner du cahier et le remplissage par dictée utilisent l'IA de claude.ai : ils n'apparaissent que dans l'aperçu claude.ai, pas sur la version hébergée.
 - Dans l'aperçu claude.ai, la page reste en mode démo (claude.ai bloque les connexions vers Supabase).
+
+## Fichier clients et consentement
+
+- Chaque réservation avec un téléphone crée ou met à jour une fiche dans `customers`, identifiée par le numéro au format international (`norm_phone`). Les réservations existantes sont reprises au premier lancement de `supabase.sql`.
+- Compteurs : `requests` (demandes enregistrées) et `visits` (réservations confirmées, mis à jour à chaque changement de statut).
+- Le client coche lui-même « J'accepte de recevoir les offres » (décochée par défaut) : `marketing_opt_in` et la date `opt_in_at` sont conservés comme preuve. L'équipe peut désinscrire un client à sa demande (`opt_out_at`).
+- Onglet **Clients** du hub : recherche, filtre, export CSV limité aux clients qui ont accepté les offres.
+
+## Vers l'app du restaurant (feuille de route)
+
+Les fondations sont posées : fiches clients reliées aux réservations, consentement, notifications push, PWA, champ `customers.auth_user_id` réservé aux futurs comptes.
+
+1. **Comptes clients** : connexion par code SMS ou lien e-mail (Supabase Auth), rattachée à la fiche par le numéro de téléphone ; « Mes résas » lit alors l'historique du compte au lieu de l'appareil.
+2. **Carte de fidélité digitale** : table `loyalty_events` (un tampon par réservation honorée, validé par l'équipe dans le hub ou par QR code en salle), paliers et récompenses configurables, carte affichée dans l'app client.
+3. **Offres temporaires** : table `offers` (titre, période, cible), envoi en notification push aux clients abonnés **et** ayant accepté les offres, en réutilisant `api/notify`.
+4. **Site vitrine** : pages infos, horaires, accès, photos, avis, événements, au-dessus de la réservation et de la carte.
+5. **Découpage du code** : passer du fichier unique à un projet structuré (Vite ou Next.js) quand ces modules arriveront, sans changer la base Supabase.
+
