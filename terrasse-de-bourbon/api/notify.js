@@ -3,7 +3,7 @@
    Variables d'environnement Vercel : VAPID_PRIVATE_KEY et NOTIFY_SECRET. */
 const webpush = require('web-push');
 
-const VAPID_PUBLIC_KEY = 'BAgWPN-sk_-M_UJWcu0UHxNa3M1wKBFuxFJ-KYa2YUiH7O6rV-ovfVj1JOs72af8nIoUzdSIfBq5m25eBVoht34';
+const VAPID_PUBLIC_KEY = 'BLq0pgWzAk1wm4vKIawA2RADZbURpd80QAoR-PRWAJADxUvf1bNLShXyLgKajSEibXOCd8ETxGygTyHW065Ro1w';
 const SITE = 'https://app-terrasse-de-bourbon.vercel.app';
 const SUPABASE_URL = 'https://cffggtvlslfepiihlmpm.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-zT9LvvD8Fts0dvS4A-uRA_53S7lClf';
