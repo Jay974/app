@@ -373,7 +373,10 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .tile .t-sub { font-size: 11px; color: var(--faint); line-height: 1.25; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tile.busy { border-color: var(--gold-line); background: var(--gold-soft); }
 .tile.busy .t-sub { color: var(--gold); font-weight: 600; }
-.tile.manual { opacity: .55; }
+.tile.manual { border-color: var(--busy); background: var(--busy-soft); }   /* marquée occupée à la main : couleur à part */
+.tile.manual .seat { fill: var(--busy); }
+.tile.manual .seat-back { stroke: var(--busy); }
+.tile.manual .t-sub { color: var(--busy); font-weight: 600; }
 .tile.pending { border-style: dashed; }
 .tbl { fill: var(--table); }
 .seat { fill: var(--seat); }
@@ -680,7 +683,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
         <button class="pill" data-pz="ter">Terrasse</button>
         <button class="pill" data-pz="rof">Rooftop</button>
       </div>
-      <div class="legend"><span><i style="background:var(--gold)"></i>Réservée</span><span><i style="background:var(--seat)"></i>Libre</span><span><i style="background:var(--seat);opacity:.5"></i>Occupée sans résa</span><span>Toucher une table libre la marque occupée.</span></div>
+      <div class="legend"><span><i style="background:var(--gold)"></i>Réservée</span><span><i style="background:var(--seat)"></i>Libre</span><span><i style="background:var(--busy)"></i>Occupée sans résa</span><span>Toucher une table libre la marque occupée.</span></div>
       <div id="plan-zones" class="stack" style="gap:26px"></div>
     </section>
 
