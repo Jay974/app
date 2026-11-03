@@ -775,6 +775,8 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 
     <section id="panel-inbox" class="stack" style="gap:14px">
       <div id="inbox" class="list" style="gap:14px"></div>
+      <span class="section-lbl" id="ann-lbl" hidden>Annulées par les clients</span>
+      <div id="ann" class="list" style="gap:14px"></div>
       <span class="section-lbl" id="done-lbl" hidden>Traitées récemment</span>
       <div id="done" class="list" style="gap:14px"></div>
     </section>
@@ -1237,6 +1239,13 @@ function zoneLabel(z){ return ({int:'Intérieur', ter:'Terrasse', rof:'Rooftop',
 function tName(id){ return TBY[id] ? TBY[id].name : (id || ''); }
 function capTxt(t){ return t.cap + (t.maxCap ? '–' + t.maxCap : '') + ' pl.'; }
 const isActive = r => r.status === 'pending' || r.status === 'confirmed' || !r.status;
+/* Heure de la réservation (heure de l'appareil, La Réunion). */
+function resaTs(r){ const [h, m] = String(r.time || '').split('h').map(Number); const d = dt(r.date); d.setHours(h || 0, m || 0, 0, 0); return d.getTime(); }
+/* La table se libère d'elle-même 1 h après l'heure de la réservation (la réservation reste dans l'historique). */
+const TABLE_HOLD_MIN = 60;
+const tableReleased = r => Date.now() >= resaTs(r) + TABLE_HOLD_MIN * 60000;
+/* Annulation par le client : tardive si moins de 2 h avant l'heure prévue. */
+const cancelLate = r => r.cancelledAt && resaTs(r) - r.cancelledAt < 2 * 3600000;
 /* Numéro saisi -> format international pour wa.me (La Réunion par défaut). */
 function intlPhone(tel){
   const d = String(tel || '').replace(/[^\d+]/g, '');
@@ -1268,7 +1277,7 @@ const Store = {
     this.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     this.live = true;
   },
-  fromRow(x){ return { id: x.id, token: x.access_token, name: x.name, tel: x.tel || '', guests: x.guests, date: x.date, time: x.time, zone: x.zone || '', notes: x.notes || '', table: x.table_id || '', email: x.email || '', status: x.status, src: x.src, ts: Date.parse(x.created_at) || Date.now(), upd: Date.parse(x.updated_at) || 0 }; },
+  fromRow(x){ return { id: x.id, token: x.access_token, name: x.name, tel: x.tel || '', guests: x.guests, date: x.date, time: x.time, zone: x.zone || '', notes: x.notes || '', table: x.table_id || '', email: x.email || '', status: x.status, src: x.src, ts: Date.parse(x.created_at) || Date.now(), upd: Date.parse(x.updated_at) || 0, cancelledBy: x.cancelled_by || '', cancelledAt: Date.parse(x.cancelled_at) || 0 }; },
   toRow(r){ return { id: r.id, name: r.name, tel: r.tel || null, guests: r.guests, date: r.date, time: r.time, zone: r.zone || '', notes: r.notes || null, table_id: r.table || '', status: r.status, src: r.src || 'staff' }; },
   local(){ try { return JSON.parse(localStorage.getItem('tdb_resas') || '[]'); } catch(e){ return []; } },
   saveLocal(list){ try { localStorage.setItem('tdb_resas', JSON.stringify(list)); } catch(e){} },
@@ -1292,7 +1301,10 @@ const Store = {
   async cancel(token){
     if(this.live){ const { error } = await this.sb.rpc('cancel_reservation', { p_token: token }); if(error) throw error; return; }
     const list = this.local(), r = list.find(x => x.token === token);
-    if(r && isActive(r)){ r.status = 'cancelled'; r.upd = Date.now(); this.saveLocal(list); }
+    if(r && isActive(r)){
+      if(Date.now() >= resaTs(r)) throw new Error('trop_tard');
+      r.status = 'cancelled'; r.cancelledBy = 'client'; r.cancelledAt = r.upd = Date.now(); this.saveLocal(list);
+    }
   },
 
   /* Équipe */
@@ -1324,17 +1336,19 @@ const Store = {
       onState('demo');
       addEventListener('storage', e => {
         if(e.key !== 'tdb_resas' && e.key !== 'tdb_occ') return;
-        const before = new Set(S.resas.map(r => r.id));
-        this.load().then(() => onChange(S.resas.filter(r => !before.has(r.id) && r.status === 'pending')));
+        const before = {}; S.resas.forEach(r => { before[r.id] = r.status; });
+        this.load().then(() => onChange(S.resas.filter(r => !before[r.id] && r.status === 'pending'),
+          S.resas.filter(r => r.status === 'cancelled' && r.cancelledBy === 'client' && (before[r.id] === 'pending' || before[r.id] === 'confirmed'))));
       });
       return;
     }
     this.chan = this.sb.channel('hub')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, p => {
         if(p.eventType === 'DELETE'){ S.resas = S.resas.filter(r => r.id !== p.old.id); onChange([]); return; }
-        const r = this.fromRow(p.new), i = S.resas.findIndex(x => x.id === r.id);
+        const r = this.fromRow(p.new), i = S.resas.findIndex(x => x.id === r.id), was = i >= 0 ? S.resas[i].status : '';
         if(i >= 0) S.resas[i] = r; else S.resas.push(r);
-        onChange(p.eventType === 'INSERT' && r.status === 'pending' ? [r] : []);
+        const gone = r.status === 'cancelled' && r.cancelledBy === 'client' && (was === 'pending' || was === 'confirmed');
+        onChange(p.eventType === 'INSERT' && r.status === 'pending' ? [r] : [], gone ? [r] : []);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'occupancy' }, p => {
         if(p.eventType === 'DELETE') delete S.occ[p.old.key]; else S.occ[p.new.key] = p.new.tables || {};
@@ -1347,6 +1361,9 @@ const Store = {
   },
   async saveResa(r){
     r.upd = Date.now();
+    const prev = S.resas.find(x => x.id === r.id);
+    if(r.status !== 'cancelled'){ r.cancelledBy = ''; r.cancelledAt = 0; }
+    else if(!prev || prev.status !== 'cancelled'){ r.cancelledBy = 'staff'; r.cancelledAt = Date.now(); }
     const i = S.resas.findIndex(x => x.id === r.id);
     if(i >= 0) S.resas[i] = r; else S.resas.push(r);
     if(!this.live){ this.saveLocal(S.resas); return; }
@@ -1751,11 +1768,13 @@ async function refreshTrack(){
     (zoneLabel(r.zone) ? row('Préférence', zoneLabel(r.zone)) : '') + (r.notes ? row('Notes', r.notes) : '');
   $('t-note').innerHTML = {
     pending: 'Cette page se met à jour toute seule. <strong>Gardez le lien</strong> ou retrouvez-la dans « Mes résas ».',
-    confirmed: 'Merci ! En cas d\'empêchement, annulez ici pour libérer la table.',
+    confirmed: 'Merci ! En cas d\'empêchement, annulez ici <strong>jusqu\'à l\'heure de la réservation</strong> pour libérer la table.',
     declined: 'Le restaurant est complet sur ce créneau. Essayez une autre heure, ou appelez-nous : nous trouverons peut-être une solution.',
     cancelled: 'Cette réservation est annulée. Vous pouvez en faire une nouvelle à tout moment.'
   }[st];
-  $('btn-cancel').hidden = !(st === 'pending' || st === 'confirmed');
+  const late = Date.now() >= resaTs(r);
+  $('btn-cancel').hidden = !(st === 'pending' || st === 'confirmed') || late;
+  if(late && st === 'confirmed') $('t-note').innerHTML = 'L\'heure de la réservation est passée. Pour toute question, appelez-nous.';
   if(r.has_email && st === 'pending') $('t-note').innerHTML += ' Vous recevrez aussi la réponse <strong>par e-mail</strong>.';
   const canPush = Store.live && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && Notification.permission !== 'denied';
   $('btn-client-push').hidden = !(canPush && st === 'pending' && !r.has_push && !pushedTokens().includes(trackToken));
@@ -1778,7 +1797,8 @@ async function clientPushAttach(token, silent){
 }
 async function cancelTrack(){
   if(!cancelArmed){ cancelArmed = true; $('btn-cancel').textContent = 'Confirmer l\'annulation'; $('btn-cancel').classList.add('armed'); return; }
-  try { await Store.cancel(trackToken); toast('Réservation annulée'); } catch(e){ toast('Annulation impossible : réessayez ou appelez-nous'); }
+  try { await Store.cancel(trackToken); toast('Réservation annulée'); }
+  catch(e){ toast(/trop_tard/.test(e && e.message || '') ? 'L\'heure de la réservation est passée : appelez-nous' : 'Annulation impossible : réessayez ou appelez-nous'); }
   cancelArmed = false; $('btn-cancel').classList.remove('armed'); $('btn-cancel').textContent = 'Annuler ma réservation';
   refreshTrack();
 }
@@ -1822,9 +1842,15 @@ async function logout(){
 }
 function setMode(m){ $('hub-mode').className = 'mode ' + m; $('hub-mode').textContent = { live: 'En direct', off: 'Hors ligne', demo: 'Mode démo', out: 'Non connecté', wait: 'Connexion…' }[m]; }
 /* Nouvelle demande : toast, carillon, notification système si autorisée. */
-function onData(fresh){
+function onData(fresh, gone){
   renderAll();
-  if(!fresh.length) return;
+  (gone || []).forEach(r => {
+    const txt = (cancelLate(r) ? 'Annulation tardive : ' : 'Annulation : ') + r.name + ', ' + r.guests + ' pers. ' + fmtDateFr(r.date) + ' ' + r.time +
+      (r.table ? ' · table ' + tName(r.table) + ' libérée' : '');
+    toast(txt); chime();
+    try { if('Notification' in window && Notification.permission === 'granted' && document.hidden) new Notification(RESTO, { body: txt }); } catch(e){}
+  });
+  if(!fresh || !fresh.length) return;
   const r = fresh[0];
   const txt = 'Nouvelle demande : ' + r.name + ', ' + r.guests + ' pers. ' + fmtDateFr(r.date) + ' ' + r.time;
   toast(txt); chime();
@@ -1885,7 +1911,7 @@ function occupancy(date, svc){
   date = date || V.date; svc = svc || V.svc;
   const m = {}, man = S.occ[date + '_' + svc] || {};
   Object.keys(man).forEach(id => { if(man[id]) m[id] = { manual: true }; });
-  S.resas.filter(r => r.date === date && svcOf(r.time) === svc && isActive(r) && r.table).forEach(r => { m[r.table] = { resa: r }; });
+  S.resas.filter(r => r.date === date && svcOf(r.time) === svc && isActive(r) && r.table && !tableReleased(r)).forEach(r => { m[r.table] = { resa: r }; });
   return m;
 }
 function resasOfView(){
@@ -1955,7 +1981,14 @@ function renderInbox(pend){
       '<div class="req-actions"><button class="btn-line btn-danger' + (isArmed ? ' armed' : '') + '" data-decline="' + r.id + '">' + (isArmed ? 'Confirmer le refus' : 'Refuser') + '</button>' +
       '<button class="btn-primary" data-confirm="' + r.id + '">' + ico('i-check') + 'Confirmer</button></div></article>';
   }).join('') : '<div class="empty">' + EMPTY_SVG + 'Tout est traité. Les nouvelles demandes du site arrivent ici automatiquement.</div>';
-  const done = S.resas.filter(r => r.src === 'web' && r.status !== 'pending' && Date.now() - (r.upd || 0) < 864e5).sort((a, b) => (b.upd || 0) - (a.upd || 0)).slice(0, 8);
+  const ann = S.resas.filter(r => r.status === 'cancelled' && r.cancelledBy === 'client' && r.date >= today() && Date.now() - r.cancelledAt < 2 * 864e5)
+    .sort((a, b) => b.cancelledAt - a.cancelledAt).slice(0, 10);
+  $('ann-lbl').hidden = !ann.length;
+  $('ann').innerHTML = ann.map(r =>
+    '<article class="req done"><button class="resa" data-rid="' + esc(r.id) + '" style="border:0;padding:0;background:none"><span class="resa-n">' + esc(r.guests) + '</span><span class="resa-main"><span class="resa-name">' + esc(r.name) + '</span>' +
+    '<span class="resa-meta">' + esc(cap1(fmtDateFr(r.date))) + ' · ' + esc(r.time) + (r.table ? ' · table ' + esc(tName(r.table)) + ' libérée' : '') + ' · annulée ' + ago(r.cancelledAt) + '</span></span>' +
+    '<span class="badges">' + (cancelLate(r) ? '<span class="badge b-no">Tardive</span>' : '<span class="badge b-none">Par le client</span>') + '</span></button></article>').join('');
+  const done = S.resas.filter(r => r.src === 'web' && r.status !== 'pending' && !(r.status === 'cancelled' && r.cancelledBy === 'client') && Date.now() - (r.upd || 0) < 864e5).sort((a, b) => (b.upd || 0) - (a.upd || 0)).slice(0, 8);
   $('done-lbl').hidden = !done.length;
   $('done').innerHTML = done.map(r => {
     return '<article class="req done"><button class="resa" data-rid="' + esc(r.id) + '" style="border:0;padding:0;background:none"><span class="resa-n">' + esc(r.guests) + '</span><span class="resa-main"><span class="resa-name">' + esc(r.name) + '</span>' +
@@ -1997,8 +2030,8 @@ function renderList(){
   el.innerHTML = resas.map(r =>
     '<button class="resa' + (isActive(r) ? '' : ' dim') + '" data-rid="' + esc(r.id) + '"><span class="resa-n">' + esc(r.guests) + '</span>' +
     '<span class="resa-main"><span class="resa-name">' + esc(r.name) + '</span><span class="resa-meta">' + esc(r.time) + (zoneLabel(r.zone) ? ' · ' + zoneLabel(r.zone) : '') + (r.tel ? ' · ' + esc(r.tel) : '') + (r.notes ? ' · ' + esc(r.notes) : '') + '</span></span>' +
-    '<span class="badges">' + (!isActive(r) ? '<span class="badge b-no">' + STATUS[r.status].short + '</span>' :
-      (r.table ? '<span class="badge b-table">Table ' + esc(tName(r.table)) + '</span>' : '<span class="badge b-none">Sans table</span>') +
+    '<span class="badges">' + (!isActive(r) ? '<span class="badge b-no">' + (r.cancelledBy === 'client' ? (cancelLate(r) ? 'Annulation tardive' : 'Annulée par le client') : STATUS[r.status].short) + '</span>' :
+      (r.table ? (tableReleased(r) ? '<span class="badge b-none">Table ' + esc(tName(r.table)) + ' libérée</span>' : '<span class="badge b-table">Table ' + esc(tName(r.table)) + '</span>') : '<span class="badge b-none">Sans table</span>') +
       (r.status === 'pending' ? '<span class="badge b-pending">À confirmer</span>' : '')) + '</span></button>').join('');
 }
 async function toggleManual(tid){
@@ -2739,7 +2772,9 @@ function openModal(id){
   $('m-status').className = 'status ' + st; $('m-status').textContent = STATUS[st].label;
   const it = (l, v) => '<dt>' + l + '</dt><dd>' + esc(v) + '</dd>';
   $('m-recap').innerHTML = it('Service', SVC[svcOf(r.time)].label) + it('Zone', zoneLabel(r.zone) || '—') + it('Téléphone', r.tel || '—') + (r.email ? it('E-mail', r.email) : '') +
-    (r.notes ? it('Notes', r.notes) : '') + it('Origine', ({web:'Site · ' + ago(r.ts), staff:'Équipe', scan:'Scanner'})[r.src] || '—');
+    (r.notes ? it('Notes', r.notes) : '') + it('Origine', ({web:'Site · ' + ago(r.ts), staff:'Équipe', scan:'Scanner'})[r.src] || '—') +
+    (st === 'cancelled' && r.cancelledAt ? it('Annulation', (r.cancelledBy === 'client' ? 'Par le client' : 'Par l\'équipe') + ' · ' + ago(r.cancelledAt) + (r.cancelledBy === 'client' && cancelLate(r) ? ' · tardive' : '')) : '') +
+    (isActive(r) && r.table && tableReleased(r) ? it('Table', tName(r.table) + ' libérée automatiquement (1 h après l\'heure)') : '');
   $('m-table').innerHTML = tableOptions(occupancy(r.date, svcOf(r.time)), '', r.table, '<option value="">Aucune</option>');
   $('m-table').value = r.table || '';
   const act = {
@@ -2800,9 +2835,10 @@ setInterval(() => { if(hubReady && !document.hidden) refreshHub(); }, 60000);   
 /* Retour sur l'app entre deux commandes : on recharge, et on signale ce qui est arrivé pendant l'absence. */
 async function refreshHub(){
   if(!hubReady || $('view-hub').hidden) return;
-  const before = new Set(S.resas.map(r => r.id));
+  const before = {}; S.resas.forEach(r => { before[r.id] = r.status; });
   try { await Store.load(); } catch(e){ return; }
-  onData(S.resas.filter(r => !before.has(r.id) && r.status === 'pending'));
+  onData(S.resas.filter(r => !before[r.id] && r.status === 'pending'),
+    S.resas.filter(r => r.status === 'cancelled' && r.cancelledBy === 'client' && (before[r.id] === 'pending' || before[r.id] === 'confirmed')));
 }
 document.addEventListener('visibilitychange', () => { if(!document.hidden) refreshHub(); });
 addEventListener('pageshow', e => { if(e.persisted) refreshHub(); });

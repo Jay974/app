@@ -84,6 +84,42 @@ drop trigger if exists reservations_notify on public.reservations;
 create trigger reservations_notify after insert on public.reservations
   for each row execute function private.notify_new_request();
 
+-- ── Déclencheur : un client annule en ligne, l'équipe est prévenue ──
+create or replace function private.notify_cancel() returns trigger
+language plpgsql security definer set search_path = public, private, extensions as $$
+declare v_url text; v_secret text; v_subs jsonb; v_pending int; v_table text;
+begin
+  if new.status <> 'cancelled' or old.status not in ('pending', 'confirmed') or new.cancelled_by is distinct from 'client' then return new; end if;
+  select value into v_url from private.config where key = 'notify_url';
+  select value into v_secret from private.config where key = 'notify_secret';
+  select coalesce(jsonb_agg(subscription), '[]'::jsonb) into v_subs from public.push_subscriptions;
+  if v_url is null or jsonb_array_length(v_subs) = 0 then return new; end if;
+  select count(*) into v_pending from public.reservations where status = 'pending';
+  if new.table_id <> '' then   -- nom affiché de la table (plan de salle des réglages)
+    select coalesce(min(t->>'name'), new.table_id) into v_table
+    from public.settings s, jsonb_array_elements(s.data->'zones') z, jsonb_array_elements(z->'tables') t
+    where t->>'id' = new.table_id;
+  end if;
+  perform net.http_post(
+    url := v_url,
+    body := jsonb_build_object(
+      'kind', 'cancelled',
+      'reservation', jsonb_build_object('id', new.id, 'name', new.name, 'guests', new.guests, 'date', new.date, 'time', new.time,
+                                        'table', v_table, 'was', old.status,
+                                        'late', public.resa_at(new.date, new.time) - now() < interval '2 hours'),
+      'pending', v_pending,
+      'subscriptions', v_subs),
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-notify-secret', v_secret),
+    timeout_milliseconds := 8000);
+  return new;
+exception when others then
+  return new;
+end $$;
+
+drop trigger if exists reservations_notify_cancel on public.reservations;
+create trigger reservations_notify_cancel after update of status on public.reservations
+  for each row execute function private.notify_cancel();
+
 -- ── Prévenir le client (e-mail s'il l'a laissé, notification s'il l'a activée) ──
 -- Envoi par /api/notify-client : « demande reçue » à l'envoi, puis « confirmée » ou « non disponible ».
 insert into private.config (key, value) values
