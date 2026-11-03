@@ -24,6 +24,11 @@ jobs:
             echo "::warning::Secret SUPABASE_DB_URL absent : scripts non appliqués."
             exit 0
           fi
+          # Test de connexion silencieux : un message d'erreur de psql pourrait recopier une partie de l'adresse (mot de passe compris).
+          if ! psql "$DB_URL" -c 'select 1' >/dev/null 2>&1; then
+            echo "::error::Connexion à Supabase impossible. Vérifiez SUPABASE_DB_URL : adresse « Session pooler » (…pooler.supabase.com:5432), mot de passe sans crochets, uniquement lettres et chiffres."
+            exit 1
+          fi
           cd terrasse-de-bourbon
           for f in supabase.sql supabase-push.sql; do
             echo "→ $f"
