@@ -1,0 +1,15 @@
+{
+  "name": "La Terrasse de Bourbon — Fidélité",
+  "short_name": "Terrasse Bourbon",
+  "description": "Carte de fidélité et cartes cadeaux — La Terrasse de Bourbon, Saint-Denis",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FAFAF8",
+  "theme_color": "#1A2F1A",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
