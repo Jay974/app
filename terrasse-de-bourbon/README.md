@@ -59,6 +59,17 @@ Fonctionnement : une nouvelle demande du site déclenche `private.notify_new_req
 5. **Project Settings > API** : copier l'URL du projet et la clé `anon public` dans `SUPABASE_URL` et `SUPABASE_ANON_KEY`, en haut du script de `index.html`.
 6. Héberger sur Vercel (voir ci-dessous). Il n'y a ni build ni serveur à gérer.
 
+## Scripts SQL appliqués automatiquement
+
+À chaque fusion sur `main` qui modifie `supabase.sql` ou `supabase-push.sql`, GitHub les relance sur Supabase (`.github/workflows/supabase-sql.yml`). Les scripts sont relançables sans perte de données ; chacun passe en entier ou pas du tout.
+
+Mise en place, une seule fois :
+1. Supabase > bouton **Connect** (en haut du projet) > **Session pooler** : copier la chaîne `postgresql://postgres.xxx:[YOUR-PASSWORD]@aws-…pooler.supabase.com:5432/postgres` et y mettre le mot de passe de la base (Project Settings > Database > *Reset database password* si vous ne l'avez plus).
+2. GitHub > dépôt `Jay974/app` > **Settings > Secrets and variables > Actions > New repository secret** : nom `SUPABASE_DB_URL`, valeur = la chaîne complète.
+3. Pour lancer à la main : onglet **Actions > Supabase SQL > Run workflow**.
+
+Ne jamais coller cette chaîne ailleurs que dans ce secret : elle donne un accès complet à la base.
+
 ## Déploiement sur Vercel
 
 1. vercel.com > **Add New… > Project** > importer le dépôt GitHub `Jay974/app`.
