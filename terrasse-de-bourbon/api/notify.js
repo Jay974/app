@@ -1,5 +1,5 @@
 /* Envoi des notifications push à l'équipe.
-   Appelée par Supabase (déclencheur sur les nouvelles demandes, voir supabase-push.sql), jamais par le navigateur.
+   Appelée par Supabase (déclencheurs : nouvelle demande, annulation par le client ; voir supabase-push.sql), jamais par le navigateur.
    Variables d'environnement Vercel : VAPID_PRIVATE_KEY et NOTIFY_SECRET. */
 const webpush = require('web-push');
 const { VAPID_PUBLIC_KEY, SITE, SUPABASE_URL, SUPABASE_KEY, dateFr, authorized, body: readBody } = require('./_shared');
@@ -13,10 +13,12 @@ module.exports = async (req, res) => {
 
   const body = readBody(req);
   const r = body.reservation || {}, subs = Array.isArray(body.subscriptions) ? body.subscriptions : [];
+  const cancel = body.kind === 'cancelled';
   const payload = JSON.stringify({
-    title: 'Nouvelle demande de réservation',
-    body: r.name + ' · ' + r.guests + ' pers. · ' + dateFr(r.date) + ' à ' + r.time,
-    tag: 'resa-' + r.id,
+    title: cancel ? (r.late ? 'Annulation tardive' : 'Réservation annulée par le client') : 'Nouvelle demande de réservation',
+    body: r.name + ' · ' + r.guests + ' pers. · ' + dateFr(r.date) + ' à ' + r.time +
+          (cancel && r.table ? ' · table ' + r.table + ' libérée' : cancel && r.was === 'pending' ? ' · demande retirée' : ''),
+    tag: (cancel ? 'annul-' : 'resa-') + r.id,
     url: '/equipe',
     badge: body.pending || 0
   });

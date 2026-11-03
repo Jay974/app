@@ -34,6 +34,8 @@ create table if not exists public.reservations (
 alter table public.reservations add column if not exists marketing_opt_in boolean not null default false;
 alter table public.reservations add column if not exists email text;          -- facultatif : confirmation par e-mail
 alter table public.reservations add column if not exists client_push jsonb;   -- notification sur l'appareil du client, s'il l'a activée
+alter table public.reservations add column if not exists cancelled_by text check (cancelled_by in ('client', 'staff'));   -- qui a annulé
+alter table public.reservations add column if not exists cancelled_at timestamptz;
 create index if not exists reservations_date_idx   on public.reservations (date);
 create index if not exists reservations_status_idx on public.reservations (status);
 
@@ -138,15 +140,40 @@ begin
 end $$;
 grant execute on function public.save_client_push(uuid, jsonb) to anon, authenticated;
 
+-- Heure de la réservation (heure de La Réunion).
+create or replace function public.resa_at(p_date date, p_time text) returns timestamptz
+language sql stable set search_path = public as $$
+  select (p_date + make_time(split_part(p_time, 'h', 1)::int, coalesce(nullif(split_part(p_time, 'h', 2), ''), '0')::int, 0))
+         at time zone 'Indian/Reunion'
+$$;
+
+-- Le client peut annuler en ligne jusqu'à l'heure de sa réservation ; ensuite, il appelle le restaurant.
 create or replace function public.cancel_reservation(p_token uuid) returns json
 language plpgsql security definer set search_path = public as $$
-declare v_out json;
+declare v_r reservations;
 begin
-  update reservations set status = 'cancelled'
-  where access_token = p_token and status in ('pending', 'confirmed')
-  returning json_build_object('status', status) into v_out;
-  return v_out;
+  select * into v_r from reservations where access_token = p_token;
+  if not found or v_r.status not in ('pending', 'confirmed') then return null; end if;
+  if now() >= public.resa_at(v_r.date, v_r.time) then raise exception 'trop_tard'; end if;
+  update reservations set status = 'cancelled', cancelled_by = 'client' where id = v_r.id;
+  return json_build_object('status', 'cancelled');
 end $$;
+
+-- Date et auteur de l'annulation ; effacés si la réservation est réactivée.
+create or replace function public.track_cancel() returns trigger
+language plpgsql as $$
+begin
+  if new.status = 'cancelled' and old.status is distinct from 'cancelled' then
+    new.cancelled_at := now();
+    new.cancelled_by := coalesce(new.cancelled_by, 'staff');
+  elsif new.status <> 'cancelled' then
+    new.cancelled_at := null; new.cancelled_by := null;
+  end if;
+  return new;
+end $$;
+drop trigger if exists reservations_track_cancel on public.reservations;
+create trigger reservations_track_cancel before update on public.reservations
+  for each row execute function public.track_cancel();
 
 grant execute on function public.submit_reservation(text, text, int, date, text, text, text, boolean, text) to anon, authenticated;
 grant execute on function public.reservation_status(uuid) to anon, authenticated;

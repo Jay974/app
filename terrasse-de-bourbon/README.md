@@ -16,6 +16,9 @@ Une seule page (`index.html`) pour deux publics :
 
 Statuts : `pending` (en attente) → `confirmed` / `declined`, et `cancelled` si le client ou l'équipe annule.
 
+- **Annulation par le client** : possible en ligne jusqu'à l'heure de la réservation (ensuite, il appelle). L'équipe est prévenue aussitôt (notification push, son, et section « Annulées par les clients » dans Demandes). Une annulation moins de 2 h avant est marquée **tardive**.
+- **Tables libérées automatiquement** : 1 h après l'heure d'une réservation, sa table redevient libre sur le plan (la réservation reste dans la liste du service avec « Table … libérée »). Les tables marquées « Occupée » à la main restent à libérer à la main.
+
 ## Installer l'app (PWA)
 
 - **Équipe** : ouvrir `…/equipe`, puis
@@ -102,3 +105,14 @@ Les fondations sont posées : fiches clients reliées aux réservations, consent
 4. **Site vitrine** : pages infos, horaires, accès, photos, avis, événements, au-dessus de la réservation et de la carte.
 5. **Découpage du code** : passer du fichier unique à un projet structuré (Vite ou Next.js) quand ces modules arriveront, sans changer la base Supabase.
 
+
+## À faire (prochaines étapes)
+
+1. **Limite par appareil** (tant qu'il n'y a pas de comptes clients) : empêcher une même personne d'envoyer des dizaines de fausses demandes.
+   - identifiant d'appareil anonyme envoyé avec chaque demande, limité côté serveur (par exemple 2 demandes à venir en attente, 4 par jour) ;
+   - limite par adresse IP en complément, car l'identifiant disparaît si on vide le navigateur ou passe en navigation privée ;
+   - message clair au client (« appelez-nous pour une demande supplémentaire ») ; l'équipe peut toujours saisir une réservation à la main sans limite ;
+   - dans le hub, signaler les demandes venant d'un même appareil et pouvoir le bloquer.
+2. **Espace client** : modifier sa réservation (retour en attente), puis connexion par lien e-mail une fois le domaine acheté.
+3. **Domaine + e-mails** : achat du domaine, branchement Vercel, authentification du domaine dans Brevo, `MAIL_FROM`, puis activation de l'interrupteur e-mail.
+4. **Version générique** pour d'autres restaurants (multi-établissements, abonnements, module RH).
