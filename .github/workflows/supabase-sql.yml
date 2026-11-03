@@ -1,0 +1,33 @@
+# Applique automatiquement les scripts SQL de la Terrasse de Bourbon sur Supabase
+# à chaque fusion sur main qui les modifie (ou à la demande : Actions > Supabase SQL > Run workflow).
+# Prérequis : secret GitHub SUPABASE_DB_URL (chaîne de connexion « Session pooler » du projet Supabase).
+name: Supabase SQL
+
+on:
+  push:
+    branches: [main]
+    paths: ['terrasse-de-bourbon/*.sql']
+  workflow_dispatch:
+
+concurrency: supabase-sql
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Appliquer supabase.sql puis supabase-push.sql
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "::warning::Secret SUPABASE_DB_URL absent : scripts non appliqués."
+            exit 0
+          fi
+          cd terrasse-de-bourbon
+          for f in supabase.sql supabase-push.sql; do
+            echo "→ $f"
+            # Une seule transaction par script (tout ou rien) ; résultats masqués pour ne jamais afficher de secret dans les journaux.
+            psql "$DB_URL" -v ON_ERROR_STOP=1 --single-transaction -q -o /dev/null -f "$f"
+          done
+          echo "Scripts appliqués."
