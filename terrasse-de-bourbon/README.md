@@ -102,3 +102,15 @@ Les fondations sont posées : fiches clients reliées aux réservations, consent
 4. **Site vitrine** : pages infos, horaires, accès, photos, avis, événements, au-dessus de la réservation et de la carte.
 5. **Découpage du code** : passer du fichier unique à un projet structuré (Vite ou Next.js) quand ces modules arriveront, sans changer la base Supabase.
 
+
+## À faire (prochaines étapes)
+
+1. **Alertes d'annulation** : notification à l'équipe quand un client annule, liste « Annulées récemment », mention « annulation tardive ».
+2. **Limite par appareil** (tant qu'il n'y a pas de comptes clients) : empêcher une même personne d'envoyer des dizaines de fausses demandes.
+   - identifiant d'appareil anonyme envoyé avec chaque demande, limité côté serveur (par exemple 2 demandes à venir en attente, 4 par jour) ;
+   - limite par adresse IP en complément, car l'identifiant disparaît si on vide le navigateur ou passe en navigation privée ;
+   - message clair au client (« appelez-nous pour une demande supplémentaire ») ; l'équipe peut toujours saisir une réservation à la main sans limite ;
+   - dans le hub, signaler les demandes venant d'un même appareil et pouvoir le bloquer.
+3. **Espace client** : modifier sa réservation (retour en attente), puis connexion par lien e-mail une fois le domaine acheté.
+4. **Domaine + e-mails** : achat du domaine, branchement Vercel, authentification du domaine dans Brevo, `MAIL_FROM`, puis activation de l'interrupteur e-mail.
+5. **Version générique** pour d'autres restaurants (multi-établissements, abonnements, module RH).
