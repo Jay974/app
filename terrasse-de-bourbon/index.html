@@ -401,6 +401,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .b-none { color: var(--muted); background: var(--field); }
 .b-pending { color: var(--gold); border: 1px dashed var(--gold-line); }
 .b-no { color: var(--busy); background: var(--busy-soft); }
+.dev-flag { display: inline-block; align-self: flex-start; margin-top: 6px; font: 600 12px/1.3 inherit; font-family: inherit; color: var(--busy); background: var(--busy-soft); border: 0; border-radius: 99px; padding: 4px 10px; cursor: pointer; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 .scan-img { max-width: 100%; max-height: 220px; border-radius: var(--r-sm); align-self: flex-start; }
 .scan-sum { font-size: 13px; color: var(--gold); background: var(--gold-soft); border-radius: var(--r-sm); padding: 10px 12px; }
@@ -876,6 +877,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <div class="row2" style="grid-template-columns:1fr auto"><select class="input" id="m-table"></select><button class="btn-line btn-sm" id="btn-m-table" type="button">OK</button></div>
     </div>
     <div class="modal-actions" id="m-actions"></div>
+    <div id="m-device" hidden><p class="note" id="m-device-txt"></p><button class="btn-line btn-danger" id="btn-m-block" type="button" style="width:100%"></button></div>
     <div class="modal-actions">
       <button class="btn-line" id="btn-m-copy" type="button"><svg class="ico"><use href="#i-copy"/></svg>Copier le résumé</button>
       <button class="btn-line btn-danger" id="btn-m-del" type="button">Supprimer</button>
@@ -1195,12 +1197,12 @@ let ZONES = [
 let TLIST = [], TBY = {};
 
 /* ── STATE ──────────────────────────────────────────────── */
-const S = { resas: [], occ: {} };                 // hub : réservations et tables marquées (occ[date_svc] = { tableId: 1 })
+const S = { resas: [], occ: {}, blocked: new Set() };                 // hub : réservations et tables marquées (occ[date_svc] = { tableId: 1 })
 const V = { date: '', svc: 'soir', pz: 'all', tab: 'inbox' };
 const B = { date: '', time: '', guests: 2, zone: '' };   // formulaire client
 let menuCat = '', menuQuery = '';
 let hubReady = false, trackToken = '', trackTimer = null, cancelArmed = false;
-let sampleCap, sampleLim = null, modalId = null, delArmed = false, scanRows = [], modalMsg = '';
+let sampleCap, sampleLim = null, modalId = null, delArmed = false, blockArmed = false, scanRows = [], modalMsg = '';
 const armed = {};
 
 /* ── HELPERS ────────────────────────────────────────────── */
@@ -1244,6 +1246,12 @@ function resaTs(r){ const [h, m] = String(r.time || '').split('h').map(Number); 
 /* La table se libère d'elle-même 1 h après l'heure de la réservation (la réservation reste dans l'historique). */
 const TABLE_HOLD_MIN = 60;
 const tableReleased = r => Date.now() >= resaTs(r) + TABLE_HOLD_MIN * 60000;
+/* Identifiant anonyme de cet appareil (limite anti-abus des demandes en ligne). */
+function deviceId(){
+  try { let d = localStorage.getItem('tdb_device'); if(!d){ d = uuid(); localStorage.setItem('tdb_device', d); } return d; } catch(e){ return null; }
+}
+/* Demandes d'un même appareil (ou, à défaut, d'une même connexion). */
+const sameDevice = r => r.dev ? S.resas.filter(x => x.dev === r.dev && x.src === 'web') : [];
 /* Annulation par le client : tardive si moins de 2 h avant l'heure prévue. */
 const cancelLate = r => r.cancelledAt && resaTs(r) - r.cancelledAt < 2 * 3600000;
 /* Numéro saisi -> format international pour wa.me (La Réunion par défaut). */
@@ -1277,7 +1285,7 @@ const Store = {
     this.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     this.live = true;
   },
-  fromRow(x){ return { id: x.id, token: x.access_token, name: x.name, tel: x.tel || '', guests: x.guests, date: x.date, time: x.time, zone: x.zone || '', notes: x.notes || '', table: x.table_id || '', email: x.email || '', status: x.status, src: x.src, ts: Date.parse(x.created_at) || Date.now(), upd: Date.parse(x.updated_at) || 0, cancelledBy: x.cancelled_by || '', cancelledAt: Date.parse(x.cancelled_at) || 0 }; },
+  fromRow(x){ return { id: x.id, token: x.access_token, name: x.name, tel: x.tel || '', guests: x.guests, date: x.date, time: x.time, zone: x.zone || '', notes: x.notes || '', table: x.table_id || '', email: x.email || '', status: x.status, src: x.src, ts: Date.parse(x.created_at) || Date.now(), upd: Date.parse(x.updated_at) || 0, cancelledBy: x.cancelled_by || '', cancelledAt: Date.parse(x.cancelled_at) || 0, dev: x.device_id || (x.ip_hash ? 'ip:' + x.ip_hash : '') }; },
   toRow(r){ return { id: r.id, name: r.name, tel: r.tel || null, guests: r.guests, date: r.date, time: r.time, zone: r.zone || '', notes: r.notes || null, table_id: r.table || '', status: r.status, src: r.src || 'staff' }; },
   local(){ try { return JSON.parse(localStorage.getItem('tdb_resas') || '[]'); } catch(e){ return []; } },
   saveLocal(list){ try { localStorage.setItem('tdb_resas', JSON.stringify(list)); } catch(e){} },
@@ -1285,12 +1293,17 @@ const Store = {
   /* Client */
   async submit(r){
     if(this.live){
-      const { data, error } = await this.sb.rpc('submit_reservation', { p_name: r.name, p_tel: r.tel, p_guests: r.guests, p_date: r.date, p_time: r.time, p_zone: r.zone, p_notes: r.notes, p_opt_in: !!r.optIn, p_email: r.email || null });
+      const { data, error } = await this.sb.rpc('submit_reservation', { p_name: r.name, p_tel: r.tel, p_guests: r.guests, p_date: r.date, p_time: r.time, p_zone: r.zone, p_notes: r.notes, p_opt_in: !!r.optIn, p_email: r.email || null, p_device: deviceId() });
       if(error) throw error;
       return data.token;
     }
-    const list = this.local(), now = Date.now();
-    const rec = Object.assign({}, r, { id: uuid(), token: uuid(), status: 'pending', src: 'web', table: '', ts: now, upd: now });
+    const list = this.local(), now = Date.now(), dev = deviceId();
+    // Démo : mêmes limites que la base (2 demandes en attente à venir, 4 par 24 h, appareil bloqué).
+    let blocked = []; try { blocked = JSON.parse(localStorage.getItem('tdb_blocked') || '[]'); } catch(e){}
+    if(dev && blocked.indexOf(dev) >= 0) throw new Error('appareil_bloque');
+    const mineDev = list.filter(x => x.dev === dev);
+    if(mineDev.filter(x => x.status === 'pending' && x.date >= today()).length >= 2 || mineDev.filter(x => now - x.ts < 864e5).length >= 4) throw new Error('limite_appareil');
+    const rec = Object.assign({}, r, { id: uuid(), token: uuid(), status: 'pending', src: 'web', table: '', ts: now, upd: now, dev });
     list.push(rec); this.saveLocal(list);
     return rec.token;
   },
@@ -1320,6 +1333,7 @@ const Store = {
     if(!this.live){
       S.resas = this.local();
       try { S.occ = JSON.parse(localStorage.getItem('tdb_occ') || '{}'); } catch(e){ S.occ = {}; }
+      try { S.blocked = new Set(JSON.parse(localStorage.getItem('tdb_blocked') || '[]')); } catch(e){ S.blocked = new Set(); }
       return;
     }
     const from = addDays(today(), -7);
@@ -1330,6 +1344,8 @@ const Store = {
     if(a.error) throw a.error;
     S.resas = a.data.map(x => this.fromRow(x));
     S.occ = {}; (b.data || []).forEach(o => { S.occ[o.key] = o.tables || {}; });
+    const bl = await this.sb.from('blocked_devices').select('device_id');
+    S.blocked = new Set((bl.data || []).map(x => x.device_id));
   },
   watch(onChange, onState){
     if(!this.live){
@@ -1369,6 +1385,21 @@ const Store = {
     if(!this.live){ this.saveLocal(S.resas); return; }
     const { error } = await this.sb.from('reservations').upsert(this.toRow(r));
     if(error){ toast('Échec de l\'enregistrement : vérifiez la connexion'); await this.load(); throw error; }
+  },
+  /* Bloque l'appareil d'une demande et refuse ses demandes en attente ; renvoie le nombre de demandes refusées. */
+  async blockDevice(r){
+    if(this.live){
+      const { data, error } = await this.sb.rpc('block_device', { p_resa: r.id }); if(error) throw error;
+      S.blocked.add(r.dev); await this.load(); return data || 0;
+    }
+    S.blocked.add(r.dev); try { localStorage.setItem('tdb_blocked', JSON.stringify([...S.blocked])); } catch(e){}
+    let n = 0; S.resas.forEach(x => { if(x.dev === r.dev && x.status === 'pending'){ x.status = 'declined'; x.upd = Date.now(); n++; } }); this.saveLocal(S.resas);
+    return n;
+  },
+  async unblockDevice(r){
+    if(this.live){ const { error } = await this.sb.rpc('unblock_device', { p_resa: r.id }); if(error) throw error; }
+    S.blocked.delete(r.dev);
+    if(!this.live) try { localStorage.setItem('tdb_blocked', JSON.stringify([...S.blocked])); } catch(e){}
   },
   async deleteResa(id){
     S.resas = S.resas.filter(r => r.id !== id);
@@ -1695,6 +1726,8 @@ async function submitBooking(e){
   } catch(err){
     const m = String(err && err.message || '');
     $('f-err').textContent = m.indexOf('trop_de_demandes') >= 0 ? 'Plusieurs demandes viennent d\'être envoyées. Patientez un peu ou appelez-nous.' :
+      m.indexOf('limite_appareil') >= 0 ? 'Vous avez déjà des demandes en cours depuis cet appareil. Retrouvez-les dans « Mes résas », ou appelez-nous au ' + CONTACT.phone + ' pour une demande supplémentaire.' :
+      m.indexOf('appareil_bloque') >= 0 ? 'La réservation en ligne n\'est pas disponible depuis cet appareil. Appelez-nous au ' + CONTACT.phone + '.' :
       m.indexOf('email_invalide') >= 0 ? 'Cette adresse e-mail semble incorrecte.' :
       m.indexOf('tel_requis') >= 0 ? 'Indiquez un numéro de téléphone valide pour que l\'équipe puisse vous joindre.' :
       m.indexOf('nom_requis') >= 0 ? 'Indiquez votre nom.' :
@@ -1962,6 +1995,13 @@ function renderAll(){
   }
   if(V.tab === 'add') buildAddTable();
 }
+/* Repère « même appareil » : plusieurs demandes récentes ou appareil bloqué. */
+function devFlag(r){
+  if(!r.dev) return '';
+  if(S.blocked.has(r.dev)) return '<span class="dev-flag">Appareil bloqué</span>';
+  const n = sameDevice(r).filter(x => Date.now() - x.ts < 7 * 864e5).length;
+  return n >= 3 ? '<button class="dev-flag" data-rid="' + esc(r.id) + '" type="button">Même appareil · ' + n + ' demandes</button>' : '';
+}
 function renderInbox(pend){
   pend = pend.slice().sort((a, b) => a.date.localeCompare(b.date) || String(a.time).localeCompare(String(b.time), 'fr', {numeric:true}));
   const chosen = {}; document.querySelectorAll('[data-req-table]').forEach(s => chosen[s.dataset.reqTable] = s.value);
@@ -1974,7 +2014,7 @@ function renderInbox(pend){
     const isArmed = armed[r.id];
     return '<article class="req"><div class="req-top"><span class="resa-n">' + esc(r.guests) + '</span><div class="req-main">' +
       '<span class="req-name">' + esc(r.name) + '</span><span class="req-when">' + esc(cap1(fmtDateFr(r.date))) + ' · ' + esc(r.time) + ' · ' + SVC[svcOf(r.time)].label + '</span>' +
-      '<span class="req-meta">' + [zoneLabel(r.zone) ? 'Souhaite : ' + zoneLabel(r.zone) : '', r.tel, r.notes ? '« ' + r.notes + ' »' : ''].filter(Boolean).map(esc).join(' · ') + '</span></div>' +
+      '<span class="req-meta">' + [zoneLabel(r.zone) ? 'Souhaite : ' + zoneLabel(r.zone) : '', r.tel, r.notes ? '« ' + r.notes + ' »' : ''].filter(Boolean).map(esc).join(' · ') + '</span>' + devFlag(r) + '</div>' +
       '<span class="req-age">' + ago(r.ts) + '</span></div>' +
       '<div class="field"><label for="rt-' + r.id + '">Table (facultatif)</label><select class="input" id="rt-' + r.id + '" data-req-table="' + r.id + '">' +
       tableOptions(occ, '', sug, '<option value="">À placer plus tard</option>') + '</select></div>' +
@@ -2784,9 +2824,30 @@ function openModal(id){
     cancelled: [['pending', 'Remettre en attente', 'btn-line'], ['confirmed', 'Confirmer', 'btn-primary']]
   }[st];
   $('m-actions').innerHTML = act.map(a => '<button class="' + a[2] + '" data-set-status="' + a[0] + '" type="button">' + a[1] + '</button>').join('');
+  blockArmed = false;
+  const devR = r.src === 'web' && r.dev, same = devR ? sameDevice(r) : [];
+  $('m-device').hidden = !devR;
+  if(devR){
+    const blocked = S.blocked.has(r.dev), pendN = same.filter(x => x.status === 'pending').length;
+    $('m-device-txt').textContent = blocked ? 'Cet appareil est bloqué : il ne peut plus envoyer de demande en ligne.' :
+      'Cet appareil a envoyé ' + same.length + ' demande' + (same.length > 1 ? 's' : '') + ' ces 7 derniers jours' + (pendN ? ', dont ' + pendN + ' en attente' : '') + '.';
+    $('btn-m-block').textContent = blocked ? 'Débloquer cet appareil' : 'Bloquer cet appareil' + (pendN ? ' et refuser ses demandes' : '');
+    $('btn-m-block').className = blocked ? 'btn-line' : 'btn-line btn-danger';
+  }
   modalMsg = fmtTeamMsg(r);
   $('overlay').hidden = false;
   $('btn-m-close').focus();
+}
+async function blockModal(){
+  const r = S.resas.find(x => x.id === modalId); if(!r || !r.dev) return;
+  if(S.blocked.has(r.dev)){
+    try { await Store.unblockDevice(r); toast('Appareil débloqué'); } catch(e){ toast('Action impossible : vérifiez la connexion'); }
+    renderAll(); openModal(r.id); return;
+  }
+  if(!blockArmed){ blockArmed = true; $('btn-m-block').textContent = 'Confirmer le blocage ?'; $('btn-m-block').classList.add('armed'); return; }
+  try { const n = await Store.blockDevice(r); toast('Appareil bloqué' + (n ? ' · ' + n + ' demande' + (n > 1 ? 's' : '') + ' refusée' + (n > 1 ? 's' : '') : '')); }
+  catch(e){ toast('Blocage impossible : vérifiez la connexion'); }
+  renderAll(); openModal(r.id);
 }
 function closeModal(){ $('overlay').hidden = true; modalId = null; }
 async function setModalStatus(status){
@@ -2880,6 +2941,7 @@ $('scan-rows').addEventListener('change', e => bindScan(e, true));
 $('btn-m-table').onclick = saveModalTable;
 $('btn-m-copy').onclick = e => copyText(modalMsg, e.currentTarget);
 $('btn-m-del').onclick = deleteModal;
+$('btn-m-block').onclick = blockModal;
 $('btn-m-close').onclick = closeModal;
 $('overlay').onclick = e => { if(e.target === $('overlay')) closeModal(); };
 
