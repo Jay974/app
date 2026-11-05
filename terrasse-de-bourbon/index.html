@@ -401,6 +401,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .b-none { color: var(--muted); background: var(--field); }
 .b-pending { color: var(--gold); border: 1px dashed var(--gold-line); }
 .b-no { color: var(--busy); background: var(--busy-soft); }
+.mod-flag { display: block; margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--gold); }
 .dev-flag { display: inline-block; align-self: flex-start; margin-top: 6px; font: 600 12px/1.3 inherit; font-family: inherit; color: var(--busy); background: var(--busy-soft); border: 0; border-radius: 99px; padding: 4px 10px; cursor: pointer; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
 .scan-img { max-width: 100%; max-height: 220px; border-radius: var(--r-sm); align-self: flex-start; }
@@ -707,6 +708,16 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <div class="steps-lbl" id="t-steps-lbl"><span>Envoyée</span><span>Vue par l'équipe</span><span>Confirmée</span></div>
       <dl class="recap" id="t-recap"></dl>
       <p class="note" id="t-note"></p>
+      <div id="t-edit" class="stack" style="gap:12px" hidden>
+        <div class="row2"><div class="field"><label for="e-date">Jour</label><input class="input" type="date" id="e-date"></div>
+          <div class="field"><label for="e-time">Heure</label><select class="input" id="e-time"></select></div></div>
+        <div class="field"><label for="e-guests">Nombre de personnes</label><select class="input" id="e-guests"></select></div>
+        <div class="field"><label for="e-notes">Notes pour l'équipe</label><textarea class="input" id="e-notes" rows="2" maxlength="500" placeholder="Anniversaire, chaise bébé, allergie…"></textarea></div>
+        <p class="note" id="e-note"></p>
+        <p class="st err" id="e-err" role="alert"></p>
+        <div class="row2"><button class="btn-line" id="btn-e-back" type="button">Retour</button><button class="btn-primary" id="btn-e-save" type="button">Enregistrer</button></div>
+      </div>
+      <button class="btn-line" id="btn-modify" type="button" hidden><svg class="ico"><use href="#i-cal"/></svg>Modifier ma réservation</button>
       <button class="btn-primary" id="btn-client-push" type="button" hidden><svg class="ico"><use href="#i-bell"/></svg>Être prévenu sur cet appareil</button>
       <button class="btn-line" id="btn-copy-link" type="button"><svg class="ico"><use href="#i-copy"/></svg>Copier le lien de suivi</button>
       <button class="btn-line btn-danger" id="btn-cancel" type="button">Annuler ma réservation</button>
@@ -1201,7 +1212,7 @@ const S = { resas: [], occ: {}, blocked: new Set() };                 // hub : r
 const V = { date: '', svc: 'soir', pz: 'all', tab: 'inbox' };
 const B = { date: '', time: '', guests: 2, zone: '' };   // formulaire client
 let menuCat = '', menuQuery = '';
-let hubReady = false, trackToken = '', trackTimer = null, cancelArmed = false;
+let hubReady = false, trackToken = '', trackTimer = null, cancelArmed = false, trackData = null;
 let sampleCap, sampleLim = null, modalId = null, delArmed = false, blockArmed = false, scanRows = [], modalMsg = '';
 const armed = {};
 
@@ -1285,7 +1296,7 @@ const Store = {
     this.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     this.live = true;
   },
-  fromRow(x){ return { id: x.id, token: x.access_token, name: x.name, tel: x.tel || '', guests: x.guests, date: x.date, time: x.time, zone: x.zone || '', notes: x.notes || '', table: x.table_id || '', email: x.email || '', status: x.status, src: x.src, ts: Date.parse(x.created_at) || Date.now(), upd: Date.parse(x.updated_at) || 0, cancelledBy: x.cancelled_by || '', cancelledAt: Date.parse(x.cancelled_at) || 0, dev: x.device_id || (x.ip_hash ? 'ip:' + x.ip_hash : '') }; },
+  fromRow(x){ return { id: x.id, token: x.access_token, name: x.name, tel: x.tel || '', guests: x.guests, date: x.date, time: x.time, zone: x.zone || '', notes: x.notes || '', table: x.table_id || '', email: x.email || '', status: x.status, src: x.src, ts: Date.parse(x.created_at) || Date.now(), upd: Date.parse(x.updated_at) || 0, cancelledBy: x.cancelled_by || '', cancelledAt: Date.parse(x.cancelled_at) || 0, dev: x.device_id || (x.ip_hash ? 'ip:' + x.ip_hash : ''), prev: x.previous || null, modAt: Date.parse(x.modified_at) || 0 }; },
   toRow(r){ return { id: r.id, name: r.name, tel: r.tel || null, guests: r.guests, date: r.date, time: r.time, zone: r.zone || '', notes: r.notes || null, table_id: r.table || '', status: r.status, src: r.src || 'staff' }; },
   local(){ try { return JSON.parse(localStorage.getItem('tdb_resas') || '[]'); } catch(e){ return []; } },
   saveLocal(list){ try { localStorage.setItem('tdb_resas', JSON.stringify(list)); } catch(e){} },
@@ -1309,7 +1320,8 @@ const Store = {
   },
   async status(token){
     if(this.live){ const { data, error } = await this.sb.rpc('reservation_status', { p_token: token }); if(error) throw error; return data; }
-    return this.local().find(r => r.token === token) || null;
+    const r = this.local().find(x => x.token === token);
+    return r ? Object.assign({}, r, { modif_left: 3 - (r.modifs || 0), previous: r.prev || null }) : null;
   },
   async cancel(token){
     if(this.live){ const { error } = await this.sb.rpc('cancel_reservation', { p_token: token }); if(error) throw error; return; }
@@ -1318,6 +1330,25 @@ const Store = {
       if(Date.now() >= resaTs(r)) throw new Error('trop_tard');
       r.status = 'cancelled'; r.cancelledBy = 'client'; r.cancelledAt = r.upd = Date.now(); this.saveLocal(list);
     }
+  },
+
+  async modify(token, m){
+    if(this.live){
+      const { data, error } = await this.sb.rpc('modify_reservation', { p_token: token, p_date: m.date, p_time: m.time, p_guests: m.guests, p_notes: m.notes || null });
+      if(error) throw error; return data;
+    }
+    const list = this.local(), r = list.find(x => x.token === token);
+    if(!r || !isActive(r)) throw new Error('non_modifiable');
+    if(Date.now() >= resaTs(r)) throw new Error('trop_tard');
+    if((r.modifs || 0) >= 3) throw new Error('trop_de_modifs');
+    if(resaTs(m) <= Date.now()) throw new Error('date_invalide');
+    if(svcClosed(m.date, svcOf(m.time))) throw new Error('service_ferme');
+    const slot = m.date !== r.date || m.time !== r.time || +m.guests !== +r.guests;
+    if(!slot && (m.notes || '') === (r.notes || '')) return { status: r.status, changed: false };
+    if(slot){ r.prev = { date: r.date, time: r.time, guests: r.guests, status: r.status, table: r.table }; r.status = 'pending'; r.table = ''; }
+    Object.assign(r, { date: m.date, time: m.time, guests: +m.guests, notes: m.notes || '', modifs: (r.modifs || 0) + 1 });
+    r.modAt = r.upd = Date.now(); this.saveLocal(list);
+    return { status: r.status, changed: true };
   },
 
   /* Équipe */
@@ -1352,19 +1383,20 @@ const Store = {
       onState('demo');
       addEventListener('storage', e => {
         if(e.key !== 'tdb_resas' && e.key !== 'tdb_occ') return;
-        const before = {}; S.resas.forEach(r => { before[r.id] = r.status; });
+        const before = {}, mod = {}; S.resas.forEach(r => { before[r.id] = r.status; mod[r.id] = r.modAt || 0; });
         this.load().then(() => onChange(S.resas.filter(r => !before[r.id] && r.status === 'pending'),
-          S.resas.filter(r => r.status === 'cancelled' && r.cancelledBy === 'client' && (before[r.id] === 'pending' || before[r.id] === 'confirmed'))));
+          S.resas.filter(r => r.status === 'cancelled' && r.cancelledBy === 'client' && (before[r.id] === 'pending' || before[r.id] === 'confirmed')),
+          S.resas.filter(r => before[r.id] && r.modAt && r.modAt !== mod[r.id])));
       });
       return;
     }
     this.chan = this.sb.channel('hub')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, p => {
         if(p.eventType === 'DELETE'){ S.resas = S.resas.filter(r => r.id !== p.old.id); onChange([]); return; }
-        const r = this.fromRow(p.new), i = S.resas.findIndex(x => x.id === r.id), was = i >= 0 ? S.resas[i].status : '';
+        const r = this.fromRow(p.new), i = S.resas.findIndex(x => x.id === r.id), was = i >= 0 ? S.resas[i].status : '', wasMod = i >= 0 ? S.resas[i].modAt : 0;
         if(i >= 0) S.resas[i] = r; else S.resas.push(r);
         const gone = r.status === 'cancelled' && r.cancelledBy === 'client' && (was === 'pending' || was === 'confirmed');
-        onChange(p.eventType === 'INSERT' && r.status === 'pending' ? [r] : [], gone ? [r] : []);
+        onChange(p.eventType === 'INSERT' && r.status === 'pending' ? [r] : [], gone ? [r] : [], i >= 0 && r.modAt && r.modAt !== wasMod ? [r] : []);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'occupancy' }, p => {
         if(p.eventType === 'DELETE') delete S.occ[p.old.key]; else S.occ[p.new.key] = p.new.tables || {};
@@ -1769,7 +1801,7 @@ async function renderStatusBar(view){
   bar.hidden = false;
 }
 async function openTrack(token){
-  trackToken = token; cancelArmed = false;
+  trackToken = token; cancelArmed = false; trackData = null; closeEdit();
   $('btn-cancel').textContent = 'Annuler ma réservation'; $('btn-cancel').classList.remove('armed');
   await refreshTrack();
   trackTimer = setInterval(() => { if(!document.hidden) refreshTrack(); }, 15000);
@@ -1798,15 +1830,20 @@ async function refreshTrack(){
   Array.prototype.forEach.call($('t-steps').children, (s, i) => s.classList.toggle('on', i < steps));
   const row = (l, v) => '<dt>' + l + '</dt><dd>' + esc(v) + '</dd>';
   $('t-recap').innerHTML = row('Date', cap1(fmtDateFr(r.date))) + row('Heure', r.time + ' · ' + SVC[svcOf(r.time)].label) + row('Personnes', r.guests) +
-    (zoneLabel(r.zone) ? row('Préférence', zoneLabel(r.zone)) : '') + (r.notes ? row('Notes', r.notes) : '');
+    (zoneLabel(r.zone) ? row('Préférence', zoneLabel(r.zone)) : '') + (r.notes ? row('Notes', r.notes) : '') +
+    (r.previous && st === 'pending' ? row('Avant', cap1(fmtDateFr(r.previous.date)) + ' · ' + r.previous.time + ' · ' + r.previous.guests + ' pers.') : '');
   $('t-note').innerHTML = {
     pending: 'Cette page se met à jour toute seule. <strong>Gardez le lien</strong> ou retrouvez-la dans « Mes résas ».',
-    confirmed: 'Merci ! En cas d\'empêchement, annulez ici <strong>jusqu\'à l\'heure de la réservation</strong> pour libérer la table.',
+    confirmed: 'Merci ! Un changement ou un empêchement ? Modifiez ou annulez ici <strong>jusqu\'à l\'heure de la réservation</strong>.',
     declined: 'Le restaurant est complet sur ce créneau. Essayez une autre heure, ou appelez-nous : nous trouverons peut-être une solution.',
     cancelled: 'Cette réservation est annulée. Vous pouvez en faire une nouvelle à tout moment.'
   }[st];
   const late = Date.now() >= resaTs(r);
-  $('btn-cancel').hidden = !(st === 'pending' || st === 'confirmed') || late;
+  trackData = r;
+  const editing = !$('t-edit').hidden;
+  $('btn-modify').hidden = editing || !(st === 'pending' || st === 'confirmed') || late || (r.modif_left != null && r.modif_left <= 0);
+  if(editing && (late || !(st === 'pending' || st === 'confirmed'))) closeEdit();
+  $('btn-cancel').hidden = !(st === 'pending' || st === 'confirmed') || late || editing;
   if(late && st === 'confirmed') $('t-note').innerHTML = 'L\'heure de la réservation est passée. Pour toute question, appelez-nous.';
   if(r.has_email && st === 'pending') $('t-note').innerHTML += ' Vous recevrez aussi la réponse <strong>par e-mail</strong>.';
   const canPush = Store.live && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && Notification.permission !== 'denied';
@@ -1827,6 +1864,54 @@ async function clientPushAttach(token, silent){
     if(!silent) toast('Vous serez prévenu sur cet appareil');
     return true;
   } catch(e){ if(!silent) toast('Activation impossible sur cet appareil'); return false; }
+}
+/* Modifier sa réservation : jour, heure, personnes, notes. */
+function editTimes(date, cur){
+  let html = '', found = false;
+  Object.keys(SVC).forEach(k => {
+    if(svcClosed(date, k)) return;
+    const ok = SVC[k].slots.filter(t => !slotPast(date, t));
+    if(!ok.length) return;
+    html += '<optgroup label="' + esc(SVC[k].label) + '">' + ok.map(t => { if(t === cur) found = true; return '<option value="' + t + '"' + (t === cur ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</optgroup>';
+  });
+  $('e-time').innerHTML = html || '<option value="">Aucun créneau ce jour-là</option>';
+  if(!found && cur && html) $('e-time').selectedIndex = 0;
+}
+function openEdit(){
+  const r = trackData; if(!r) return;
+  const t0 = today();
+  $('e-date').min = t0; $('e-date').max = addDays(t0, 180); $('e-date').value = r.date;
+  editTimes(r.date, r.time);
+  $('e-guests').innerHTML = Array.from({ length: 40 }, (_, i) => '<option value="' + (i + 1) + '"' + (i + 1 === +r.guests ? ' selected' : '') + '>' + (i + 1) + ' personne' + (i ? 's' : '') + '</option>').join('');
+  $('e-notes').value = r.notes || '';
+  const left = r.modif_left != null ? r.modif_left : 3;
+  $('e-note').textContent = (r.status === 'confirmed' ? 'Changer le jour, l\'heure ou le nombre de personnes remet la réservation en attente : l\'équipe la reconfirme. Modifier seulement les notes la garde confirmée. ' : 'L\'équipe verra votre demande modifiée. ') +
+    (left === 1 ? 'Dernière modification possible en ligne.' : left + ' modifications possibles en ligne.');
+  $('e-err').textContent = '';
+  $('t-edit').hidden = false; $('btn-modify').hidden = true; $('btn-cancel').hidden = true;
+  $('e-date').focus();
+}
+function closeEdit(){ $('t-edit').hidden = true; }
+async function saveEdit(){
+  const m = { date: $('e-date').value, time: $('e-time').value, guests: +$('e-guests').value, notes: $('e-notes').value.trim() };
+  if(!m.date || !m.time){ $('e-err').textContent = 'Choisissez un jour et une heure.'; return; }
+  $('btn-e-save').disabled = true;
+  try {
+    const res = await Store.modify(trackToken, m) || {};
+    try { const l = mine(), x = l.find(e => e.token === trackToken); if(x){ Object.assign(x, { date: m.date, time: m.time, guests: m.guests }); localStorage.setItem('tdb_mine', JSON.stringify(l)); } } catch(e){}
+    closeEdit();
+    toast(!res.changed ? 'Aucun changement' : res.status === 'pending' ? 'Modification envoyée : l\'équipe va la confirmer' : 'Notes mises à jour');
+    await refreshTrack();
+  } catch(err){
+    const e = String(err && err.message || '');
+    $('e-err').textContent = /trop_tard/.test(e) ? 'L\'heure de la réservation est passée : appelez-nous.' :
+      /trop_de_modifs/.test(e) ? 'Vous avez déjà modifié cette réservation 3 fois. Pour un autre changement, appelez-nous au ' + CONTACT.phone + '.' :
+      /service_ferme/.test(e) ? 'Ce service est fermé ce jour-là. Choisissez un autre créneau.' :
+      /date_invalide/.test(e) ? 'Ce créneau n\'est pas réservable en ligne. Choisissez-en un autre.' :
+      /non_modifiable/.test(e) ? 'Cette réservation ne peut plus être modifiée.' :
+      'La modification n\'a pas abouti. Réessayez ou appelez-nous au ' + CONTACT.phone + '.';
+  }
+  $('btn-e-save').disabled = false;
 }
 async function cancelTrack(){
   if(!cancelArmed){ cancelArmed = true; $('btn-cancel').textContent = 'Confirmer l\'annulation'; $('btn-cancel').classList.add('armed'); return; }
@@ -1875,8 +1960,13 @@ async function logout(){
 }
 function setMode(m){ $('hub-mode').className = 'mode ' + m; $('hub-mode').textContent = { live: 'En direct', off: 'Hors ligne', demo: 'Mode démo', out: 'Non connecté', wait: 'Connexion…' }[m]; }
 /* Nouvelle demande : toast, carillon, notification système si autorisée. */
-function onData(fresh, gone){
+function onData(fresh, gone, mods){
   renderAll();
+  (mods || []).forEach(r => {
+    const txt = 'Modification : ' + r.name + ', ' + r.guests + ' pers. ' + fmtDateFr(r.date) + ' ' + r.time + (r.status === 'pending' ? ' · à reconfirmer' : ' · notes modifiées');
+    toast(txt); chime();
+    try { if('Notification' in window && Notification.permission === 'granted' && document.hidden) new Notification(RESTO, { body: txt }); } catch(e){}
+  });
   (gone || []).forEach(r => {
     const txt = (cancelLate(r) ? 'Annulation tardive : ' : 'Annulation : ') + r.name + ', ' + r.guests + ' pers. ' + fmtDateFr(r.date) + ' ' + r.time +
       (r.table ? ' · table ' + tName(r.table) + ' libérée' : '');
@@ -1995,6 +2085,9 @@ function renderAll(){
   }
   if(V.tab === 'add') buildAddTable();
 }
+/* Demande modifiée par le client : rappel du créneau d'avant. */
+function prevTxt(p){ return cap1(fmtDateFr(p.date)) + ' · ' + p.time + ' · ' + p.guests + ' pers.' + (p.table ? ' · table ' + tName(p.table) : ''); }
+function modFlag(r){ return r.prev && r.status === 'pending' ? '<span class="mod-flag">Modifiée par le client · avant : ' + esc(prevTxt(r.prev)) + '</span>' : ''; }
 /* Repère « même appareil » : plusieurs demandes récentes ou appareil bloqué. */
 function devFlag(r){
   if(!r.dev) return '';
@@ -2014,7 +2107,7 @@ function renderInbox(pend){
     const isArmed = armed[r.id];
     return '<article class="req"><div class="req-top"><span class="resa-n">' + esc(r.guests) + '</span><div class="req-main">' +
       '<span class="req-name">' + esc(r.name) + '</span><span class="req-when">' + esc(cap1(fmtDateFr(r.date))) + ' · ' + esc(r.time) + ' · ' + SVC[svcOf(r.time)].label + '</span>' +
-      '<span class="req-meta">' + [zoneLabel(r.zone) ? 'Souhaite : ' + zoneLabel(r.zone) : '', r.tel, r.notes ? '« ' + r.notes + ' »' : ''].filter(Boolean).map(esc).join(' · ') + '</span>' + devFlag(r) + '</div>' +
+      '<span class="req-meta">' + [zoneLabel(r.zone) ? 'Souhaite : ' + zoneLabel(r.zone) : '', r.tel, r.notes ? '« ' + r.notes + ' »' : ''].filter(Boolean).map(esc).join(' · ') + '</span>' + modFlag(r) + devFlag(r) + '</div>' +
       '<span class="req-age">' + ago(r.ts) + '</span></div>' +
       '<div class="field"><label for="rt-' + r.id + '">Table (facultatif)</label><select class="input" id="rt-' + r.id + '" data-req-table="' + r.id + '">' +
       tableOptions(occ, '', sug, '<option value="">À placer plus tard</option>') + '</select></div>' +
@@ -2814,6 +2907,7 @@ function openModal(id){
   $('m-recap').innerHTML = it('Service', SVC[svcOf(r.time)].label) + it('Zone', zoneLabel(r.zone) || '—') + it('Téléphone', r.tel || '—') + (r.email ? it('E-mail', r.email) : '') +
     (r.notes ? it('Notes', r.notes) : '') + it('Origine', ({web:'Site · ' + ago(r.ts), staff:'Équipe', scan:'Scanner'})[r.src] || '—') +
     (st === 'cancelled' && r.cancelledAt ? it('Annulation', (r.cancelledBy === 'client' ? 'Par le client' : 'Par l\'équipe') + ' · ' + ago(r.cancelledAt) + (r.cancelledBy === 'client' && cancelLate(r) ? ' · tardive' : '')) : '') +
+    (r.modAt ? it('Modifiée', 'Par le client · ' + ago(r.modAt) + (r.prev ? ' · avant : ' + prevTxt(r.prev) : '')) : '') +
     (isActive(r) && r.table && tableReleased(r) ? it('Table', tName(r.table) + ' libérée automatiquement (1 h après l\'heure)') : '');
   $('m-table').innerHTML = tableOptions(occupancy(r.date, svcOf(r.time)), '', r.table, '<option value="">Aucune</option>');
   $('m-table').value = r.table || '';
@@ -2896,10 +2990,11 @@ setInterval(() => { if(hubReady && !document.hidden) refreshHub(); }, 60000);   
 /* Retour sur l'app entre deux commandes : on recharge, et on signale ce qui est arrivé pendant l'absence. */
 async function refreshHub(){
   if(!hubReady || $('view-hub').hidden) return;
-  const before = {}; S.resas.forEach(r => { before[r.id] = r.status; });
+  const before = {}, mod = {}; S.resas.forEach(r => { before[r.id] = r.status; mod[r.id] = r.modAt || 0; });
   try { await Store.load(); } catch(e){ return; }
   onData(S.resas.filter(r => !before[r.id] && r.status === 'pending'),
-    S.resas.filter(r => r.status === 'cancelled' && r.cancelledBy === 'client' && (before[r.id] === 'pending' || before[r.id] === 'confirmed')));
+    S.resas.filter(r => r.status === 'cancelled' && r.cancelledBy === 'client' && (before[r.id] === 'pending' || before[r.id] === 'confirmed')),
+    S.resas.filter(r => before[r.id] && r.modAt && r.modAt !== mod[r.id]));
 }
 document.addEventListener('visibilitychange', () => { if(!document.hidden) refreshHub(); });
 addEventListener('pageshow', e => { if(e.persisted) refreshHub(); });
@@ -2925,6 +3020,10 @@ $('menu-search').addEventListener('input', e => { menuQuery = e.target.value; re
 $('book-form').onsubmit = submitBooking;
 $('btn-copy-link').onclick = e => copyText(pageUrl() + '#suivi-' + trackToken, e.currentTarget);
 $('btn-cancel').onclick = cancelTrack;
+$('btn-modify').onclick = openEdit;
+$('btn-e-back').onclick = () => { closeEdit(); refreshTrack(); };
+$('btn-e-save').onclick = saveEdit;
+$('e-date').onchange = () => { if($('e-date').value) editTimes($('e-date').value, $('e-time').value); };
 $('btn-client-push').onclick = async () => { $('btn-client-push').disabled = true; if(await clientPushAttach(trackToken, false)) $('btn-client-push').hidden = true; $('btn-client-push').disabled = false; };
 $('login').onsubmit = login;
 $('btn-logout').onclick = logout;

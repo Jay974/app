@@ -17,6 +17,7 @@ Une seule page (`index.html`) pour deux publics :
 Statuts : `pending` (en attente) → `confirmed` / `declined`, et `cancelled` si le client ou l'équipe annule.
 
 - **Annulation par le client** : possible en ligne jusqu'à l'heure de la réservation (ensuite, il appelle). L'équipe est prévenue aussitôt (notification push, son, et section « Annulées par les clients » dans Demandes). Une annulation moins de 2 h avant est marquée **tardive**.
+- **Modification par le client** : depuis sa page de suivi, jusqu'à l'heure de la réservation et 3 fois au plus. Changer le jour, l'heure ou le nombre de personnes remet la réservation **en attente** (table retirée) ; l'équipe est prévenue (notification « Réservation modifiée · à reconfirmer ») et voit l'ancien créneau sur la demande. Modifier seulement les notes la garde confirmée.
 - **Tables libérées automatiquement** : 1 h après l'heure d'une réservation, sa table redevient libre sur le plan (la réservation reste dans la liste du service avec « Table … libérée »). Les tables marquées « Occupée » à la main restent à libérer à la main.
 
 ## Installer l'app (PWA)
@@ -121,6 +122,6 @@ Les fondations sont posées : fiches clients reliées aux réservations, consent
 
 ## À faire (prochaines étapes)
 
-1. **Espace client** : modifier sa réservation (retour en attente), puis connexion par lien e-mail une fois le domaine acheté.
+1. **Espace client, suite** : connexion par lien e-mail une fois le domaine acheté (historique sur tous les appareils).
 2. **Domaine + e-mails** : achat du domaine, branchement Vercel, authentification du domaine dans Brevo, `MAIL_FROM`, puis activation de l'interrupteur e-mail.
 3. **Version générique** pour d'autres restaurants (multi-établissements, abonnements, module RH).

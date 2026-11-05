@@ -13,12 +13,16 @@ module.exports = async (req, res) => {
 
   const body = readBody(req);
   const r = body.reservation || {}, subs = Array.isArray(body.subscriptions) ? body.subscriptions : [];
-  const cancel = body.kind === 'cancelled';
+  const cancel = body.kind === 'cancelled', modif = body.kind === 'modified', b = r.before || {};
+  const before = modif && (b.date !== r.date || b.time !== r.time || b.guests !== r.guests)
+    ? ' (avant : ' + (b.date !== r.date ? dateFr(b.date, true) + ' ' : '') + b.time + ', ' + b.guests + ' pers.)' : '';
   const payload = JSON.stringify({
-    title: cancel ? (r.late ? 'Annulation tardive' : 'Réservation annulée par le client') : 'Nouvelle demande de réservation',
-    body: r.name + ' · ' + r.guests + ' pers. · ' + dateFr(r.date) + ' à ' + r.time +
+    title: cancel ? (r.late ? 'Annulation tardive' : 'Réservation annulée par le client')
+         : modif ? (r.pending ? 'Réservation modifiée · à reconfirmer' : 'Note modifiée par le client')
+         : 'Nouvelle demande de réservation',
+    body: r.name + ' · ' + r.guests + ' pers. · ' + dateFr(r.date) + ' à ' + r.time + before +
           (cancel && r.table ? ' · table ' + r.table + ' libérée' : cancel && r.was === 'pending' ? ' · demande retirée' : ''),
-    tag: (cancel ? 'annul-' : 'resa-') + r.id,
+    tag: (cancel ? 'annul-' : modif ? 'modif-' : 'resa-') + r.id,
     url: '/equipe',
     badge: body.pending || 0
   });
