@@ -36,6 +36,10 @@ alter table public.reservations add column if not exists email text;          --
 alter table public.reservations add column if not exists client_push jsonb;   -- notification sur l'appareil du client, s'il l'a activée
 alter table public.reservations add column if not exists cancelled_by text check (cancelled_by in ('client', 'staff'));   -- qui a annulé
 alter table public.reservations add column if not exists cancelled_at timestamptz;
+alter table public.reservations add column if not exists device_id text;   -- identifiant anonyme de l'appareil du client (limite anti-abus)
+alter table public.reservations add column if not exists ip_hash text;     -- empreinte de la connexion (jamais l'adresse IP elle-même)
+create index if not exists reservations_device_idx on public.reservations (device_id) where device_id is not null;
+create index if not exists reservations_ip_idx on public.reservations (ip_hash, created_at) where ip_hash is not null;
 create index if not exists reservations_date_idx   on public.reservations (date);
 create index if not exists reservations_status_idx on public.reservations (status);
 
@@ -76,11 +80,45 @@ drop policy if exists staff_occupancy on public.occupancy;
 create policy staff_occupancy on public.occupancy for all to authenticated
   using (public.is_staff()) with check (public.is_staff());
 
+-- ── Limite par appareil (tant qu'il n'y a pas de comptes clients) ──
+-- Réglages privés : sel servant à rendre l'empreinte de connexion non réversible.
+create schema if not exists private;
+revoke all on schema private from public, anon, authenticated;
+create table if not exists private.config (key text primary key, value text not null);
+insert into private.config (key, value) values ('ip_salt', replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''))
+on conflict (key) do nothing;
+
+-- Appareils bloqués par l'équipe. La connexion (empreinte IP) n'est bloquée que 24 h :
+-- une même connexion 4G ou Wi-Fi peut être partagée par d'autres clients.
+create table if not exists public.blocked_devices (
+  device_id  text primary key,
+  ip_hash    text,
+  ip_until   timestamptz,
+  created_at timestamptz not null default now(),
+  created_by uuid default auth.uid()
+);
+alter table public.blocked_devices enable row level security;
+drop policy if exists staff_blocked_devices on public.blocked_devices;
+create policy staff_blocked_devices on public.blocked_devices for select to authenticated using (public.is_staff());
+
+-- Empreinte de la connexion du client (adresse IP salée puis hachée ; l'adresse n'est jamais conservée).
+create or replace function private.client_ip_hash() returns text
+language plpgsql stable security definer set search_path = public, private, extensions as $$
+declare v_h json; v_ip text;
+begin
+  begin v_h := current_setting('request.headers', true)::json; exception when others then return null; end;
+  v_ip := coalesce(nullif(v_h->>'cf-connecting-ip', ''), nullif(trim(split_part(coalesce(v_h->>'x-forwarded-for', ''), ',', 1)), ''));
+  if v_ip is null then return null; end if;
+  return encode(digest(v_ip || (select value from private.config where key = 'ip_salt'), 'sha256'), 'hex');
+end $$;
+
 -- ── Fonctions publiques (page client) ──────────────────────
 drop function if exists public.submit_reservation(text, text, int, date, text, text, text);
 drop function if exists public.submit_reservation(text, text, int, date, text, text, text, boolean);
+drop function if exists public.submit_reservation(text, text, int, date, text, text, text, boolean, text);
 create or replace function public.submit_reservation(
-  p_name text, p_tel text, p_guests int, p_date date, p_time text, p_zone text, p_notes text, p_opt_in boolean default false, p_email text default null
+  p_name text, p_tel text, p_guests int, p_date date, p_time text, p_zone text, p_notes text, p_opt_in boolean default false, p_email text default null,
+  p_device text default null
 ) returns json
 language plpgsql security definer set search_path = public as $$
 declare
@@ -88,6 +126,8 @@ declare
   v_out    json;
   v_svc    text;
   v_closed jsonb;
+  v_device text := nullif(left(regexp_replace(coalesce(p_device, ''), '[^A-Za-z0-9-]', '', 'g'), 64), '');
+  v_ip     text := private.client_ip_hash();
 begin
   -- Champs obligatoires : nom, téléphone joignable, nombre de personnes, date et heure.
   if char_length(trim(coalesce(p_name, ''))) < 2 then raise exception 'nom_requis'; end if;
@@ -114,10 +154,28 @@ begin
   if (select count(*) from reservations where src = 'web' and created_at > now() - interval '10 minutes') >= 40 then
     raise exception 'trop_de_demandes';
   end if;
+  -- Appareil bloqué par l'équipe (ou sa connexion, pendant 24 h).
+  if exists (select 1 from blocked_devices
+             where (v_device is not null and device_id = v_device) or (v_ip is not null and ip_hash = v_ip and ip_until > now())) then
+    raise exception 'appareil_bloque';
+  end if;
+  -- Par appareil : 2 demandes en attente à venir au maximum, 4 demandes par 24 h.
+  if v_device is not null and (
+       (select count(*) from reservations where device_id = v_device and status = 'pending' and date >= v_today) >= 2
+    or (select count(*) from reservations where device_id = v_device and created_at > now() - interval '24 hours') >= 4) then
+    raise exception 'limite_appareil';
+  end if;
+  -- Par connexion (navigation privée, navigateur vidé) : 6 demandes par heure, 12 par 24 h.
+  if v_ip is not null and (
+       (select count(*) from reservations where ip_hash = v_ip and created_at > now() - interval '1 hour') >= 6
+    or (select count(*) from reservations where ip_hash = v_ip and created_at > now() - interval '24 hours') >= 12) then
+    raise exception 'limite_appareil';
+  end if;
 
-  insert into reservations (name, tel, guests, date, time, zone, notes, src, status, marketing_opt_in, email)
+  insert into reservations (name, tel, guests, date, time, zone, notes, src, status, marketing_opt_in, email, device_id, ip_hash)
   values (trim(p_name), nullif(trim(p_tel), ''), p_guests, p_date, p_time,
-          coalesce(p_zone, ''), nullif(trim(p_notes), ''), 'web', 'pending', coalesce(p_opt_in, false), lower(nullif(trim(p_email), '')))
+          coalesce(p_zone, ''), nullif(trim(p_notes), ''), 'web', 'pending', coalesce(p_opt_in, false), lower(nullif(trim(p_email), '')),
+          v_device, v_ip)
   returning json_build_object('id', id, 'token', access_token) into v_out;
   return v_out;
 end $$;
@@ -175,7 +233,37 @@ drop trigger if exists reservations_track_cancel on public.reservations;
 create trigger reservations_track_cancel before update on public.reservations
   for each row execute function public.track_cancel();
 
-grant execute on function public.submit_reservation(text, text, int, date, text, text, text, boolean, text) to anon, authenticated;
+grant execute on function public.submit_reservation(text, text, int, date, text, text, text, boolean, text, text) to anon, authenticated;
+
+-- Équipe : bloquer l'appareil d'une demande (et refuser ses demandes en attente), ou le débloquer.
+create or replace function public.block_device(p_resa uuid) returns int
+language plpgsql security definer set search_path = public as $$
+declare v_r reservations; n int;
+begin
+  if not public.is_staff() then raise exception 'non_autorise'; end if;
+  select * into v_r from reservations where id = p_resa;
+  if v_r.device_id is null and v_r.ip_hash is null then raise exception 'appareil_inconnu'; end if;
+  insert into blocked_devices (device_id, ip_hash, ip_until)
+  values (coalesce(v_r.device_id, 'ip:' || v_r.ip_hash), v_r.ip_hash, case when v_r.ip_hash is not null then now() + interval '24 hours' end)
+  on conflict (device_id) do update set ip_hash = excluded.ip_hash, ip_until = excluded.ip_until, created_at = now(), created_by = auth.uid();
+  update reservations set status = 'declined'
+  where status = 'pending' and ((v_r.device_id is not null and device_id = v_r.device_id) or (v_r.device_id is null and ip_hash = v_r.ip_hash));
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
+create or replace function public.unblock_device(p_resa uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare v_r reservations;
+begin
+  if not public.is_staff() then raise exception 'non_autorise'; end if;
+  select * into v_r from reservations where id = p_resa;
+  delete from blocked_devices where device_id = coalesce(v_r.device_id, 'ip:' || v_r.ip_hash);
+end $$;
+revoke all on function public.block_device(uuid) from public, anon;
+revoke all on function public.unblock_device(uuid) from public, anon;
+grant execute on function public.block_device(uuid) to authenticated;
+grant execute on function public.unblock_device(uuid) to authenticated;
 grant execute on function public.reservation_status(uuid) to anon, authenticated;
 grant execute on function public.cancel_reservation(uuid) to anon, authenticated;
 grant execute on function public.is_staff() to authenticated;
