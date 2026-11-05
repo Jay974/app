@@ -36,6 +36,9 @@ alter table public.reservations add column if not exists email text;          --
 alter table public.reservations add column if not exists client_push jsonb;   -- notification sur l'appareil du client, s'il l'a activée
 alter table public.reservations add column if not exists cancelled_by text check (cancelled_by in ('client', 'staff'));   -- qui a annulé
 alter table public.reservations add column if not exists cancelled_at timestamptz;
+alter table public.reservations add column if not exists modified_at timestamptz;   -- dernière modification par le client
+alter table public.reservations add column if not exists modif_count int not null default 0;
+alter table public.reservations add column if not exists previous jsonb;           -- créneau avant la dernière modification
 alter table public.reservations add column if not exists device_id text;   -- identifiant anonyme de l'appareil du client (limite anti-abus)
 alter table public.reservations add column if not exists ip_hash text;     -- empreinte de la connexion (jamais l'adresse IP elle-même)
 create index if not exists reservations_device_idx on public.reservations (device_id) where device_id is not null;
@@ -184,7 +187,8 @@ create or replace function public.reservation_status(p_token uuid) returns json
 language sql stable security definer set search_path = public as $$
   select json_build_object('name', name, 'guests', guests, 'date', date, 'time', time,
                            'zone', zone, 'notes', notes, 'tel', tel, 'status', status, 'updated_at', updated_at,
-                           'has_email', email is not null, 'has_push', client_push is not null)
+                           'has_email', email is not null, 'has_push', client_push is not null,
+                           'modif_left', greatest(0, 3 - modif_count), 'previous', previous)
   from reservations where access_token = p_token;
 $$;
 
@@ -216,6 +220,36 @@ begin
   update reservations set status = 'cancelled', cancelled_by = 'client' where id = v_r.id;
   return json_build_object('status', 'cancelled');
 end $$;
+
+-- Le client modifie sa réservation (jour, heure, personnes, notes) jusqu'à l'heure prévue, 3 fois au plus.
+-- Un changement de créneau ou de nombre de personnes la remet en attente : l'équipe reconfirme et replace.
+create or replace function public.modify_reservation(p_token uuid, p_date date, p_time text, p_guests int, p_notes text) returns json
+language plpgsql security definer set search_path = public as $$
+declare
+  v_r reservations; v_today date := (now() at time zone 'Indian/Reunion')::date; v_svc text; v_closed jsonb; v_slot boolean;
+begin
+  select * into v_r from reservations where access_token = p_token for update;
+  if not found or v_r.status not in ('pending', 'confirmed') then raise exception 'non_modifiable'; end if;
+  if now() >= public.resa_at(v_r.date, v_r.time) then raise exception 'trop_tard'; end if;
+  if v_r.modif_count >= 3 then raise exception 'trop_de_modifs'; end if;
+  if p_guests is null or p_guests < 1 or p_guests > 40 then raise exception 'personnes_requis'; end if;
+  if p_date is null or p_time is null or p_time !~ '^[0-2][0-9]h[0-5][0-9]$' then raise exception 'creneau_requis'; end if;
+  if p_date < v_today or p_date > v_today + 180 or public.resa_at(p_date, p_time) <= now() then raise exception 'date_invalide'; end if;
+  v_svc := case when split_part(p_time, 'h', 1)::int < 16 then 'midi' when split_part(p_time, 'h', 1)::int < 19 then 'hh' else 'soir' end;
+  select coalesce(data->'closed', '{"hh":[0],"soir":[0]}'::jsonb) into v_closed from settings where id = 1;
+  if coalesce(v_closed, '{"hh":[0],"soir":[0]}'::jsonb)->v_svc @> to_jsonb(extract(dow from p_date)::int) then raise exception 'service_ferme'; end if;
+  v_slot := p_date <> v_r.date or p_time <> v_r.time or p_guests <> v_r.guests;
+  if not v_slot and coalesce(nullif(trim(p_notes), ''), '') = coalesce(v_r.notes, '') then return json_build_object('status', v_r.status, 'changed', false); end if;
+  update reservations set
+    date = p_date, time = p_time, guests = p_guests, notes = left(nullif(trim(p_notes), ''), 500),
+    status = case when v_slot then 'pending' else status end,
+    table_id = case when v_slot then '' else table_id end,
+    previous = case when v_slot then jsonb_build_object('date', v_r.date, 'time', v_r.time, 'guests', v_r.guests, 'status', v_r.status, 'table', v_r.table_id) else previous end,
+    modified_at = now(), modif_count = modif_count + 1
+  where id = v_r.id;
+  return json_build_object('status', case when v_slot then 'pending' else v_r.status end, 'changed', true);
+end $$;
+grant execute on function public.modify_reservation(uuid, date, text, int, text) to anon, authenticated;
 
 -- Date et auteur de l'annulation ; effacés si la réservation est réactivée.
 create or replace function public.track_cancel() returns trigger

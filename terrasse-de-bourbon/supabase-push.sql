@@ -120,6 +120,37 @@ drop trigger if exists reservations_notify_cancel on public.reservations;
 create trigger reservations_notify_cancel after update of status on public.reservations
   for each row execute function private.notify_cancel();
 
+-- ── Déclencheur : un client modifie sa réservation, l'équipe est prévenue ──
+create or replace function private.notify_modified() returns trigger
+language plpgsql security definer set search_path = public, private, extensions as $$
+declare v_url text; v_secret text; v_subs jsonb; v_pending int;
+begin
+  if new.modified_at is not distinct from old.modified_at then return new; end if;
+  select value into v_url from private.config where key = 'notify_url';
+  select value into v_secret from private.config where key = 'notify_secret';
+  select coalesce(jsonb_agg(subscription), '[]'::jsonb) into v_subs from public.push_subscriptions;
+  if v_url is null or jsonb_array_length(v_subs) = 0 then return new; end if;
+  select count(*) into v_pending from public.reservations where status = 'pending';
+  perform net.http_post(
+    url := v_url,
+    body := jsonb_build_object(
+      'kind', 'modified',
+      'reservation', jsonb_build_object('id', new.id, 'name', new.name, 'guests', new.guests, 'date', new.date, 'time', new.time,
+                                        'before', jsonb_build_object('guests', old.guests, 'date', old.date, 'time', old.time),
+                                        'pending', new.status = 'pending'),
+      'pending', v_pending,
+      'subscriptions', v_subs),
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-notify-secret', v_secret),
+    timeout_milliseconds := 8000);
+  return new;
+exception when others then
+  return new;
+end $$;
+
+drop trigger if exists reservations_notify_modified on public.reservations;
+create trigger reservations_notify_modified after update on public.reservations
+  for each row execute function private.notify_modified();
+
 -- ── Prévenir le client (e-mail s'il l'a laissé, notification s'il l'a activée) ──
 -- Envoi par /api/notify-client : « demande reçue » à l'envoi, puis « confirmée » ou « non disponible ».
 insert into private.config (key, value) values
