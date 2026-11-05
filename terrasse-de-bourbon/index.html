@@ -2000,7 +2000,7 @@ function devFlag(r){
   if(!r.dev) return '';
   if(S.blocked.has(r.dev)) return '<span class="dev-flag">Appareil bloqué</span>';
   const n = sameDevice(r).filter(x => Date.now() - x.ts < 7 * 864e5).length;
-  return n >= 3 ? '<button class="dev-flag" data-rid="' + esc(r.id) + '" type="button">Même appareil : ' + n + ' demandes en 7 jours</button>' : '';
+  return n >= 3 ? '<button class="dev-flag" data-rid="' + esc(r.id) + '" type="button">Même appareil · ' + n + ' demandes</button>' : '';
 }
 function renderInbox(pend){
   pend = pend.slice().sort((a, b) => a.date.localeCompare(b.date) || String(a.time).localeCompare(String(b.time), 'fr', {numeric:true}));

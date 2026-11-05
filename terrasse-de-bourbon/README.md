@@ -86,6 +86,8 @@ Sans ces deux valeurs, la page tourne en **mode démo** : tout reste dans le nav
 - Le public ne lit ni n'écrit jamais directement dans les tables. Il passe par trois fonctions : envoyer une demande, suivre sa demande avec un jeton secret, l'annuler.
 - Seuls les comptes de la table `staff` voient les réservations (téléphones compris).
 - Garde-fous : 3 demandes en attente maximum par numéro et par heure, 40 demandes par tranche de 10 minutes, date entre aujourd'hui et 6 mois.
+- **Limite par appareil** (en attendant les comptes clients) : chaque appareil reçoit un identifiant anonyme. Au maximum 2 demandes en attente à venir et 4 demandes par 24 h par appareil ; 6 par heure et 12 par 24 h par connexion internet (pour la navigation privée). Au-delà, le client est invité à appeler. L'adresse IP n'est jamais conservée, seulement une empreinte salée.
+- Dans le hub, un repère « Même appareil · N demandes » signale un appareil insistant. Dans la fiche, **Bloquer cet appareil** refuse ses demandes en attente et l'empêche d'en envoyer d'autres (sa connexion est aussi bloquée 24 h) ; **Débloquer** annule. La saisie par l'équipe n'est jamais limitée.
 
 ## Configuration dans `index.html`
 
@@ -119,11 +121,6 @@ Les fondations sont posées : fiches clients reliées aux réservations, consent
 
 ## À faire (prochaines étapes)
 
-1. **Limite par appareil** (tant qu'il n'y a pas de comptes clients) : empêcher une même personne d'envoyer des dizaines de fausses demandes.
-   - identifiant d'appareil anonyme envoyé avec chaque demande, limité côté serveur (par exemple 2 demandes à venir en attente, 4 par jour) ;
-   - limite par adresse IP en complément, car l'identifiant disparaît si on vide le navigateur ou passe en navigation privée ;
-   - message clair au client (« appelez-nous pour une demande supplémentaire ») ; l'équipe peut toujours saisir une réservation à la main sans limite ;
-   - dans le hub, signaler les demandes venant d'un même appareil et pouvoir le bloquer.
-2. **Espace client** : modifier sa réservation (retour en attente), puis connexion par lien e-mail une fois le domaine acheté.
-3. **Domaine + e-mails** : achat du domaine, branchement Vercel, authentification du domaine dans Brevo, `MAIL_FROM`, puis activation de l'interrupteur e-mail.
-4. **Version générique** pour d'autres restaurants (multi-établissements, abonnements, module RH).
+1. **Espace client** : modifier sa réservation (retour en attente), puis connexion par lien e-mail une fois le domaine acheté.
+2. **Domaine + e-mails** : achat du domaine, branchement Vercel, authentification du domaine dans Brevo, `MAIL_FROM`, puis activation de l'interrupteur e-mail.
+3. **Version générique** pour d'autres restaurants (multi-établissements, abonnements, module RH).
