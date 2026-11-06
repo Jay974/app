@@ -331,6 +331,9 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .nav-inner { pointer-events: auto; max-width: 448px; margin: 0 auto; background: var(--band); border-radius: 99px; box-shadow: 0 12px 30px rgba(15,26,15,.28); display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px; }
 #hub-nav .nav-inner { grid-template-columns: repeat(6, 1fr); max-width: 560px; }
 /* Agenda des réservations */
+/* Logo du restaurant (hub) : mène au site client, distinct des flèches de navigation */
+.site-logo { display: block; width: 44px; height: 44px; border-radius: 12px; overflow: hidden; border: 1px solid var(--line-strong); flex: none; }
+.site-logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cal-head { display: flex; align-items: center; gap: 8px; }
 .cal-head h2 { flex: 1; text-align: center; margin: 0; }
 .cal-nav { width: 40px; height: 40px; border-radius: 99px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); display: grid; place-items: center; cursor: pointer; flex: none; }
@@ -769,7 +772,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 <!-- ═══════════════ HUB ÉQUIPE ═══════════════ -->
 <div id="view-hub" class="app wide" hidden>
   <div class="topbar">
-    <a class="icon-btn" href="/" aria-label="Site client"><svg class="ico"><use href="#i-back"/></svg></a>
+    <a class="site-logo" href="/" aria-label="Site du restaurant" title="Site du restaurant"><img src="/icons/icon-192.png" alt=""></a>
     <div class="topbar-right">
       <span class="mode" id="hub-mode">…</span>
       <button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button>
