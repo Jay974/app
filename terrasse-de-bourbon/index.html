@@ -844,7 +844,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
         <button class="pill" data-pz="ter">Terrasse</button>
         <button class="pill" data-pz="rof">Rooftop</button>
       </div>
-      <div class="legend"><span><i style="background:var(--gold)"></i>Réservée</span><span><i style="background:var(--seat)"></i>Libre</span><span><i style="background:var(--busy)"></i>Occupée sans résa</span><span>Toucher une table libre la marque occupée.</span></div>
+      <div class="legend"><span><i style="background:var(--gold)"></i>Réservée</span><span><i style="background:var(--seat)"></i>Libre</span><span><i style="background:var(--busy)"></i>Occupée sans résa</span><span>Toucher une table libre : créer une réservation, placer une réservation ou la marquer occupée.</span></div>
       <div id="plan-zones" class="stack" style="gap:26px"></div>
     </section>
 
@@ -2296,7 +2296,53 @@ async function toggleManual(tid){
   S.occ[key] = cur; renderAll();
   await Store.saveOcc(key);
 }
-function onTableTap(tid){ const o = occupancy()[tid]; if(o && o.resa) openModal(o.resa.id); else toggleManual(tid); }
+/* Toucher une table : réservée → sa fiche ; occupée à la main → libérée ; libre → choix (créer, placer, occuper). */
+function onTableTap(tid){
+  const o = occupancy()[tid];
+  if(o && o.resa) return openModal(o.resa.id);
+  if(o && o.manual) return toggleManual(tid);
+  openTableSheet(tid);
+}
+function openTableSheet(tid){
+  const t = TBY[tid]; if(!t) return;
+  const top = t.maxCap || t.cap, resas = resasOfView().filter(isActive);
+  const fit = r => +r.guests <= top ? '' : ' · ' + r.guests + ' pers. pour ' + top + ' places';
+  const row = r => '<button class="resa" data-tt-place="' + esc(r.id) + '" type="button"><span class="resa-n">' + esc(r.guests) + '</span>' +
+    '<span class="resa-main"><span class="resa-name">' + esc(r.name) + '</span><span class="resa-meta">' + esc(r.time) + (r.table ? ' · actuellement table ' + esc(tName(r.table)) : '') + esc(fit(r)) + '</span></span>' +
+    (r.status === 'pending' ? '<span class="badges"><span class="badge b-pending">À confirmer</span></span>' : '') + '</button>';
+  const un = resas.filter(r => !r.table), placed = resas.filter(r => r.table && r.table !== tid);
+  openEditor('<span class="eyebrow">' + esc(cap1(fmtDateFr(V.date))) + ' · ' + SVC[V.svc].label + '</span><h2 class="h2" style="margin:2px 0 4px">Table ' + esc(t.name) + '</h2><p class="note">' + capTxt(t) + ' · libre</p>' +
+    '<div class="stack" style="gap:10px;margin-top:14px">' +
+    '<button class="btn-primary" data-tt-new type="button">' + ico('i-plus') + 'Créer une réservation sur cette table</button>' +
+    '<button class="btn-line" data-tt-occ type="button">Marquer occupée (clients sans réservation)</button></div>' +
+    '<span class="section-lbl" style="display:block;margin-top:18px">Placer une réservation existante</span>' +
+    (un.length || placed.length ? '<div class="list" style="margin-top:8px">' + un.map(row).join('') +
+      (placed.length ? '<span class="note" style="margin:6px 0 2px">Déplacer ici :</span>' + placed.map(row).join('') : '') + '</div>'
+      : '<p class="note">Aucune réservation à placer sur ce service.</p>') +
+    '<button class="btn-text" data-tt-close type="button" style="margin-top:12px">Fermer</button>');
+  $('ed-body').dataset.tid = tid;
+}
+async function tableSheetClick(e){
+  const tid = $('ed-body').dataset.tid; if(!tid || $('ed-overlay').hidden) return;
+  const b = e.target.closest('[data-tt-new],[data-tt-occ],[data-tt-place],[data-tt-close]'); if(!b) return;
+  const d = b.dataset;
+  if(d.ttClose !== undefined){ closeEditor(); return; }
+  if(d.ttOcc !== undefined){ closeEditor(); await toggleManual(tid); toast('Table ' + tName(tid) + ' marquée occupée'); return; }
+  if(d.ttNew !== undefined){
+    closeEditor();
+    $('a-date').value = V.date; if(!normTime($('a-time').value) || svcOf(normTime($('a-time').value)) !== V.svc) $('a-time').value = SVC[V.svc].time;
+    $('a-guests').value = TBY[tid].cap;
+    switchTab('add'); buildAddTable(); $('a-table').value = tid;
+    toast('Nouvelle réservation sur la table ' + tName(tid)); $('a-name').focus(); return;
+  }
+  if(d.ttPlace){
+    const r = S.resas.find(x => x.id === d.ttPlace); if(!r) return;
+    if(occupancy(r.date, svcOf(r.time))[tid] && r.table !== tid){ toast('Cette table vient d\'être prise'); closeEditor(); renderAll(); return; }
+    closeEditor();
+    try { await Store.saveResa(Object.assign({}, r, { table: tid, zone: TBY[tid].zone })); toast(r.name + ' placée table ' + tName(tid) + (r.status === 'pending' ? ' (reste à confirmer)' : '')); } catch(err){}
+    renderAll();
+  }
+}
 
 /* ── HUB : FICHIER CLIENTS ──────────────────────────────── */
 /* Un client par numéro de téléphone, alimenté automatiquement par chaque réservation.
@@ -2504,7 +2550,7 @@ function edItemRow(i, c, k, n){
 function upsertLocal(kind, rec){ const list = CFG[kind], i = list.findIndex(x => x.id === rec.id); if(i >= 0) list[i] = Object.assign({}, list[i], rec); else list.push(rec); }
 function afterMenuChange(){ applyMenu({ cats: CFG.cats, items: CFG.items }); Config.cache(CFG); if(!Store.live) Store.saveDemo(CFG); if(V.tab === 'settings') renderSettings(); }
 function openEditor(html){ $('ed-body').innerHTML = '<div class="sheet-handle"></div>' + html; $('ed-overlay').hidden = false; $('ed-body').scrollTop = 0; }
-function closeEditor(){ $('ed-overlay').hidden = true; SET.draft = null; SET.catDraft = null; }
+function closeEditor(){ $('ed-overlay').hidden = true; delete $('ed-body').dataset.tid; SET.draft = null; SET.catDraft = null; }
 
 function openItemEditor(id){
   const src = id ? CFG.items.find(i => i.id === id) : { id: uuid(), category_id: SET.cat, grp: '', name: '', description: '', price: null, prices: null, allergens: [], photo_url: '', featured: false, available: true, sort: 0, _new: true };
@@ -2858,6 +2904,7 @@ document.addEventListener('change', e => {
   if(t.dataset && t.dataset.staffName) teamAction(() => Store.setStaffName(t.dataset.staffName, t.value), 'Nom enregistré');
 });
 $('ed-overlay').onclick = e => { if(e.target === $('ed-overlay')) closeEditor(); };
+$('ed-body').addEventListener('click', tableSheetClick);
 $('btn-settings').onclick = () => { SET.view = 'home'; switchTab('settings'); };
 
 /* ── HUB : AJOUT PAR L'ÉQUIPE ───────────────────────────── */
