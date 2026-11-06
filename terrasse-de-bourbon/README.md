@@ -5,7 +5,7 @@ Une seule page (`index.html`) pour deux publics :
 | Adresse | Pour qui | Contenu |
 |---|---|---|
 | `…/index.html` | Clients | Accueil, carte digitale, réservation, « Mes résas », suivi du statut |
-| `…/equipe` | Équipe | Hub : demandes à confirmer, plan de salle, service, fichier clients, ajout manuel |
+| `…/equipe` | Équipe | Hub : demandes à confirmer, agenda, plan de salle, service, fichier clients, ajout manuel |
 
 ## Parcours d'une réservation
 
@@ -19,6 +19,14 @@ Statuts : `pending` (en attente) → `confirmed` / `declined`, et `cancelled` si
 - **Annulation par le client** : possible en ligne jusqu'à l'heure de la réservation (ensuite, il appelle). L'équipe est prévenue aussitôt (notification push, son, et section « Annulées par les clients » dans Demandes). Une annulation moins de 2 h avant est marquée **tardive**.
 - **Modification par le client** : depuis sa page de suivi, jusqu'à l'heure de la réservation et 3 fois au plus. Changer le jour, l'heure ou le nombre de personnes remet la réservation **en attente** (table retirée) ; l'équipe est prévenue (notification « Réservation modifiée · à reconfirmer ») et voit l'ancien créneau sur la demande. Modifier seulement les notes la garde confirmée.
 - **Tables libérées automatiquement** : 1 h après l'heure d'une réservation, sa table redevient libre sur le plan (la réservation reste dans la liste du service avec « Table … libérée »). Les tables marquées « Occupée » à la main restent à libérer à la main.
+
+## Agenda des réservations (hub)
+
+- Onglet **Agenda** : calendrier du mois, semaine du lundi au dimanche. Chaque jour montre trois pastilles (midi, happy hour, soir : pleine si le service a des réservations, vide s'il est fermé), le nombre de couverts et, en orange, les demandes à confirmer.
+- Toucher un jour affiche le détail par service (réservations, couverts, tables prises) et la liste du jour. **Plan** ou **Liste** ouvre directement ce service avec les tables réservées déjà marquées ; **Ajouter** prépare une saisie à cette date.
+- Tout est synchronisé en direct : demandes du site, confirmations, modifications et annulations des clients, saisies de l'équipe et du scanner apparaissent sans recharger.
+- Plan et Service : flèches pour passer au jour précédent ou suivant ; un bandeau **À placer** liste les réservations du service sans table (toucher pour en attribuer une).
+- Les mois passés se chargent à la demande quand on remonte dans l'agenda.
 
 ## Installer l'app (PWA)
 
@@ -124,4 +132,5 @@ Les fondations sont posées : fiches clients reliées aux réservations, consent
 
 1. **Espace client, suite** : connexion par lien e-mail une fois le domaine acheté (historique sur tous les appareils).
 2. **Domaine + e-mails** : achat du domaine, branchement Vercel, authentification du domaine dans Brevo, `MAIL_FROM`, puis activation de l'interrupteur e-mail.
-3. **Version générique** pour d'autres restaurants (multi-établissements, abonnements, module RH).
+3. **Hub de gestion complet** (remplacer L'Addition à terme) : prise de commande par table, envoi en cuisine et au bar, addition et encaissement, clôture de caisse, statistiques. À cadrer : conformité caisse (loi anti-fraude TVA, certification NF525 ou équivalent) avant tout encaissement.
+4. **Version générique** pour d'autres restaurants (multi-établissements, abonnements, module RH).

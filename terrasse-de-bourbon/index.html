@@ -329,7 +329,36 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .status-bar span { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; padding: 0 max(16px, env(safe-area-inset-right, 0px)) max(14px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); pointer-events: none; }
 .nav-inner { pointer-events: auto; max-width: 448px; margin: 0 auto; background: var(--band); border-radius: 99px; box-shadow: 0 12px 30px rgba(15,26,15,.28); display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px; }
-#hub-nav .nav-inner { grid-template-columns: repeat(5, 1fr); max-width: 520px; }
+#hub-nav .nav-inner { grid-template-columns: repeat(6, 1fr); max-width: 560px; }
+/* Agenda des réservations */
+.cal-head { display: flex; align-items: center; gap: 8px; }
+.cal-head h2 { flex: 1; text-align: center; margin: 0; }
+.cal-nav { width: 40px; height: 40px; border-radius: 99px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); display: grid; place-items: center; cursor: pointer; flex: none; }
+.cal-nav .ico { width: 18px; height: 18px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal-wd { font-size: 11px; font-weight: 600; color: var(--faint); text-align: center; padding: 4px 0; text-transform: uppercase; letter-spacing: .04em; }
+.cal-day { position: relative; min-height: 64px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 6px 4px 5px; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; font: inherit; min-width: 0; }
+.cal-day .cd-n { font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums; }
+.cal-day .cd-cov { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.cal-day .cd-svc { display: flex; gap: 3px; }
+.cal-day .cd-svc i { width: 8px; height: 8px; border-radius: 99px; background: var(--line-strong); opacity: .5; }
+.cal-day .cd-svc i.on { background: var(--gold); opacity: 1; }
+.cal-day .cd-svc i.off { background: transparent; border: 1px solid var(--line-strong); }
+.cal-day .cd-pend { position: absolute; top: 4px; right: 4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px; background: var(--orange); color: #1A2F1A; font-size: 10px; font-weight: 700; line-height: 16px; font-style: normal; }
+.cal-day.out { opacity: .35; }
+.cal-day.past { background: transparent; }
+.cal-day.today { border-color: var(--gold); }
+.cal-day.today .cd-n { color: var(--gold); }
+.cal-day.sel { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.cal-svc { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; padding: 14px 16px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); }
+.cal-svc b { font-size: 15px; }
+.cal-svc .note { grid-column: 1; margin: 0; }
+.cal-svc .acts { grid-row: 1 / span 2; grid-column: 2; display: flex; gap: 6px; }
+.cal-svc.closed { opacity: .55; }
+.day-step { display: flex; gap: 8px; align-items: center; }
+.day-step .pill-field { flex: 1; }
+.unplaced { display: flex; flex-wrap: wrap; gap: 8px; }
+.unplaced button { border: 1px dashed var(--gold-line); color: var(--gold); background: var(--gold-soft); border-radius: 99px; padding: 6px 12px; font: 600 12px/1.2 inherit; font-family: inherit; cursor: pointer; }
 .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 4px; border-radius: 99px; color: var(--on-band-muted); font-size: 11px; font-weight: 600; position: relative; text-decoration: none; }
 .nav-btn.active { color: var(--orange); }
 .dot { position: absolute; top: 3px; left: calc(50% + 8px); min-width: 17px; height: 17px; padding: 0 4px; border-radius: 99px; background: var(--orange); color: #1A2F1A; font-size: 10px; line-height: 17px; text-align: center; font-variant-numeric: tabular-nums; }
@@ -770,7 +799,9 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
     </div>
     <div id="svc-ctrl" class="stack" style="gap:16px" hidden>
       <div class="ctrl">
-        <div class="pill-field"><input type="date" id="dash-date" aria-label="Date du service"></div>
+        <div class="day-step"><button class="cal-nav" data-day-step="-1" type="button" aria-label="Jour précédent"><svg class="ico"><use href="#i-back"/></svg></button>
+          <div class="pill-field"><input type="date" id="dash-date" aria-label="Date du service"></div>
+          <button class="cal-nav" data-day-step="1" type="button" aria-label="Jour suivant"><svg class="ico"><use href="#i-arrow"/></svg></button></div>
         <div class="pills" role="group" aria-label="Service">
           <button class="pill" data-svc="midi">Midi<small>12h–14h30 · HH</small></button>
           <button class="pill" data-svc="hh">Happy Hour<small>17h–19h</small></button>
@@ -793,7 +824,20 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <div id="done" class="list" style="gap:14px"></div>
     </section>
 
+    <section id="panel-cal" class="stack" style="gap:16px" hidden>
+      <div class="cal-head">
+        <button class="cal-nav" data-cal-month="-1" type="button" aria-label="Mois précédent"><svg class="ico"><use href="#i-back"/></svg></button>
+        <h2 class="h2" id="cal-title">Mois</h2>
+        <button class="cal-nav" data-cal-month="1" type="button" aria-label="Mois suivant"><svg class="ico"><use href="#i-arrow"/></svg></button>
+      </div>
+      <div class="pills" role="group" aria-label="Raccourcis"><button class="pill" data-cal-today type="button">Aujourd'hui</button><span class="note" id="cal-sync" style="align-self:center"></span></div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="legend"><span><i style="background:var(--gold)"></i>Service avec réservations (midi · happy hour · soir)</span><span><i style="background:var(--orange)"></i>Demandes à confirmer</span></div>
+      <div id="cal-detail" class="stack" style="gap:12px"></div>
+    </section>
+
     <section id="panel-plan" class="stack" style="gap:18px" hidden>
+      <div id="unplaced-box" class="stack" style="gap:8px" hidden><span class="section-lbl" id="unplaced-lbl">À placer</span><div class="unplaced" id="unplaced"></div></div>
       <div class="pills" role="group" aria-label="Zone affichée">
         <button class="pill active" data-pz="all">Tout</button>
         <button class="pill" data-pz="int">Intérieur</button>
@@ -867,6 +911,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
   <nav class="nav" id="hub-nav" hidden>
     <div class="nav-inner">
       <button class="nav-btn active" data-tab="inbox"><svg class="ico"><use href="#i-inbox"/></svg>Demandes<span class="dot" id="pending-dot" hidden></span></button>
+      <button class="nav-btn" data-tab="cal"><svg class="ico"><use href="#i-cal"/></svg>Agenda</button>
       <button class="nav-btn" data-tab="plan"><svg class="ico"><use href="#i-plan"/></svg>Plan</button>
       <button class="nav-btn" data-tab="list"><svg class="ico"><use href="#i-list"/></svg>Service</button>
       <button class="nav-btn" data-tab="clients"><svg class="ico"><use href="#i-team"/></svg>Clients</button>
@@ -1367,9 +1412,9 @@ const Store = {
       try { S.blocked = new Set(JSON.parse(localStorage.getItem('tdb_blocked') || '[]')); } catch(e){ S.blocked = new Set(); }
       return;
     }
-    const from = addDays(today(), -7);
+    const from = S.from || addDays(today(), -7);   // élargi quand l'agenda remonte dans le passé
     const [a, b] = await Promise.all([
-      this.sb.from('reservations').select('*').gte('date', from).order('date').limit(2000),
+      this.sb.from('reservations').select('*').gte('date', from).order('date').limit(10000),
       this.sb.from('occupancy').select('*').gte('key', from)
     ]);
     if(a.error) throw a.error;
@@ -2022,8 +2067,9 @@ async function enableAlerts(){
 function switchTab(tab){
   V.tab = tab;
   document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  ['inbox','plan','list','clients','add','settings'].forEach(t => $('panel-' + t).hidden = t !== tab);
-  $('svc-ctrl').hidden = tab === 'inbox' || tab === 'add' || tab === 'clients' || tab === 'settings';
+  ['inbox','cal','plan','list','clients','add','settings'].forEach(t => $('panel-' + t).hidden = t !== tab);
+  $('svc-ctrl').hidden = tab === 'inbox' || tab === 'add' || tab === 'clients' || tab === 'settings' || tab === 'cal';
+  if(tab === 'cal'){ CAL.sel = CAL.sel || V.date || today(); CAL.month = CAL.month || CAL.sel.slice(0, 7); ensureMonthLoaded(); }
   $('btn-settings').classList.toggle('active', tab === 'settings');
   if(tab === 'clients') loadCustomers();
   if(tab === 'settings'){ closeEditor(); renderSettings(); loadConfig(); }
@@ -2069,9 +2115,9 @@ function renderAll(){
   $('pending-dot').hidden = !pend.length; $('pending-dot').textContent = pend.length;
   document.title = (pend.length ? '(' + pend.length + ') ' : '') + 'Hub · ' + RESTO;
   try { if(navigator.setAppBadge) (pend.length ? navigator.setAppBadge(pend.length) : navigator.clearAppBadge()).catch(() => {}); } catch(e){}   // pastille sur l'icône
-  const titles = { inbox: pend.length ? pend.length + ' demande' + (pend.length > 1 ? 's' : '') + ' à confirmer' : 'Aucune demande en attente', add: 'Ajouter une réservation', clients: 'Fichier clients', settings: 'Réglages' };
+  const titles = { inbox: pend.length ? pend.length + ' demande' + (pend.length > 1 ? 's' : '') + ' à confirmer' : 'Aucune demande en attente', add: 'Ajouter une réservation', clients: 'Fichier clients', settings: 'Réglages', cal: 'Agenda des réservations' };
   $('hub-title').textContent = titles[V.tab] || (V.date === today() ? 'Aujourd\'hui, ' + fmtDateFr(V.date).split(' ').slice(1).join(' ') : cap1(fmtDateFr(V.date)));
-  $('hub-eyebrow').textContent = V.tab === 'inbox' ? 'Hub équipe · demandes en ligne' : V.tab === 'clients' ? 'Hub équipe · fidélisation' : V.tab === 'settings' ? 'Hub équipe · ' + (IS_ADMIN ? 'administrateur' : 'équipe') : 'Hub équipe · ' + SVC[V.svc].label;
+  $('hub-eyebrow').textContent = V.tab === 'cal' ? 'Hub équipe · synchronisé en direct' : V.tab === 'inbox' ? 'Hub équipe · demandes en ligne' : V.tab === 'clients' ? 'Hub équipe · fidélisation' : V.tab === 'settings' ? 'Hub équipe · ' + (IS_ADMIN ? 'administrateur' : 'équipe') : 'Hub équipe · ' + SVC[V.svc].label;
   if(V.tab === 'inbox') renderInbox(pend);
   if(V.tab === 'plan' || V.tab === 'list'){
     document.querySelectorAll('[data-svc]').forEach(b => b.classList.toggle('active', b.dataset.svc === V.svc));
@@ -2084,6 +2130,7 @@ function renderAll(){
     if(V.tab === 'plan') renderPlan(occ); else renderList();
   }
   if(V.tab === 'add') buildAddTable();
+  if(V.tab === 'cal') renderCal();
 }
 /* Demande modifiée par le client : rappel du créneau d'avant. */
 function prevTxt(p){ return cap1(fmtDateFr(p.date)) + ' · ' + p.time + ' · ' + p.guests + ' pers.' + (p.table ? ' · table ' + tName(p.table) : ''); }
@@ -2143,7 +2190,83 @@ async function declineReq(id){
   try { await Store.saveResa(Object.assign({}, r, { status: 'declined' })); toast('Demande refusée : le client le voit sur sa page'); } catch(e){}
   renderAll();
 }
+/* ── AGENDA : calendrier mensuel, synchronisé en direct (site, saisies de l'équipe, scanner) ── */
+const CAL = { month: '', sel: '' };
+const MOIS_LONG = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+/* Charge les réservations des mois passés consultés (par défaut : depuis 7 jours). */
+async function ensureMonthLoaded(){
+  const from = CAL.month + '-01';
+  if(Store.live && from < (S.from || addDays(today(), -7))){
+    S.from = addDays(from, -7); $('cal-sync').textContent = 'Chargement…';
+    try { await Store.load(); } catch(e){}
+    renderAll();
+  }
+}
+function dayStats(){
+  const m = {};
+  S.resas.forEach(r => {
+    if(!isActive(r)) return;
+    const d = m[r.date] || (m[r.date] = { n: 0, cov: 0, pend: 0, svc: {} });
+    const k = svcOf(r.time), sv = d.svc[k] || (d.svc[k] = { n: 0, cov: 0, pend: 0, tables: 0 });
+    d.n++; d.cov += +r.guests || 0; sv.n++; sv.cov += +r.guests || 0;
+    if(r.status === 'pending'){ d.pend++; sv.pend++; }
+    if(r.table) sv.tables++;
+  });
+  return m;
+}
+function renderCal(){
+  if(!CAL.month) CAL.month = (CAL.sel || today()).slice(0, 7);
+  const [y, mo] = CAL.month.split('-').map(Number), first = new Date(y, mo - 1, 1), t0 = today(), st = dayStats();
+  $('cal-title').textContent = cap1(MOIS_LONG[mo - 1]) + ' ' + y;
+  $('cal-sync').textContent = Store.live ? 'Synchronisé en direct' : 'Mode démo';
+  const start = addDays(isoLocal(first), -((first.getDay() + 6) % 7));   // la semaine commence le lundi
+  let html = ['lun','mar','mer','jeu','ven','sam','dim'].map(d => '<span class="cal-wd">' + d + '</span>').join('');
+  for(let i = 0; i < 42; i++){
+    const d = addDays(start, i), D = dt(d), x = st[d];
+    if(i >= 35 && d.slice(0, 7) !== CAL.month) break;
+    const dots = Object.keys(SVC).map(k => '<i class="' + (svcClosed(d, k) ? 'off' : x && x.svc[k] ? 'on' : '') + '"></i>').join('');
+    html += '<button type="button" class="cal-day' + (d.slice(0, 7) !== CAL.month ? ' out' : '') + (d < t0 ? ' past' : '') + (d === t0 ? ' today' : '') + (d === CAL.sel ? ' sel' : '') + '" data-cal-day="' + d + '" aria-label="' + esc(fmtDateFr(d)) + (x ? ', ' + x.n + ' réservations' : '') + '">' +
+      '<span class="cd-n">' + D.getDate() + '</span><span class="cd-svc">' + dots + '</span><span class="cd-cov">' + (x ? x.cov + ' couv.' : '') + '</span>' +
+      (x && x.pend ? '<i class="cd-pend">' + x.pend + '</i>' : '') + '</button>';
+  }
+  $('cal-grid').innerHTML = html;
+  renderCalDay(st);
+}
+function renderCalDay(st){
+  const d = CAL.sel, x = st[d], resas = S.resas.filter(r => r.date === d).sort((a, b) => String(a.time).localeCompare(String(b.time), 'fr', {numeric:true}));
+  const svcRows = Object.keys(SVC).map(k => {
+    if(svcClosed(d, k)) return '<div class="cal-svc closed"><b>' + SVC[k].label + '</b><p class="note">Fermé</p></div>';
+    const v = x && x.svc[k], man = S.occ[d + '_' + k] || {}, taken = (v ? v.tables : 0) + Object.keys(man).filter(id => man[id]).length;
+    return '<div class="cal-svc"><b>' + SVC[k].label + ' <small class="note">' + esc(SVC[k].hours) + '</small></b>' +
+      '<p class="note">' + (v ? v.n + ' résa' + (v.n > 1 ? 's' : '') + ' · ' + v.cov + ' couverts' + (v.pend ? ' · <b style="color:var(--gold)">' + v.pend + ' à confirmer</b>' : '') : 'Aucune réservation') + ' · ' + taken + '/' + TLIST.length + ' tables prises</p>' +
+      '<span class="acts"><button class="btn-line btn-sm" data-cal-open="plan" data-cal-svc="' + k + '" type="button">Plan</button><button class="btn-line btn-sm" data-cal-open="list" data-cal-svc="' + k + '" type="button">Liste</button></span></div>';
+  }).join('');
+  $('cal-detail').innerHTML = '<div class="row-between"><h2 class="h2" style="margin:0">' + esc(cap1(fmtDateFr(d))) + '</h2><button class="btn-primary btn-sm" data-cal-add type="button">' + ico('i-plus') + 'Ajouter</button></div>' + svcRows +
+    (resas.length ? '<span class="section-lbl">Réservations du jour</span><div class="list">' + resas.map(r =>
+      '<button class="resa' + (isActive(r) ? '' : ' dim') + '" data-rid="' + esc(r.id) + '"><span class="resa-n">' + esc(r.guests) + '</span>' +
+      '<span class="resa-main"><span class="resa-name">' + esc(r.name) + '</span><span class="resa-meta">' + esc(r.time) + ' · ' + SVC[svcOf(r.time)].label + ({web:' · site', staff:' · équipe', scan:' · scanner'}[r.src] || '') + '</span></span>' +
+      '<span class="badges">' + (!isActive(r) ? '<span class="badge b-no">' + STATUS[r.status].short + '</span>' :
+        (r.table ? '<span class="badge b-table">Table ' + esc(tName(r.table)) + '</span>' : '<span class="badge b-none">À placer</span>') + (r.status === 'pending' ? '<span class="badge b-pending">À confirmer</span>' : '')) + '</span></button>').join('') + '</div>' : '');
+}
+function calClick(e){
+  const t = e.target.closest('[data-cal-day],[data-cal-month],[data-cal-today],[data-cal-open],[data-cal-add]'); if(!t) return;
+  const d = t.dataset;
+  if(d.calDay){ CAL.sel = d.calDay; if(d.calDay.slice(0, 7) !== CAL.month){ CAL.month = d.calDay.slice(0, 7); ensureMonthLoaded(); } renderCal(); }
+  else if(d.calMonth){ const [y, m] = CAL.month.split('-').map(Number), n = new Date(y, m - 1 + (+d.calMonth), 1); CAL.month = n.getFullYear() + '-' + pad(n.getMonth() + 1); ensureMonthLoaded(); renderCal(); }
+  else if(d.calToday !== undefined){ CAL.sel = today(); CAL.month = CAL.sel.slice(0, 7); renderCal(); }
+  else if(d.calOpen){ V.date = CAL.sel; V.svc = d.calSvc; $('dash-date').value = V.date; switchTab(d.calOpen); }
+  else if(d.calAdd !== undefined){ $('a-date').value = CAL.sel; switchTab('add'); }
+}
+function stepDay(n){
+  V.date = addDays(V.date || today(), n); $('dash-date').value = V.date; CAL.sel = V.date; CAL.month = V.date.slice(0, 7);
+  if(V.date < (S.from || addDays(today(), -7))) ensureMonthLoaded();
+  renderAll();
+}
 function renderPlan(occ){
+  const un = resasOfView().filter(r => isActive(r) && !r.table);
+  $('unplaced-box').hidden = !un.length;
+  $('unplaced-lbl').textContent = 'À placer (' + un.length + ')';
+  $('unplaced').innerHTML = un.map(r => '<button type="button" data-rid="' + esc(r.id) + '">' + esc(r.time) + ' · ' + esc(r.name) + ' · ' + esc(r.guests) + 'p' + (r.status === 'pending' ? ' · à confirmer' : '') + '</button>').join('');
   document.querySelectorAll('[data-pz]').forEach(b => b.classList.toggle('active', b.dataset.pz === V.pz));
   $('plan-zones').innerHTML = ZONES.filter(z => V.pz === 'all' || z.short === V.pz).map(z => {
     const free = z.tables.filter(t => !occ[t.id]);
@@ -3028,7 +3151,9 @@ $('btn-client-push').onclick = async () => { $('btn-client-push').disabled = tru
 $('login').onsubmit = login;
 $('btn-logout').onclick = logout;
 $('btn-alerts').onclick = enableAlerts;
-$('dash-date').onchange = e => { V.date = e.target.value || today(); renderAll(); };
+$('dash-date').onchange = e => { V.date = e.target.value || today(); CAL.sel = V.date; CAL.month = V.date.slice(0, 7); if(V.date < (S.from || addDays(today(), -7))) ensureMonthLoaded(); renderAll(); };
+$('panel-cal').addEventListener('click', calClick);
+$('svc-ctrl').addEventListener('click', e => { const b = e.target.closest('[data-day-step]'); if(b) stepDay(+b.dataset.dayStep); });
 $('add-form').onsubmit = staffAdd;
 ['a-zone','a-date','a-time'].forEach(i => $(i).addEventListener('change', () => { if(i === 'a-time') $('a-time').value = normTime($('a-time').value) || $('a-time').value; buildAddTable(); }));
 $('btn-qf').onclick = quickFill;
