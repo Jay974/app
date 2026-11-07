@@ -414,6 +414,8 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .tile .t-sub { font-size: 11px; color: var(--faint); line-height: 1.25; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tile.busy { border-color: var(--gold-line); background: var(--gold-soft); }
 .tile.busy .t-sub { color: var(--gold); font-weight: 600; }
+.tile.done { border-style: dashed; border-color: var(--gold-line); }
+.tile.done .t-sub { color: var(--muted); font-style: italic; }
 .tile.manual { border-color: var(--busy); background: var(--busy-soft); }   /* marquée occupée à la main : couleur à part */
 .tile.manual .seat { fill: var(--busy); }
 .tile.manual .seat-back { stroke: var(--busy); }
@@ -1331,9 +1333,10 @@ function takenFor(r, date, time){
 }
 /* Heure de la réservation (heure de l'appareil, La Réunion). */
 function resaTs(r){ const [h, m] = String(r.time || '').split('h').map(Number); const d = dt(r.date); d.setHours(h || 0, m || 0, 0, 0); return d.getTime(); }
-/* La table se libère d'elle-même 1 h après l'heure de la réservation (la réservation reste dans l'historique). */
-const TABLE_HOLD_MIN = 60;
-const tableReleased = r => Date.now() >= resaTs(r) + TABLE_HOLD_MIN * 60000;
+/* La table se libère d'elle-même après un délai réglable (Réglages > Plan de salle ; 0 = jamais). La réservation reste dans l'historique. */
+let TABLE_HOLD_MIN = 60;
+const tableReleased = r => TABLE_HOLD_MIN > 0 && Date.now() >= resaTs(r) + TABLE_HOLD_MIN * 60000;
+const holdTxt = () => TABLE_HOLD_MIN % 60 ? Math.floor(TABLE_HOLD_MIN / 60) + ' h ' + pad(TABLE_HOLD_MIN % 60) : TABLE_HOLD_MIN / 60 + ' h';
 /* Identifiant anonyme de cet appareil (limite anti-abus des demandes en ligne). */
 function deviceId(){
   try { let d = localStorage.getItem('tdb_device'); if(!d){ d = uuid(); localStorage.setItem('tdb_device', d); } return d; } catch(e){ return null; }
@@ -2306,13 +2309,16 @@ function renderPlan(occ){
   $('unplaced-lbl').textContent = 'À placer (' + un.length + ')';
   $('unplaced').innerHTML = un.map(r => '<button type="button" data-rid="' + esc(r.id) + '">' + esc(r.time) + ' · ' + esc(r.name) + ' · ' + esc(r.guests) + 'p' + (r.status === 'pending' ? ' · à confirmer' : '') + '</button>').join('');
   document.querySelectorAll('[data-pz]').forEach(b => b.classList.toggle('active', b.dataset.pz === V.pz));
+  const done = {};   // tables libérées automatiquement : on rappelle quelle réservation y était
+  resasOfView().filter(r => isActive(r) && r.table && tableReleased(r)).forEach(r => tablesOf(r).forEach(id => { done[id] = r; }));
   $('plan-zones').innerHTML = ZONES.filter(z => V.pz === 'all' || z.short === V.pz).map(z => {
     const free = z.tables.filter(t => !occ[t.id]);
     return '<div class="zone-block"><div class="zone-head"><h2 class="h2">' + z.label + '</h2><span>' + free.length + '/' + z.tables.length + ' libres · ' + free.reduce((s, t) => s + t.cap, 0) + ' places</span></div><div class="tiles">' +
       z.tables.map(t => {
         const o = occ[t.id];
-        const cls = o ? (o.resa ? 'busy hot' + (o.resa.status === 'pending' ? ' pending' : '') : 'manual') : '';
-        const sub = o ? (o.resa ? (o.joined ? 'Jumelée ' + esc(tName(o.resa.table)) + ' · ' : (o.resa.joined || []).length ? 'Jumelée · ' : '') + esc(o.resa.name) + ' · ' + esc(o.resa.guests) + 'p · ' + esc(o.resa.time) : 'Occupée') : capTxt(t);
+        const fin = !o && done[t.id];
+        const cls = o ? (o.resa ? 'busy hot' + (o.resa.status === 'pending' ? ' pending' : '') : 'manual') : fin ? 'done' : '';
+        const sub = fin ? 'Libérée · ' + esc(fin.name) + ' ' + esc(fin.time) : o ? (o.resa ? (o.joined ? 'Jumelée ' + esc(tName(o.resa.table)) + ' · ' : (o.resa.joined || []).length ? 'Jumelée · ' : '') + esc(o.resa.name) + ' · ' + esc(o.resa.guests) + 'p · ' + esc(o.resa.time) : 'Occupée') : capTxt(t);
         return '<button class="tile ' + cls + '" data-tid="' + t.id + '" aria-label="Table ' + esc(t.name) + (o ? ', occupée' : ', libre') + '">' + tileSVG(t) +
           '<span class="t-name">' + esc(t.name) + '</span><span class="t-sub">' + sub + '</span></button>';
       }).join('') + '</div></div>';
@@ -2349,7 +2355,9 @@ function openTableSheet(tid){
     '<span class="resa-main"><span class="resa-name">' + esc(r.name) + '</span><span class="resa-meta">' + esc(r.time) + (r.table ? ' · actuellement table ' + esc(tablesTxt(r)) : '') + esc(fit(r)) + '</span></span>' +
     (r.status === 'pending' ? '<span class="badges"><span class="badge b-pending">À confirmer</span></span>' : '') + '</button>';
   const un = resas.filter(r => !r.table), placed = resas.filter(r => r.table && r.table !== tid);
+  const fin = resasOfView().find(r => isActive(r) && tablesOf(r).indexOf(tid) >= 0 && tableReleased(r));
   openEditor('<span class="eyebrow">' + esc(cap1(fmtDateFr(V.date))) + ' · ' + SVC[V.svc].label + '</span><h2 class="h2" style="margin:2px 0 4px">Table ' + esc(t.name) + '</h2><p class="note">' + capTxt(t) + ' · libre</p>' +
+    (fin ? '<div class="card" style="margin-top:10px;padding:12px"><p class="note" style="margin:0">Libérée automatiquement ' + holdTxt() + ' après la réservation de <b>' + esc(fin.name) + '</b> (' + esc(fin.time) + ', ' + esc(fin.guests) + ' pers.). Clients encore là ? Touchez « Marquer occupée ».</p><button class="btn-text" data-tt-see="' + esc(fin.id) + '" type="button" style="align-self:flex-start;padding:6px 0 0">Voir la réservation</button></div>' : '') +
     '<div class="stack" style="gap:10px;margin-top:14px">' +
     '<button class="btn-primary" data-tt-new type="button">' + ico('i-plus') + 'Créer une réservation sur cette table</button>' +
     '<button class="btn-line" data-tt-occ type="button">Marquer occupée (clients sans réservation)</button></div>' +
@@ -2362,9 +2370,10 @@ function openTableSheet(tid){
 }
 async function tableSheetClick(e){
   const tid = $('ed-body').dataset.tid; if(!tid || $('ed-overlay').hidden) return;
-  const b = e.target.closest('[data-tt-new],[data-tt-occ],[data-tt-place],[data-tt-close]'); if(!b) return;
+  const b = e.target.closest('[data-tt-new],[data-tt-occ],[data-tt-place],[data-tt-close],[data-tt-see]'); if(!b) return;
   const d = b.dataset;
   if(d.ttClose !== undefined){ closeEditor(); return; }
+  if(d.ttSee){ closeEditor(); openModal(d.ttSee); return; }
   if(d.ttOcc !== undefined){ closeEditor(); await toggleManual(tid); toast('Table ' + tName(tid) + ' marquée occupée'); return; }
   if(d.ttNew !== undefined){
     closeEditor();
@@ -2451,6 +2460,7 @@ function applySettings(d){
   if(d.services) Object.keys(SVC).forEach(k => { if(d.services[k]) SVC[k] = Object.assign({}, SVC[k], d.services[k]); });
   if(Array.isArray(d.happyHours)) HAPPY_HOURS = d.happyHours;
   if(d.closed) CLOSED = Object.assign({ midi: [], hh: [], soir: [] }, d.closed);
+  if(d.tableHold != null && !isNaN(+d.tableHold)) TABLE_HOLD_MIN = +d.tableHold;
   if(Array.isArray(d.combos)) COMBOS = d.combos.filter(c => Array.isArray(c) && c.length > 1);
   if(Array.isArray(d.zones) && d.zones.length){
     ZONES = d.zones.map(z => ({ short: z.short, label: z.label, tables: (z.tables || []).map(t => Object.assign({}, t)) }));
@@ -2488,7 +2498,7 @@ function buildDefaultCfg(){
     services: JSON.parse(JSON.stringify(SVC)), happyHours: HAPPY_HOURS.map(h => h.slice()), closed: JSON.parse(JSON.stringify(CLOSED)),
     zones: ZONES.map(z => ({ short: z.short, label: z.label, txt: ZONE_TXT[z.short], tables: z.tables.map(t => {
       const o = { id: t.id, name: t.name, cap: t.cap }; if(t.maxCap) o.maxCap = t.maxCap; if(t.salon) o.salon = true; return o; }) })),
-    combos: COMBOS.map(c => c.slice())
+    combos: COMBOS.map(c => c.slice()), tableHold: TABLE_HOLD_MIN
   };
   const cats = [], items = [];
   MENU_CATS.forEach((c, i) => {
@@ -2777,6 +2787,7 @@ function saveServices(){
 function renderTablesEditor(){
   const zones = SET.zonesDraft || (SET.zonesDraft = JSON.parse(JSON.stringify(CFG.settings.zones)));
   if(!SET.combosDraft) SET.combosDraft = (CFG.settings.combos || COMBOS).map(c => c.slice());
+  if(SET.holdDraft == null) SET.holdDraft = CFG.settings.tableHold != null ? CFG.settings.tableHold : TABLE_HOLD_MIN;
   $('set-body').innerHTML = setHead('Plan de salle') + zones.map((z, zi) => '<div class="card"><div class="row2">' + fieldIn('zn-' + zi, 'Zone', z.label) + fieldIn('zt-' + zi, 'Description pour les clients', z.txt) + '</div>' +
     '<div class="tbl-row tbl-head"><span>Table</span><span>Places</span><span>Max</span><span>Groupes</span><span></span></div>' +
     z.tables.map((t, ti) => '<div class="tbl-row"><input class="input" data-tb="name" data-z="' + zi + '" data-t="' + ti + '" value="' + esc(t.name) + '" aria-label="Nom de la table">' +
@@ -2785,6 +2796,9 @@ function renderTablesEditor(){
       '<input type="checkbox" data-tb="salon" data-z="' + zi + '" data-t="' + ti + '"' + (t.salon ? ' checked' : '') + ' aria-label="Réservée en priorité aux groupes">' +
       '<button class="mini" data-act="tb-del" data-z="' + zi + '" data-t="' + ti + '" type="button" aria-label="Supprimer la table">✕</button></div>').join('') +
     '<button class="btn-text" data-act="tb-add" data-z="' + zi + '" type="button" style="align-self:flex-start">+ Ajouter une table</button></div>').join('') +
+    '<div class="card"><h3 class="h3">Libération des tables</h3><p class="hint">Après l\'heure d\'une réservation, sa table redevient libre sur le plan au bout de :</p>' +
+    '<select class="input" id="tb-hold">' + [[60, '1 h'], [90, '1 h 30'], [120, '2 h'], [150, '2 h 30'], [180, '3 h'], [0, 'Jamais (je libère à la main)']].map(o => '<option value="' + o[0] + '"' + (+SET.holdDraft === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>' +
+    '<p class="note">La réservation reste visible : la table apparaît en pointillés « Libérée · nom ». Si les clients sont encore là, touchez la table puis « Marquer occupée ».</p></div>' +
     '<div class="card"><h3 class="h3">Tables jumelables</h3><p class="hint">Tables voisines que vous rapprochez pour un grand groupe. Une réservation trop grande pour sa table prend automatiquement les tables libres du même jumelage. Choisissez les tables dans la liste ; touchez une table pour la retirer.</p>' +
     SET.combosDraft.map((c, ci) => {
       const byId = {}; zones.forEach(z => z.tables.forEach(t => { byId[t.id] = t; }));
@@ -2805,6 +2819,7 @@ function readTables(){
     const t = zones[+i.dataset.z].tables[+i.dataset.t], f = i.dataset.tb;
     if(f === 'salon') t.salon = i.checked || undefined; else if(f === 'name') t.name = i.value.trim(); else t[f] = i.value === '' ? undefined : +i.value;
   });
+  if($('tb-hold')) SET.holdDraft = +$('tb-hold').value;
   zones.forEach((z, zi) => { if($('zn-' + zi)) z.label = $('zn-' + zi).value.trim() || z.label; if($('zt-' + zi)) z.txt = $('zt-' + zi).value.trim(); });
 }
 function saveTables(){
@@ -2817,8 +2832,8 @@ function saveTables(){
   const cbErr = combos.some(c => c.length < 2) ? 'Un jumelage doit contenir au moins deux tables.' : '';
   if(err || cbErr){ $('st-err').textContent = err || cbErr; return; }
   const zones = SET.zonesDraft.map(z => ({ short: z.short, label: z.label, txt: z.txt, tables: z.tables.map(t => { const o = { id: t.id, name: t.name, cap: t.cap }; if(t.maxCap) o.maxCap = t.maxCap; if(t.salon) o.salon = true; return o; }) }));
-  saveSettingsPatch({ zones, combos }, 'Plan de salle enregistré');
-  SET.combosDraft = null;
+  saveSettingsPatch({ zones, combos, tableHold: SET.holdDraft }, 'Plan de salle enregistré');
+  SET.combosDraft = null; SET.holdDraft = null;
 }
 
 /* Équipe (administrateurs) */
@@ -2915,7 +2930,7 @@ async function deleteCustomer(){
 function setAction(act, t){
   const id = t.dataset.id;
   switch(act){
-    case 'set-home': SET.view = 'home'; SET.zonesDraft = null; SET.combosDraft = null; renderSettings(); window.scrollTo(0, 0); break;
+    case 'set-home': SET.view = 'home'; SET.zonesDraft = null; SET.combosDraft = null; SET.holdDraft = null; renderSettings(); window.scrollTo(0, 0); break;
     case 'set-open': SET.view = t.dataset.v; renderSettings(); window.scrollTo(0, 0); break;
     case 'ed-cat': SET.cat = id; renderSettings(); break;
     case 'cat-new': openCatEditor(null); break;
@@ -2937,7 +2952,7 @@ function setAction(act, t){
     case 'save-services': saveServices(); break;
     case 'tb-add': readTables(); SET.zonesDraft[+t.dataset.z].tables.push({ id: 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: '', cap: 2 }); renderTablesEditor(); break;
     case 'tb-del': readTables(); SET.zonesDraft[+t.dataset.z].tables.splice(+t.dataset.t, 1); renderTablesEditor(); break;
-    case 'tb-cancel': SET.zonesDraft = null; SET.combosDraft = null; SET.view = 'home'; renderSettings(); break;
+    case 'tb-cancel': SET.zonesDraft = null; SET.combosDraft = null; SET.holdDraft = null; SET.view = 'home'; renderSettings(); break;
     case 'cb-add': readTables(); SET.combosDraft.push([]); renderTablesEditor(); break;
     case 'cb-rm': readTables(); SET.combosDraft[+t.dataset.k] = SET.combosDraft[+t.dataset.k].filter(x => x !== t.dataset.id); renderTablesEditor(); break;
     case 'cb-del': readTables(); SET.combosDraft.splice(+t.dataset.k, 1); renderTablesEditor(); break;
@@ -3176,7 +3191,7 @@ function openModal(id){
     (r.notes ? it('Notes', r.notes) : '') + it('Origine', ({web:'Site · ' + ago(r.ts), staff:'Équipe', scan:'Scanner'})[r.src] || '—') +
     (st === 'cancelled' && r.cancelledAt ? it('Annulation', (r.cancelledBy === 'client' ? 'Par le client' : 'Par l\'équipe') + ' · ' + ago(r.cancelledAt) + (r.cancelledBy === 'client' && cancelLate(r) ? ' · tardive' : '')) : '') +
     (r.modAt ? it('Modifiée', 'Par le client · ' + ago(r.modAt) + (r.prev ? ' · avant : ' + prevTxt(r.prev) : '')) : '') +
-    (isActive(r) && r.table && tableReleased(r) ? it('Table', tablesTxt(r) + ' libérée' + (tablesOf(r).length > 1 ? 's' : '') + ' automatiquement (1 h après l\'heure)') : '');
+    (isActive(r) && r.table && tableReleased(r) ? it('Table', tablesTxt(r) + ' libérée' + (tablesOf(r).length > 1 ? 's' : '') + ' automatiquement (' + holdTxt() + ' après l\'heure)') : '');
   $('m-table').innerHTML = tableOptions(occupancy(r.date, svcOf(r.time)), '', r.table, '<option value="">Aucune</option>');
   $('m-table').value = r.table || '';
   renderModalJoin(r);

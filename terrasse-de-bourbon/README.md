@@ -18,7 +18,7 @@ Statuts : `pending` (en attente) → `confirmed` / `declined`, et `cancelled` si
 
 - **Annulation par le client** : possible en ligne jusqu'à l'heure de la réservation (ensuite, il appelle). L'équipe est prévenue aussitôt (notification push, son, et section « Annulées par les clients » dans Demandes). Une annulation moins de 2 h avant est marquée **tardive**.
 - **Modification par le client** : depuis sa page de suivi, jusqu'à l'heure de la réservation et 3 fois au plus. Changer le jour, l'heure ou le nombre de personnes remet la réservation **en attente** (table retirée) ; l'équipe est prévenue (notification « Réservation modifiée · à reconfirmer ») et voit l'ancien créneau sur la demande. Modifier seulement les notes la garde confirmée.
-- **Tables libérées automatiquement** : 1 h après l'heure d'une réservation, sa table redevient libre sur le plan (la réservation reste dans la liste du service avec « Table … libérée »). Les tables marquées « Occupée » à la main restent à libérer à la main.
+- **Tables libérées automatiquement** : après l'heure d'une réservation, sa table redevient libre sur le plan au bout d'un délai réglable (Réglages > Plan de salle : 1 h par défaut, jusqu'à 3 h, ou jamais). La table reste repérable en pointillés « Libérée · nom heure » ; si les clients sont encore là, la toucher puis « Marquer occupée ». Les tables marquées « Occupée » à la main restent à libérer à la main.
 
 ## Agenda des réservations (hub)
 
