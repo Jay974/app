@@ -367,6 +367,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .day-step { display: flex; gap: 8px; align-items: center; }
 .day-step .pill-field { flex: 1; }
 .unplaced { display: flex; flex-wrap: wrap; gap: 8px; }
+.combo-row { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-sm); }
 .unplaced button.on { border-style: solid; background: var(--gold); color: #fff; }
 .unplaced button { border: 1px dashed var(--gold-line); color: var(--gold); background: var(--gold-soft); border-radius: 99px; padding: 6px 12px; font: 600 12px/1.2 inherit; font-family: inherit; cursor: pointer; }
 .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 4px; border-radius: 99px; color: var(--on-band-muted); font-size: 11px; font-weight: 600; position: relative; text-decoration: none; }
@@ -2775,7 +2776,7 @@ function saveServices(){
 }
 function renderTablesEditor(){
   const zones = SET.zonesDraft || (SET.zonesDraft = JSON.parse(JSON.stringify(CFG.settings.zones)));
-  if(!SET.combosDraft) SET.combosDraft = (CFG.settings.combos || COMBOS).map(c => c.map(tName).join(' + '));
+  if(!SET.combosDraft) SET.combosDraft = (CFG.settings.combos || COMBOS).map(c => c.slice());
   $('set-body').innerHTML = setHead('Plan de salle') + zones.map((z, zi) => '<div class="card"><div class="row2">' + fieldIn('zn-' + zi, 'Zone', z.label) + fieldIn('zt-' + zi, 'Description pour les clients', z.txt) + '</div>' +
     '<div class="tbl-row tbl-head"><span>Table</span><span>Places</span><span>Max</span><span>Groupes</span><span></span></div>' +
     z.tables.map((t, ti) => '<div class="tbl-row"><input class="input" data-tb="name" data-z="' + zi + '" data-t="' + ti + '" value="' + esc(t.name) + '" aria-label="Nom de la table">' +
@@ -2784,9 +2785,17 @@ function renderTablesEditor(){
       '<input type="checkbox" data-tb="salon" data-z="' + zi + '" data-t="' + ti + '"' + (t.salon ? ' checked' : '') + ' aria-label="Réservée en priorité aux groupes">' +
       '<button class="mini" data-act="tb-del" data-z="' + zi + '" data-t="' + ti + '" type="button" aria-label="Supprimer la table">✕</button></div>').join('') +
     '<button class="btn-text" data-act="tb-add" data-z="' + zi + '" type="button" style="align-self:flex-start">+ Ajouter une table</button></div>').join('') +
-    '<div class="card"><h3 class="h3">Tables jumelables</h3><p class="hint">Tables voisines que vous rapprochez pour un grand groupe. Une réservation trop grande pour sa table prend automatiquement les tables libres du même jumelage. Écrivez les noms séparés par « + ».</p>' +
-    SET.combosDraft.map((c, ci) => '<div class="row2" style="grid-template-columns:1fr auto"><input class="input" data-combo="' + ci + '" value="' + esc(c) + '" placeholder="108 + 108bis + 108ter" aria-label="Tables jumelées"><button class="mini" data-act="cb-del" data-k="' + ci + '" type="button" aria-label="Supprimer le jumelage">✕</button></div>').join('') +
-    '<button class="btn-text" data-act="cb-add" type="button" style="align-self:flex-start">+ Ajouter un jumelage</button></div>' +
+    '<div class="card"><h3 class="h3">Tables jumelables</h3><p class="hint">Tables voisines que vous rapprochez pour un grand groupe. Une réservation trop grande pour sa table prend automatiquement les tables libres du même jumelage. Choisissez les tables dans la liste ; touchez une table pour la retirer.</p>' +
+    SET.combosDraft.map((c, ci) => {
+      const byId = {}; zones.forEach(z => z.tables.forEach(t => { byId[t.id] = t; }));
+      const ids = c.filter(id => byId[id]), seats = ids.reduce((n, id) => n + (byId[id].maxCap || byId[id].cap || 0), 0);
+      return '<div class="combo-row"><div class="row-between"><b>Jumelage ' + (ci + 1) + (ids.length ? ' · ' + seats + ' places' : '') + '</b><button class="mini" data-act="cb-del" data-k="' + ci + '" type="button" aria-label="Supprimer le jumelage">✕</button></div>' +
+        '<div class="unplaced">' + (ids.length ? ids.map(id => '<button class="on" data-act="cb-rm" data-k="' + ci + '" data-id="' + esc(id) + '" type="button" aria-label="Retirer ' + esc(byId[id].name) + '">' + esc(byId[id].name) + ' ✕</button>').join('') : '<span class="note">Aucune table pour l\'instant</span>') + '</div>' +
+        '<select class="input" data-cb-add="' + ci + '" aria-label="Ajouter une table au jumelage"><option value="">+ Ajouter une table…</option>' +
+        zones.map(z => '<optgroup label="' + esc(z.label) + '">' + z.tables.filter(t => t.id && ids.indexOf(t.id) < 0 && t.name).map(t => '<option value="' + esc(t.id) + '">' + esc(t.name) + ' (' + (t.cap || '?') + (t.maxCap ? '–' + t.maxCap : '') + ' pl.)</option>').join('') + '</optgroup>').join('') + '</select>' +
+        (ids.length === 1 ? '<p class="note">Ajoutez au moins une autre table.</p>' : '') + '</div>';
+    }).join('') +
+    '<button class="btn-text" data-act="cb-add" type="button" style="align-self:flex-start">+ Nouveau jumelage</button></div>' +
     '<p class="note">« Max » : places possibles en ajoutant des chaises ou un bout de table. « Groupes » : grande table, salon ou canapé gardé pour les groupes ; la table proposée automatiquement ne la donne pas à 6 personnes ou moins, mais vous pouvez toujours la choisir à la main. Une table supprimée reste affichée sur les réservations déjà enregistrées.</p>' +
     '<p class="st err" id="st-err" role="alert"></p><div class="modal-actions"><button class="btn-line" data-act="tb-cancel" type="button">Annuler</button><button class="btn-primary" data-act="save-tables" type="button">Enregistrer le plan</button></div>';
 }
@@ -2797,17 +2806,15 @@ function readTables(){
     if(f === 'salon') t.salon = i.checked || undefined; else if(f === 'name') t.name = i.value.trim(); else t[f] = i.value === '' ? undefined : +i.value;
   });
   zones.forEach((z, zi) => { if($('zn-' + zi)) z.label = $('zn-' + zi).value.trim() || z.label; if($('zt-' + zi)) z.txt = $('zt-' + zi).value.trim(); });
-  document.querySelectorAll('#set-body [data-combo]').forEach(i => { SET.combosDraft[+i.dataset.combo] = i.value; });
 }
 function saveTables(){
   readTables();
   const all = SET.zonesDraft.flatMap(z => z.tables), names = all.map(t => t.name.toLowerCase());
   const err = all.some(t => !t.name) ? 'Chaque table doit avoir un nom.' : names.some((n, k) => names.indexOf(n) !== k) ? 'Deux tables portent le même nom.' :
     all.some(t => !(t.cap >= 1)) ? 'Indiquez le nombre de places de chaque table.' : all.some(t => t.maxCap && t.maxCap < t.cap) ? 'Le maximum doit être supérieur ou égal au nombre de places.' : '';
-  const byName = {}; all.forEach(t => { byName[t.name.toLowerCase()] = t.id; });
-  let cbErr = '';
-  const combos = SET.combosDraft.map(c => c.split('+').map(x => x.trim()).filter(Boolean)).filter(c => c.length).map(c => c.map(n => { const id = byName[n.toLowerCase()]; if(!id) cbErr = cbErr || 'Jumelage : la table « ' + n + ' » n\'existe pas.'; return id; }));
-  if(!cbErr && combos.some(c => c.length < 2)) cbErr = 'Un jumelage doit contenir au moins deux tables.';
+  const known = new Set(all.map(t => t.id));
+  const combos = SET.combosDraft.map(c => c.filter(id => known.has(id))).filter(c => c.length);   // tables supprimées retirées d'office
+  const cbErr = combos.some(c => c.length < 2) ? 'Un jumelage doit contenir au moins deux tables.' : '';
   if(err || cbErr){ $('st-err').textContent = err || cbErr; return; }
   const zones = SET.zonesDraft.map(z => ({ short: z.short, label: z.label, txt: z.txt, tables: z.tables.map(t => { const o = { id: t.id, name: t.name, cap: t.cap }; if(t.maxCap) o.maxCap = t.maxCap; if(t.salon) o.salon = true; return o; }) }));
   saveSettingsPatch({ zones, combos }, 'Plan de salle enregistré');
@@ -2931,7 +2938,8 @@ function setAction(act, t){
     case 'tb-add': readTables(); SET.zonesDraft[+t.dataset.z].tables.push({ id: 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: '', cap: 2 }); renderTablesEditor(); break;
     case 'tb-del': readTables(); SET.zonesDraft[+t.dataset.z].tables.splice(+t.dataset.t, 1); renderTablesEditor(); break;
     case 'tb-cancel': SET.zonesDraft = null; SET.combosDraft = null; SET.view = 'home'; renderSettings(); break;
-    case 'cb-add': readTables(); SET.combosDraft.push(''); renderTablesEditor(); break;
+    case 'cb-add': readTables(); SET.combosDraft.push([]); renderTablesEditor(); break;
+    case 'cb-rm': readTables(); SET.combosDraft[+t.dataset.k] = SET.combosDraft[+t.dataset.k].filter(x => x !== t.dataset.id); renderTablesEditor(); break;
     case 'cb-del': readTables(); SET.combosDraft.splice(+t.dataset.k, 1); renderTablesEditor(); break;
     case 'save-tables': saveTables(); break;
     case 'team-add': addMember(); break;
@@ -2959,6 +2967,10 @@ document.addEventListener('change', e => {
 });
 $('ed-overlay').onclick = e => { if(e.target === $('ed-overlay')) closeEditor(); };
 $('ed-body').addEventListener('click', tableSheetClick);
+$('set-body').addEventListener('change', e => {
+  const sel = e.target.closest('[data-cb-add]'); if(!sel || !sel.value) return;
+  readTables(); SET.combosDraft[+sel.dataset.cbAdd].push(sel.value); renderTablesEditor();
+});
 $('btn-settings').onclick = () => { SET.view = 'home'; switchTab('settings'); };
 
 /* ── HUB : AJOUT PAR L'ÉQUIPE ───────────────────────────── */
