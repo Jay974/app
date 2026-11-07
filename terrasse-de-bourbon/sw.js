@@ -1,6 +1,6 @@
 /* Service worker : ouverture instantanée et page disponible hors connexion.
    Les données (Supabase) ne sont jamais mises en cache : elles restent toujours à jour. */
-const CACHE = 'tdb-v11';
+const CACHE = 'tdb-v12';
 const SHELL = ['/index.html', '/manifest.webmanifest', '/manifest-equipe.webmanifest', '/icons/icon-192.png', '/icons/icon-equipe-192.png'];
 
 self.addEventListener('install', e => {
