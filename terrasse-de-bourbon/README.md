@@ -22,10 +22,11 @@ Statuts : `pending` (en attente) → `confirmed` / `declined`, et `cancelled` si
 
 ## Agenda des réservations (hub)
 
-- Onglet **Agenda** : calendrier du mois, semaine du lundi au dimanche. Chaque jour montre trois pastilles (midi, happy hour, soir : pleine si le service a des réservations, vide s'il est fermé), le nombre de couverts et, en orange, les demandes à confirmer.
+- Onglet **Agenda** : calendrier du mois, semaine du lundi au dimanche. Chaque jour montre le nombre de couverts, trois cases M · H · S (midi, happy hour, soir : foncée si le service a des réservations, barrée s'il est fermé) et, en rouge, les demandes à confirmer.
 - Toucher un jour affiche le détail par service (réservations, couverts, tables prises) et la liste du jour. **Plan** ou **Liste** ouvre directement ce service avec les tables réservées déjà marquées ; **Ajouter** prépare une saisie à cette date.
 - Tout est synchronisé en direct : demandes du site, confirmations, modifications et annulations des clients, saisies de l'équipe et du scanner apparaissent sans recharger.
 - **Toucher une table** sur le plan : réservée → sa fiche ; marquée occupée → libérée ; libre → au choix **créer une réservation** sur cette table (formulaire prérempli : date, service, table, places), **placer une réservation existante** du service (sans table, ou déplacée depuis une autre table) ou **marquer occupée** (clients sans réservation).
+- **Ajouter** : l'heure se choisit dans une liste par quart d'heure, groupée par service (d'après les horaires des réglages). Choisir une table remplit la zone et rappelle ses infos (numéro, zone, places).
 - Plan et Service : flèches pour passer au jour précédent ou suivant ; un bandeau **À placer** liste les réservations du service sans table (toucher pour en attribuer une).
 - Les mois passés se chargent à la demande quand on remonte dans l'agenda.
 

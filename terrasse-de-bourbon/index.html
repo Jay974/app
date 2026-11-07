@@ -340,23 +340,29 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .cal-nav .ico { width: 18px; height: 18px; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .cal-wd { font-size: 11px; font-weight: 600; color: var(--faint); text-align: center; padding: 4px 0; text-transform: uppercase; letter-spacing: .04em; }
-.cal-day { position: relative; min-height: 64px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 6px 4px 5px; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; font: inherit; min-width: 0; }
+.cal-day { position: relative; min-height: 76px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 6px 4px 5px; display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; font: inherit; min-width: 0; }
 .cal-day .cd-n { font-weight: 600; font-size: 14px; font-variant-numeric: tabular-nums; }
-.cal-day .cd-cov { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.cal-day .cd-svc { display: flex; gap: 3px; }
-.cal-day .cd-svc i { width: 8px; height: 8px; border-radius: 99px; background: var(--line-strong); opacity: .5; }
-.cal-day .cd-svc i.on { background: var(--gold); opacity: 1; }
-.cal-day .cd-svc i.off { background: transparent; border: 1px solid var(--line-strong); }
-.cal-day .cd-pend { position: absolute; top: 4px; right: 4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px; background: var(--orange); color: #1A2F1A; font-size: 10px; font-weight: 700; line-height: 16px; font-style: normal; }
+.cal-day .cd-cov { font-size: 15px; font-weight: 700; line-height: 1; color: var(--ink); font-variant-numeric: tabular-nums; }
+.cal-day .cd-cov small { display: block; font-size: 9px; font-weight: 500; color: var(--muted); margin-top: 1px; }
+.cal-day .cd-svc { display: flex; gap: 2px; margin-top: auto; }
+.cal-day .cd-svc i { font: 700 9px/13px var(--font-body); font-style: normal; width: 13px; height: 13px; border-radius: 4px; text-align: center; color: var(--faint); border: 1px solid var(--line-strong); }
+.cal-day .cd-svc i.on { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.cal-day .cd-svc i.off { border-style: dashed; opacity: .45; text-decoration: line-through; }
+.cal-day .cd-pend { position: absolute; top: 3px; right: 3px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 99px; background: var(--busy); color: #fff; font-size: 10px; font-weight: 700; line-height: 17px; font-style: normal; }
+.cal-key { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 12px; color: var(--muted); align-items: center; }
+.cal-key i { display: inline-block; font: 700 9px/14px var(--font-body); font-style: normal; width: 14px; height: 14px; border-radius: 4px; text-align: center; margin-right: 5px; vertical-align: -3px; }
 .cal-day.out { opacity: .35; }
 .cal-day.past { background: transparent; }
 .cal-day.today { border-color: var(--gold); }
 .cal-day.today .cd-n { color: var(--gold); }
 .cal-day.sel { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
-.cal-svc { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; padding: 14px 16px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); }
+.cal-svc { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: var(--r); background: var(--surface); border: 1px solid var(--line); }
+.cal-svc .top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .cal-svc b { font-size: 15px; }
-.cal-svc .note { grid-column: 1; margin: 0; }
-.cal-svc .acts { grid-row: 1 / span 2; grid-column: 2; display: flex; gap: 6px; }
+.cal-svc .acts { display: flex; gap: 6px; }
+.cal-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cal-chips span { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 99px; background: var(--field); color: var(--ink); white-space: nowrap; }
+.cal-chips span.warn { background: var(--busy-soft); color: var(--busy); }
 .cal-svc.closed { opacity: .55; }
 .day-step { display: flex; gap: 8px; align-items: center; }
 .day-step .pill-field { flex: 1; }
@@ -835,7 +841,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       </div>
       <div class="pills" role="group" aria-label="Raccourcis"><button class="pill" data-cal-today type="button">Aujourd'hui</button><span class="note" id="cal-sync" style="align-self:center"></span></div>
       <div class="cal-grid" id="cal-grid"></div>
-      <div class="legend"><span><i style="background:var(--gold)"></i>Service avec réservations (midi · happy hour · soir)</span><span><i style="background:var(--orange)"></i>Demandes à confirmer</span></div>
+      <div class="cal-key"><span><i style="background:var(--ink);color:var(--bg)">M</i><i style="background:var(--ink);color:var(--bg)">H</i><i style="background:var(--ink);color:var(--bg)">S</i>Midi, Happy hour, Soir réservés</span><span><i style="border:1px solid var(--line-strong);color:var(--faint)">S</i>Sans réservation</span><span><i style="border:1px dashed var(--line-strong);color:var(--faint);text-decoration:line-through;opacity:.6">S</i>Fermé</span><span><i style="background:var(--busy);color:#fff;border-radius:99px">2</i>À confirmer</span><span>Chiffre = couverts</span></div>
       <div id="cal-detail" class="stack" style="gap:12px"></div>
     </section>
 
@@ -878,12 +884,12 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
           <div class="field"><label for="a-date">Date</label><input class="input" id="a-date" type="date"></div>
         </div>
         <div class="row2">
-          <div class="field"><label for="a-time">Heure</label><input class="input" id="a-time" placeholder="19h30" autocomplete="off"></div>
+          <div class="field"><label for="a-time">Heure</label><select class="input" id="a-time"></select></div>
           <div class="field"><label for="a-zone">Zone</label>
             <select class="input" id="a-zone"><option value="">Indifférent</option><option value="int">Intérieur</option><option value="ext">Extérieur (terrasse ou rooftop)</option><option value="ter">Terrasse</option><option value="rof">Rooftop</option></select>
           </div>
         </div>
-        <div class="field"><label for="a-table">Table</label><select class="input" id="a-table"></select></div>
+        <div class="field"><label for="a-table">Table</label><select class="input" id="a-table"></select><p class="note" id="a-table-info" hidden></p></div>
         <div class="field"><label for="a-notes">Notes</label><textarea class="input" id="a-notes" maxlength="500"></textarea></div>
         <button class="btn-primary" type="submit" id="btn-add">Enregistrer la réservation</button>
       </form>
@@ -2227,9 +2233,9 @@ function renderCal(){
   for(let i = 0; i < 42; i++){
     const d = addDays(start, i), D = dt(d), x = st[d];
     if(i >= 35 && d.slice(0, 7) !== CAL.month) break;
-    const dots = Object.keys(SVC).map(k => '<i class="' + (svcClosed(d, k) ? 'off' : x && x.svc[k] ? 'on' : '') + '"></i>').join('');
+    const dots = Object.keys(SVC).map(k => '<i class="' + (x && x.svc[k] ? 'on' : svcClosed(d, k) ? 'off' : '') + '">' + ({ midi: 'M', hh: 'H', soir: 'S' }[k] || SVC[k].label[0]) + '</i>').join('');
     html += '<button type="button" class="cal-day' + (d.slice(0, 7) !== CAL.month ? ' out' : '') + (d < t0 ? ' past' : '') + (d === t0 ? ' today' : '') + (d === CAL.sel ? ' sel' : '') + '" data-cal-day="' + d + '" aria-label="' + esc(fmtDateFr(d)) + (x ? ', ' + x.n + ' réservations' : '') + '">' +
-      '<span class="cd-n">' + D.getDate() + '</span><span class="cd-svc">' + dots + '</span><span class="cd-cov">' + (x ? x.cov + ' couv.' : '') + '</span>' +
+      '<span class="cd-n">' + D.getDate() + '</span>' + (x ? '<span class="cd-cov">' + x.cov + '<small>couv.</small></span>' : '') + '<span class="cd-svc">' + dots + '</span>' +
       (x && x.pend ? '<i class="cd-pend">' + x.pend + '</i>' : '') + '</button>';
   }
   $('cal-grid').innerHTML = html;
@@ -2238,11 +2244,12 @@ function renderCal(){
 function renderCalDay(st){
   const d = CAL.sel, x = st[d], resas = S.resas.filter(r => r.date === d).sort((a, b) => String(a.time).localeCompare(String(b.time), 'fr', {numeric:true}));
   const svcRows = Object.keys(SVC).map(k => {
-    if(svcClosed(d, k)) return '<div class="cal-svc closed"><b>' + SVC[k].label + '</b><p class="note">Fermé</p></div>';
+    if(svcClosed(d, k) && !(x && x.svc[k])) return '<div class="cal-svc closed"><div class="top"><b>' + SVC[k].label + '</b><span class="note">Fermé</span></div></div>';
     const v = x && x.svc[k], man = S.occ[d + '_' + k] || {}, taken = (v ? v.tables : 0) + Object.keys(man).filter(id => man[id]).length;
-    return '<div class="cal-svc"><b>' + SVC[k].label + ' <small class="note">' + esc(SVC[k].hours) + '</small></b>' +
-      '<p class="note">' + (v ? v.n + ' résa' + (v.n > 1 ? 's' : '') + ' · ' + v.cov + ' couverts' + (v.pend ? ' · <b style="color:var(--gold)">' + v.pend + ' à confirmer</b>' : '') : 'Aucune réservation') + ' · ' + taken + '/' + TLIST.length + ' tables prises</p>' +
-      '<span class="acts"><button class="btn-line btn-sm" data-cal-open="plan" data-cal-svc="' + k + '" type="button">Plan</button><button class="btn-line btn-sm" data-cal-open="list" data-cal-svc="' + k + '" type="button">Liste</button></span></div>';
+    return '<div class="cal-svc"><div class="top"><b>' + SVC[k].label + ' <small class="note">' + esc(SVC[k].hours) + '</small></b>' +
+      '<span class="acts"><button class="btn-line btn-sm" data-cal-open="plan" data-cal-svc="' + k + '" type="button">Plan</button><button class="btn-line btn-sm" data-cal-open="list" data-cal-svc="' + k + '" type="button">Liste</button></span></div>' +
+      '<div class="cal-chips">' + (v ? '<span>' + v.n + ' résa' + (v.n > 1 ? 's' : '') + '</span><span>' + v.cov + ' couverts</span>' + (v.pend ? '<span class="warn">' + v.pend + ' à confirmer</span>' : '') : '<span>Aucune réservation</span>') +
+      '<span>' + taken + '/' + TLIST.length + ' tables prises</span></div></div>';
   }).join('');
   $('cal-detail').innerHTML = '<div class="row-between"><h2 class="h2" style="margin:0">' + esc(cap1(fmtDateFr(d))) + '</h2><button class="btn-primary btn-sm" data-cal-add type="button">' + ico('i-plus') + 'Ajouter</button></div>' + svcRows +
     (resas.length ? '<span class="section-lbl">Réservations du jour</span><div class="list">' + resas.map(r =>
@@ -2333,9 +2340,9 @@ async function tableSheetClick(e){
   if(d.ttOcc !== undefined){ closeEditor(); await toggleManual(tid); toast('Table ' + tName(tid) + ' marquée occupée'); return; }
   if(d.ttNew !== undefined){
     closeEditor();
-    $('a-date').value = V.date; if(!normTime($('a-time').value) || svcOf(normTime($('a-time').value)) !== V.svc) $('a-time').value = SVC[V.svc].time;
-    $('a-guests').value = TBY[tid].cap;
-    switchTab('add'); buildAddTable(); $('a-table').value = tid;
+    $('a-date').value = V.date; setAddTime(normTime($('a-time').value) && svcOf(normTime($('a-time').value)) === V.svc ? $('a-time').value : SVC[V.svc].time);
+    $('a-guests').value = TBY[tid].cap; $('a-zone').value = TBY[tid].zone;
+    switchTab('add'); buildAddTable(); $('a-table').value = tid; addTableInfo();
     toast('Nouvelle réservation sur la table ' + tName(tid)); $('a-name').focus(); return;
   }
   if(d.ttPlace){
@@ -2911,15 +2918,46 @@ $('ed-body').addEventListener('click', tableSheetClick);
 $('btn-settings').onclick = () => { SET.view = 'home'; switchTab('settings'); };
 
 /* ── HUB : AJOUT PAR L'ÉQUIPE ───────────────────────────── */
+/* Heures proposées par quart d'heure, service par service (d'après les horaires réglés). */
+function quarterSlots(k){
+  const m = String(SVC[k].hours || '').match(/(\d{1,2})\s*h\s*(\d{2})?\D+(\d{1,2})\s*h\s*(\d{2})?/);
+  if(!m) return SVC[k].slots.slice();
+  const a = +m[1] * 60 + (+m[2] || 0), b = +m[3] * 60 + (+m[4] || 0), out = [];
+  for(let t = a; t <= b && t < 24 * 60; t += 15){ const v = pad(Math.floor(t / 60)) + 'h' + pad(t % 60); if(svcOf(v) === k) out.push(v); }
+  return out.length ? out : SVC[k].slots.slice();
+}
+function buildAddTimes(want){
+  const sel = $('a-time'), date = $('a-date').value || V.date, cur = normTime(want || sel.value) || SVC[V.svc].time;
+  let found = false;
+  sel.innerHTML = Object.keys(SVC).map(k => {
+    const closed = svcClosed(date, k), ts = quarterSlots(k);
+    if(ts.indexOf(cur) >= 0) found = true;
+    return '<optgroup label="' + esc(SVC[k].label + (closed ? ' · fermé ce jour-là' : '')) + '">' + ts.map(t => '<option value="' + t + '">' + t + '</option>').join('') + '</optgroup>';
+  }).join('') + (found ? '' : '<optgroup label="Autre"><option value="' + cur + '">' + cur + '</option></optgroup>');
+  sel.value = cur;
+}
+function setAddTime(t){ buildAddTimes(normTime(t)); }
 function buildAddTable(){
   const date = $('a-date').value || V.date, time = normTime($('a-time').value) || SVC[V.svc].time;
   const sel = $('a-table'), prev = sel.value;
   sel.innerHTML = tableOptions(occupancy(date, svcOf(time)), $('a-zone').value, '', '<option value="auto">Proposer automatiquement</option><option value="">Aucune</option>');
   sel.value = Array.prototype.some.call(sel.options, o => o.value === prev && !o.disabled) ? prev : 'auto';
+  addTableInfo();
+}
+/* Table choisie : zone remplie d'office et rappel des infos de la table. */
+function addTableInfo(){
+  const t = TBY[$('a-table').value];
+  $('a-table-info').hidden = !t;
+  if(t) $('a-table-info').textContent = 'Table ' + t.name + ' · ' + zoneLabel(t.zone) + ' · ' + capTxt(t) + (+$('a-guests').value > (t.maxCap || t.cap) ? ' · attention : ' + $('a-guests').value + ' personnes' : '');
+}
+function onAddTableChange(){
+  const t = TBY[$('a-table').value];
+  if(t && $('a-zone').value !== t.zone){ $('a-zone').value = t.zone; const v = t.id; buildAddTable(); $('a-table').value = v; }
+  addTableInfo();
 }
 function prepAdd(){
   $('a-date').value = $('a-date').value || V.date;
-  if(!$('a-time').value) $('a-time').placeholder = SVC[V.svc].time;
+  buildAddTimes($('a-time').value || SVC[V.svc].time);
   getSample().then(s => { $('quickfill-card').hidden = !s; $('scan-card').hidden = !(s && sampleLim && sampleLim.images); });
 }
 async function staffAdd(e){
@@ -2937,7 +2975,7 @@ async function staffAdd(e){
   $('btn-add').disabled = true;
   try {
     await Store.saveResa(r);
-    ['a-name','a-tel','a-notes','a-time'].forEach(i => $(i).value = ''); $('a-guests').value = '2';
+    ['a-name','a-tel','a-notes'].forEach(i => $(i).value = ''); $('a-guests').value = '2'; $('a-zone').value = '';
     V.date = date; V.svc = svcOf(time); $('dash-date').value = date;
     toast('Réservation ajoutée' + (table ? ' · table ' + tName(table) : ''));
     openModal(r.id);
@@ -2975,7 +3013,7 @@ async function quickFill(){
     if(d.name) $('a-name').value = String(d.name); if(d.tel) $('a-tel').value = String(d.tel);
     if(+d.guests > 0) $('a-guests').value = Math.round(+d.guests);
     if(/^\d{4}-\d{2}-\d{2}$/.test(d.date || '')) $('a-date').value = d.date;
-    if(d.time) $('a-time').value = normTime(d.time);
+    if(d.time) setAddTime(d.time);
     const z = zoneShort(d.zone); if(z) $('a-zone').value = z;
     if(d.notes) $('a-notes').value = String(d.notes);
     buildAddTable();
@@ -3205,7 +3243,9 @@ $('dash-date').onchange = e => { V.date = e.target.value || today(); CAL.sel = V
 $('panel-cal').addEventListener('click', calClick);
 $('svc-ctrl').addEventListener('click', e => { const b = e.target.closest('[data-day-step]'); if(b) stepDay(+b.dataset.dayStep); });
 $('add-form').onsubmit = staffAdd;
-['a-zone','a-date','a-time'].forEach(i => $(i).addEventListener('change', () => { if(i === 'a-time') $('a-time').value = normTime($('a-time').value) || $('a-time').value; buildAddTable(); }));
+['a-zone','a-date','a-time'].forEach(i => $(i).addEventListener('change', () => { if(i === 'a-date') buildAddTimes(); buildAddTable(); }));
+$('a-table').addEventListener('change', onAddTableChange);
+$('a-guests').addEventListener('input', addTableInfo);
 $('btn-qf').onclick = quickFill;
 $('btn-scan-pick').onclick = () => $('scan-file').click();
 $('scan-file').onchange = e => { const f = e.target.files && e.target.files[0]; if(f) scanPhoto(f); };
