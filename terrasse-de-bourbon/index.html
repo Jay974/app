@@ -367,6 +367,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .day-step { display: flex; gap: 8px; align-items: center; }
 .day-step .pill-field { flex: 1; }
 .unplaced { display: flex; flex-wrap: wrap; gap: 8px; }
+.unplaced button.on { border-style: solid; background: var(--gold); color: #fff; }
 .unplaced button { border: 1px dashed var(--gold-line); color: var(--gold); background: var(--gold-soft); border-radius: 99px; padding: 6px 12px; font: 600 12px/1.2 inherit; font-family: inherit; cursor: pointer; }
 .nav-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 4px; border-radius: 99px; color: var(--on-band-muted); font-size: 11px; font-weight: 600; position: relative; text-decoration: none; }
 .nav-btn.active { color: var(--orange); }
@@ -940,6 +941,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
     <dl class="recap" id="m-recap"></dl>
     <div class="field"><label for="m-table">Table attribuée</label>
       <div class="row2" style="grid-template-columns:1fr auto"><select class="input" id="m-table"></select><button class="btn-line btn-sm" id="btn-m-table" type="button">OK</button></div>
+      <div id="m-join" class="stack" style="gap:8px;margin-top:10px" hidden></div>
     </div>
     <div class="modal-actions" id="m-actions"></div>
     <div id="m-device" hidden><p class="note" id="m-device-txt"></p><button class="btn-line btn-danger" id="btn-m-block" type="button" style="width:100%"></button></div>
@@ -1306,6 +1308,26 @@ function zoneLabel(z){ return ({int:'Intérieur', ter:'Terrasse', rof:'Rooftop',
 function tName(id){ return TBY[id] ? TBY[id].name : (id || ''); }
 function capTxt(t){ return t.cap + (t.maxCap ? '–' + t.maxCap : '') + ' pl.'; }
 const isActive = r => r.status === 'pending' || r.status === 'confirmed' || !r.status;
+/* Tables d'une réservation : la table principale puis les tables jumelées. */
+const tablesOf = r => r.table ? [r.table].concat((r.joined || []).filter(id => id && id !== r.table)) : [];
+const tablesTxt = r => tablesOf(r).map(tName).join(' + ');
+const seatsOf = ids => ids.reduce((n, id) => n + (TBY[id] ? (TBY[id].maxCap || TBY[id].cap) : 0), 0);
+/* Jumelage automatique : si le groupe dépasse la table, on y ajoute ses voisines libres (tables jumelables). */
+function autoJoin(table, guests, taken){
+  const t = TBY[table]; if(!t || guests <= (t.maxCap || t.cap)) return [];
+  let best = [];
+  COMBOS.filter(c => c.indexOf(table) >= 0).forEach(c => {
+    const out = [];
+    for(const id of c){ if(id === table || !TBY[id] || taken.has(id)) continue; out.push(id); if(seatsOf([table].concat(out)) >= guests) break; }
+    if(!best.length || (seatsOf([table].concat(out)) >= guests && seatsOf([table].concat(best)) < guests)) best = out;
+  });
+  return best;
+}
+/* Tables prises sur le service d'une réservation, sans compter les siennes. */
+function takenFor(r, date, time){
+  const own = new Set(tablesOf(r));
+  return new Set(Object.keys(occupancy(date || r.date, svcOf(time || r.time))).filter(id => !own.has(id)));
+}
 /* Heure de la réservation (heure de l'appareil, La Réunion). */
 function resaTs(r){ const [h, m] = String(r.time || '').split('h').map(Number); const d = dt(r.date); d.setHours(h || 0, m || 0, 0, 0); return d.getTime(); }
 /* La table se libère d'elle-même 1 h après l'heure de la réservation (la réservation reste dans l'historique). */
@@ -1337,7 +1359,7 @@ function copyText(text, btn){
 function pageUrl(){ return /^https?:$/.test(location.protocol) ? location.origin + '/' : location.href.split('#')[0]; }
 function fmtTeamMsg(r){
   return r.guests + 'p ' + dayFr(r.date) + ' ' + SVC[svcOf(r.time)].label.toLowerCase() + ' ' + r.time + ' ' + r.name +
-    (zoneShort(r.zone) ? ' ' + zoneShort(r.zone) : '') + (r.table ? ' tbl' + tName(r.table) : '') +
+    (zoneShort(r.zone) ? ' ' + zoneShort(r.zone) : '') + (r.table ? ' tbl' + tablesOf(r).map(tName).join('+') : '') +
     (r.tel ? ' ' + r.tel : '') + (r.notes ? ' · ' + r.notes : '');
 }
 
@@ -1350,8 +1372,8 @@ const Store = {
     this.sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     this.live = true;
   },
-  fromRow(x){ return { id: x.id, token: x.access_token, name: x.name, tel: x.tel || '', guests: x.guests, date: x.date, time: x.time, zone: x.zone || '', notes: x.notes || '', table: x.table_id || '', email: x.email || '', status: x.status, src: x.src, ts: Date.parse(x.created_at) || Date.now(), upd: Date.parse(x.updated_at) || 0, cancelledBy: x.cancelled_by || '', cancelledAt: Date.parse(x.cancelled_at) || 0, dev: x.device_id || (x.ip_hash ? 'ip:' + x.ip_hash : ''), prev: x.previous || null, modAt: Date.parse(x.modified_at) || 0 }; },
-  toRow(r){ return { id: r.id, name: r.name, tel: r.tel || null, guests: r.guests, date: r.date, time: r.time, zone: r.zone || '', notes: r.notes || null, table_id: r.table || '', status: r.status, src: r.src || 'staff' }; },
+  fromRow(x){ return { id: x.id, token: x.access_token, name: x.name, tel: x.tel || '', guests: x.guests, date: x.date, time: x.time, zone: x.zone || '', notes: x.notes || '', table: x.table_id || '', email: x.email || '', status: x.status, src: x.src, ts: Date.parse(x.created_at) || Date.now(), upd: Date.parse(x.updated_at) || 0, cancelledBy: x.cancelled_by || '', cancelledAt: Date.parse(x.cancelled_at) || 0, dev: x.device_id || (x.ip_hash ? 'ip:' + x.ip_hash : ''), prev: x.previous || null, modAt: Date.parse(x.modified_at) || 0, joined: x.joined_tables || [] }; },
+  toRow(r){ return { id: r.id, name: r.name, tel: r.tel || null, guests: r.guests, date: r.date, time: r.time, zone: r.zone || '', notes: r.notes || null, table_id: r.table || '', joined_tables: r.table ? (r.joined || []) : [], status: r.status, src: r.src || 'staff' }; },
   local(){ try { return JSON.parse(localStorage.getItem('tdb_resas') || '[]'); } catch(e){ return []; } },
   saveLocal(list){ try { localStorage.setItem('tdb_resas', JSON.stringify(list)); } catch(e){} },
 
@@ -2023,7 +2045,7 @@ function onData(fresh, gone, mods){
   });
   (gone || []).forEach(r => {
     const txt = (cancelLate(r) ? 'Annulation tardive : ' : 'Annulation : ') + r.name + ', ' + r.guests + ' pers. ' + fmtDateFr(r.date) + ' ' + r.time +
-      (r.table ? ' · table ' + tName(r.table) + ' libérée' : '');
+      (r.table ? ' · table ' + tablesTxt(r) + ' libérée' : '');
     toast(txt); chime();
     try { if('Notification' in window && Notification.permission === 'granted' && document.hidden) new Notification(RESTO, { body: txt }); } catch(e){}
   });
@@ -2089,7 +2111,7 @@ function occupancy(date, svc){
   date = date || V.date; svc = svc || V.svc;
   const m = {}, man = S.occ[date + '_' + svc] || {};
   Object.keys(man).forEach(id => { if(man[id]) m[id] = { manual: true }; });
-  S.resas.filter(r => r.date === date && svcOf(r.time) === svc && isActive(r) && r.table && !tableReleased(r)).forEach(r => { m[r.table] = { resa: r }; });
+  S.resas.filter(r => r.date === date && svcOf(r.time) === svc && isActive(r) && r.table && !tableReleased(r)).forEach(r => { tablesOf(r).forEach(id => { m[id] = { resa: r, joined: id !== r.table }; }); });
   return m;
 }
 function resasOfView(){
@@ -2109,6 +2131,10 @@ function suggestTable(guests, zone, taken){
     if(t.zone === 'rof') sc += 0.3;
     if(sc < bestScore){ best = t; bestScore = sc; }
   });
+  if(!best){   // aucun table seule assez grande : tables jumelables libres
+    const c = COMBOS.find(c => c.every(id => TBY[id] && !taken.has(id) && zs.indexOf(TBY[id].zone) >= 0) && seatsOf(c) >= guests);
+    if(c) return c[0];
+  }
   return best ? best.id : null;
 }
 function tableOptions(occ, zone, current, first){
@@ -2175,13 +2201,13 @@ function renderInbox(pend){
   $('ann-lbl').hidden = !ann.length;
   $('ann').innerHTML = ann.map(r =>
     '<article class="req done"><button class="resa" data-rid="' + esc(r.id) + '" style="border:0;padding:0;background:none"><span class="resa-n">' + esc(r.guests) + '</span><span class="resa-main"><span class="resa-name">' + esc(r.name) + '</span>' +
-    '<span class="resa-meta">' + esc(cap1(fmtDateFr(r.date))) + ' · ' + esc(r.time) + (r.table ? ' · table ' + esc(tName(r.table)) + ' libérée' : '') + ' · annulée ' + ago(r.cancelledAt) + '</span></span>' +
+    '<span class="resa-meta">' + esc(cap1(fmtDateFr(r.date))) + ' · ' + esc(r.time) + (r.table ? ' · table ' + esc(tablesTxt(r)) + ' libérée' : '') + ' · annulée ' + ago(r.cancelledAt) + '</span></span>' +
     '<span class="badges">' + (cancelLate(r) ? '<span class="badge b-no">Tardive</span>' : '<span class="badge b-none">Par le client</span>') + '</span></button></article>').join('');
   const done = S.resas.filter(r => r.src === 'web' && r.status !== 'pending' && !(r.status === 'cancelled' && r.cancelledBy === 'client') && Date.now() - (r.upd || 0) < 864e5).sort((a, b) => (b.upd || 0) - (a.upd || 0)).slice(0, 8);
   $('done-lbl').hidden = !done.length;
   $('done').innerHTML = done.map(r => {
     return '<article class="req done"><button class="resa" data-rid="' + esc(r.id) + '" style="border:0;padding:0;background:none"><span class="resa-n">' + esc(r.guests) + '</span><span class="resa-main"><span class="resa-name">' + esc(r.name) + '</span>' +
-      '<span class="resa-meta">' + esc(cap1(fmtDateFr(r.date))) + ' · ' + esc(r.time) + (r.table ? ' · table ' + esc(tName(r.table)) : '') + '</span></span>' +
+      '<span class="resa-meta">' + esc(cap1(fmtDateFr(r.date))) + ' · ' + esc(r.time) + (r.table ? ' · table ' + esc(tablesTxt(r)) : '') + '</span></span>' +
       '<span class="badges"><span class="badge ' + (r.status === 'confirmed' ? 'b-table' : 'b-no') + '">' + STATUS[r.status].short + '</span></span></button></article>';
   }).join('');
 }
@@ -2189,7 +2215,8 @@ async function confirmReq(id){
   const r = S.resas.find(x => x.id === id); if(!r) return;
   const sel = document.querySelector('[data-req-table="' + id + '"]'), table = sel ? sel.value : '';
   if(table && occupancy(r.date, svcOf(r.time))[table]){ toast('Cette table vient d\'être prise : choisissez-en une autre'); renderAll(); return; }
-  try { await Store.saveResa(Object.assign({}, r, { status: 'confirmed', table, zone: table && TBY[table] ? TBY[table].zone : r.zone })); toast(r.name + ' : confirmée' + (table ? ' · table ' + tName(table) : '')); } catch(e){}
+  const joined = table ? autoJoin(table, +r.guests, takenFor(r)) : [], x = Object.assign({}, r, { status: 'confirmed', table, joined, zone: table && TBY[table] ? TBY[table].zone : r.zone });
+  try { await Store.saveResa(x); toast(r.name + ' : confirmée' + (table ? ' · table ' + tablesTxt(x) : '')); } catch(e){}
   renderAll();
 }
 async function declineReq(id){
@@ -2256,7 +2283,7 @@ function renderCalDay(st){
       '<button class="resa' + (isActive(r) ? '' : ' dim') + '" data-rid="' + esc(r.id) + '"><span class="resa-n">' + esc(r.guests) + '</span>' +
       '<span class="resa-main"><span class="resa-name">' + esc(r.name) + '</span><span class="resa-meta">' + esc(r.time) + ' · ' + SVC[svcOf(r.time)].label + ({web:' · site', staff:' · équipe', scan:' · scanner'}[r.src] || '') + '</span></span>' +
       '<span class="badges">' + (!isActive(r) ? '<span class="badge b-no">' + STATUS[r.status].short + '</span>' :
-        (r.table ? '<span class="badge b-table">Table ' + esc(tName(r.table)) + '</span>' : '<span class="badge b-none">À placer</span>') + (r.status === 'pending' ? '<span class="badge b-pending">À confirmer</span>' : '')) + '</span></button>').join('') + '</div>' : '');
+        (r.table ? '<span class="badge b-table">Table ' + esc(tablesTxt(r)) + '</span>' : '<span class="badge b-none">À placer</span>') + (r.status === 'pending' ? '<span class="badge b-pending">À confirmer</span>' : '')) + '</span></button>').join('') + '</div>' : '');
 }
 function calClick(e){
   const t = e.target.closest('[data-cal-day],[data-cal-month],[data-cal-today],[data-cal-open],[data-cal-add]'); if(!t) return;
@@ -2284,7 +2311,7 @@ function renderPlan(occ){
       z.tables.map(t => {
         const o = occ[t.id];
         const cls = o ? (o.resa ? 'busy hot' + (o.resa.status === 'pending' ? ' pending' : '') : 'manual') : '';
-        const sub = o ? (o.resa ? esc(o.resa.name) + ' · ' + esc(o.resa.guests) + 'p · ' + esc(o.resa.time) : 'Occupée') : capTxt(t);
+        const sub = o ? (o.resa ? (o.joined ? 'Jumelée ' + esc(tName(o.resa.table)) + ' · ' : (o.resa.joined || []).length ? 'Jumelée · ' : '') + esc(o.resa.name) + ' · ' + esc(o.resa.guests) + 'p · ' + esc(o.resa.time) : 'Occupée') : capTxt(t);
         return '<button class="tile ' + cls + '" data-tid="' + t.id + '" aria-label="Table ' + esc(t.name) + (o ? ', occupée' : ', libre') + '">' + tileSVG(t) +
           '<span class="t-name">' + esc(t.name) + '</span><span class="t-sub">' + sub + '</span></button>';
       }).join('') + '</div></div>';
@@ -2297,7 +2324,7 @@ function renderList(){
     '<button class="resa' + (isActive(r) ? '' : ' dim') + '" data-rid="' + esc(r.id) + '"><span class="resa-n">' + esc(r.guests) + '</span>' +
     '<span class="resa-main"><span class="resa-name">' + esc(r.name) + '</span><span class="resa-meta">' + esc(r.time) + (zoneLabel(r.zone) ? ' · ' + zoneLabel(r.zone) : '') + (r.tel ? ' · ' + esc(r.tel) : '') + (r.notes ? ' · ' + esc(r.notes) : '') + '</span></span>' +
     '<span class="badges">' + (!isActive(r) ? '<span class="badge b-no">' + (r.cancelledBy === 'client' ? (cancelLate(r) ? 'Annulation tardive' : 'Annulée par le client') : STATUS[r.status].short) + '</span>' :
-      (r.table ? (tableReleased(r) ? '<span class="badge b-none">Table ' + esc(tName(r.table)) + ' libérée</span>' : '<span class="badge b-table">Table ' + esc(tName(r.table)) + '</span>') : '<span class="badge b-none">Sans table</span>') +
+      (r.table ? (tableReleased(r) ? '<span class="badge b-none">Table ' + esc(tablesTxt(r)) + ' libérée</span>' : '<span class="badge b-table">Table ' + esc(tablesTxt(r)) + '</span>') : '<span class="badge b-none">Sans table</span>') +
       (r.status === 'pending' ? '<span class="badge b-pending">À confirmer</span>' : '')) + '</span></button>').join('');
 }
 async function toggleManual(tid){
@@ -2318,7 +2345,7 @@ function openTableSheet(tid){
   const top = t.maxCap || t.cap, resas = resasOfView().filter(isActive);
   const fit = r => +r.guests <= top ? '' : ' · ' + r.guests + ' pers. pour ' + top + ' places';
   const row = r => '<button class="resa" data-tt-place="' + esc(r.id) + '" type="button"><span class="resa-n">' + esc(r.guests) + '</span>' +
-    '<span class="resa-main"><span class="resa-name">' + esc(r.name) + '</span><span class="resa-meta">' + esc(r.time) + (r.table ? ' · actuellement table ' + esc(tName(r.table)) : '') + esc(fit(r)) + '</span></span>' +
+    '<span class="resa-main"><span class="resa-name">' + esc(r.name) + '</span><span class="resa-meta">' + esc(r.time) + (r.table ? ' · actuellement table ' + esc(tablesTxt(r)) : '') + esc(fit(r)) + '</span></span>' +
     (r.status === 'pending' ? '<span class="badges"><span class="badge b-pending">À confirmer</span></span>' : '') + '</button>';
   const un = resas.filter(r => !r.table), placed = resas.filter(r => r.table && r.table !== tid);
   openEditor('<span class="eyebrow">' + esc(cap1(fmtDateFr(V.date))) + ' · ' + SVC[V.svc].label + '</span><h2 class="h2" style="margin:2px 0 4px">Table ' + esc(t.name) + '</h2><p class="note">' + capTxt(t) + ' · libre</p>' +
@@ -2347,9 +2374,10 @@ async function tableSheetClick(e){
   }
   if(d.ttPlace){
     const r = S.resas.find(x => x.id === d.ttPlace); if(!r) return;
-    if(occupancy(r.date, svcOf(r.time))[tid] && r.table !== tid){ toast('Cette table vient d\'être prise'); closeEditor(); renderAll(); return; }
+    if(takenFor(r).has(tid)){ toast('Cette table vient d\'être prise'); closeEditor(); renderAll(); return; }
     closeEditor();
-    try { await Store.saveResa(Object.assign({}, r, { table: tid, zone: TBY[tid].zone })); toast(r.name + ' placée table ' + tName(tid) + (r.status === 'pending' ? ' (reste à confirmer)' : '')); } catch(err){}
+    const x = Object.assign({}, r, { table: tid, joined: autoJoin(tid, +r.guests, takenFor(r)), zone: TBY[tid].zone });
+    try { await Store.saveResa(x); toast(r.name + ' placée table ' + tablesTxt(x) + (r.status === 'pending' ? ' (reste à confirmer)' : '')); } catch(err){}
     renderAll();
   }
 }
@@ -2405,6 +2433,8 @@ $('cust-list').addEventListener('click', e => { const b = e.target.closest('[dat
 /* Les réglages du restaurant et la carte sont modifiables dans le hub (Réglages).
    Les valeurs écrites dans ce fichier ne servent qu'au premier chargement et en mode démo. */
 let CFG = null, DEFAULT_CFG = null, MENU_RAW = null;
+/* Tables jumelables : groupes de tables voisines qu'on rapproche pour un grand groupe (Réglages > Plan de salle). */
+let COMBOS = [['t108', 't108bis', 't108ter']];
 function rebuildTables(){
   TLIST = [];
   ZONES.forEach(z => z.tables.forEach(t => { t.zone = z.short; TLIST.push(t); }));
@@ -2420,6 +2450,7 @@ function applySettings(d){
   if(d.services) Object.keys(SVC).forEach(k => { if(d.services[k]) SVC[k] = Object.assign({}, SVC[k], d.services[k]); });
   if(Array.isArray(d.happyHours)) HAPPY_HOURS = d.happyHours;
   if(d.closed) CLOSED = Object.assign({ midi: [], hh: [], soir: [] }, d.closed);
+  if(Array.isArray(d.combos)) COMBOS = d.combos.filter(c => Array.isArray(c) && c.length > 1);
   if(Array.isArray(d.zones) && d.zones.length){
     ZONES = d.zones.map(z => ({ short: z.short, label: z.label, tables: (z.tables || []).map(t => Object.assign({}, t)) }));
     d.zones.forEach(z => { if(z.txt != null) ZONE_TXT[z.short] = z.txt; });
@@ -2455,7 +2486,8 @@ function buildDefaultCfg(){
     name: RESTO, emailConfirm: EMAIL_ON, tagline: CONTACT.tagline, city: CONTACT.city, phone: CONTACT.phone, instagram: CONTACT.instagram, address: CONTACT.address, hoursText: CONTACT.hoursText,
     services: JSON.parse(JSON.stringify(SVC)), happyHours: HAPPY_HOURS.map(h => h.slice()), closed: JSON.parse(JSON.stringify(CLOSED)),
     zones: ZONES.map(z => ({ short: z.short, label: z.label, txt: ZONE_TXT[z.short], tables: z.tables.map(t => {
-      const o = { id: t.id, name: t.name, cap: t.cap }; if(t.maxCap) o.maxCap = t.maxCap; if(t.salon) o.salon = true; return o; }) }))
+      const o = { id: t.id, name: t.name, cap: t.cap }; if(t.maxCap) o.maxCap = t.maxCap; if(t.salon) o.salon = true; return o; }) })),
+    combos: COMBOS.map(c => c.slice())
   };
   const cats = [], items = [];
   MENU_CATS.forEach((c, i) => {
@@ -2743,6 +2775,7 @@ function saveServices(){
 }
 function renderTablesEditor(){
   const zones = SET.zonesDraft || (SET.zonesDraft = JSON.parse(JSON.stringify(CFG.settings.zones)));
+  if(!SET.combosDraft) SET.combosDraft = (CFG.settings.combos || COMBOS).map(c => c.map(tName).join(' + '));
   $('set-body').innerHTML = setHead('Plan de salle') + zones.map((z, zi) => '<div class="card"><div class="row2">' + fieldIn('zn-' + zi, 'Zone', z.label) + fieldIn('zt-' + zi, 'Description pour les clients', z.txt) + '</div>' +
     '<div class="tbl-row tbl-head"><span>Table</span><span>Places</span><span>Max</span><span>Groupes</span><span></span></div>' +
     z.tables.map((t, ti) => '<div class="tbl-row"><input class="input" data-tb="name" data-z="' + zi + '" data-t="' + ti + '" value="' + esc(t.name) + '" aria-label="Nom de la table">' +
@@ -2751,6 +2784,9 @@ function renderTablesEditor(){
       '<input type="checkbox" data-tb="salon" data-z="' + zi + '" data-t="' + ti + '"' + (t.salon ? ' checked' : '') + ' aria-label="Réservée en priorité aux groupes">' +
       '<button class="mini" data-act="tb-del" data-z="' + zi + '" data-t="' + ti + '" type="button" aria-label="Supprimer la table">✕</button></div>').join('') +
     '<button class="btn-text" data-act="tb-add" data-z="' + zi + '" type="button" style="align-self:flex-start">+ Ajouter une table</button></div>').join('') +
+    '<div class="card"><h3 class="h3">Tables jumelables</h3><p class="hint">Tables voisines que vous rapprochez pour un grand groupe. Une réservation trop grande pour sa table prend automatiquement les tables libres du même jumelage. Écrivez les noms séparés par « + ».</p>' +
+    SET.combosDraft.map((c, ci) => '<div class="row2" style="grid-template-columns:1fr auto"><input class="input" data-combo="' + ci + '" value="' + esc(c) + '" placeholder="108 + 108bis + 108ter" aria-label="Tables jumelées"><button class="mini" data-act="cb-del" data-k="' + ci + '" type="button" aria-label="Supprimer le jumelage">✕</button></div>').join('') +
+    '<button class="btn-text" data-act="cb-add" type="button" style="align-self:flex-start">+ Ajouter un jumelage</button></div>' +
     '<p class="note">« Max » : places possibles en ajoutant des chaises ou un bout de table. « Groupes » : grande table, salon ou canapé gardé pour les groupes ; la table proposée automatiquement ne la donne pas à 6 personnes ou moins, mais vous pouvez toujours la choisir à la main. Une table supprimée reste affichée sur les réservations déjà enregistrées.</p>' +
     '<p class="st err" id="st-err" role="alert"></p><div class="modal-actions"><button class="btn-line" data-act="tb-cancel" type="button">Annuler</button><button class="btn-primary" data-act="save-tables" type="button">Enregistrer le plan</button></div>';
 }
@@ -2761,15 +2797,21 @@ function readTables(){
     if(f === 'salon') t.salon = i.checked || undefined; else if(f === 'name') t.name = i.value.trim(); else t[f] = i.value === '' ? undefined : +i.value;
   });
   zones.forEach((z, zi) => { if($('zn-' + zi)) z.label = $('zn-' + zi).value.trim() || z.label; if($('zt-' + zi)) z.txt = $('zt-' + zi).value.trim(); });
+  document.querySelectorAll('#set-body [data-combo]').forEach(i => { SET.combosDraft[+i.dataset.combo] = i.value; });
 }
 function saveTables(){
   readTables();
   const all = SET.zonesDraft.flatMap(z => z.tables), names = all.map(t => t.name.toLowerCase());
   const err = all.some(t => !t.name) ? 'Chaque table doit avoir un nom.' : names.some((n, k) => names.indexOf(n) !== k) ? 'Deux tables portent le même nom.' :
     all.some(t => !(t.cap >= 1)) ? 'Indiquez le nombre de places de chaque table.' : all.some(t => t.maxCap && t.maxCap < t.cap) ? 'Le maximum doit être supérieur ou égal au nombre de places.' : '';
-  if(err){ $('st-err').textContent = err; return; }
+  const byName = {}; all.forEach(t => { byName[t.name.toLowerCase()] = t.id; });
+  let cbErr = '';
+  const combos = SET.combosDraft.map(c => c.split('+').map(x => x.trim()).filter(Boolean)).filter(c => c.length).map(c => c.map(n => { const id = byName[n.toLowerCase()]; if(!id) cbErr = cbErr || 'Jumelage : la table « ' + n + ' » n\'existe pas.'; return id; }));
+  if(!cbErr && combos.some(c => c.length < 2)) cbErr = 'Un jumelage doit contenir au moins deux tables.';
+  if(err || cbErr){ $('st-err').textContent = err || cbErr; return; }
   const zones = SET.zonesDraft.map(z => ({ short: z.short, label: z.label, txt: z.txt, tables: z.tables.map(t => { const o = { id: t.id, name: t.name, cap: t.cap }; if(t.maxCap) o.maxCap = t.maxCap; if(t.salon) o.salon = true; return o; }) }));
-  saveSettingsPatch({ zones }, 'Plan de salle enregistré');
+  saveSettingsPatch({ zones, combos }, 'Plan de salle enregistré');
+  SET.combosDraft = null;
 }
 
 /* Équipe (administrateurs) */
@@ -2866,7 +2908,7 @@ async function deleteCustomer(){
 function setAction(act, t){
   const id = t.dataset.id;
   switch(act){
-    case 'set-home': SET.view = 'home'; SET.zonesDraft = null; renderSettings(); window.scrollTo(0, 0); break;
+    case 'set-home': SET.view = 'home'; SET.zonesDraft = null; SET.combosDraft = null; renderSettings(); window.scrollTo(0, 0); break;
     case 'set-open': SET.view = t.dataset.v; renderSettings(); window.scrollTo(0, 0); break;
     case 'ed-cat': SET.cat = id; renderSettings(); break;
     case 'cat-new': openCatEditor(null); break;
@@ -2888,7 +2930,9 @@ function setAction(act, t){
     case 'save-services': saveServices(); break;
     case 'tb-add': readTables(); SET.zonesDraft[+t.dataset.z].tables.push({ id: 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: '', cap: 2 }); renderTablesEditor(); break;
     case 'tb-del': readTables(); SET.zonesDraft[+t.dataset.z].tables.splice(+t.dataset.t, 1); renderTablesEditor(); break;
-    case 'tb-cancel': SET.zonesDraft = null; SET.view = 'home'; renderSettings(); break;
+    case 'tb-cancel': SET.zonesDraft = null; SET.combosDraft = null; SET.view = 'home'; renderSettings(); break;
+    case 'cb-add': readTables(); SET.combosDraft.push(''); renderTablesEditor(); break;
+    case 'cb-del': readTables(); SET.combosDraft.splice(+t.dataset.k, 1); renderTablesEditor(); break;
     case 'save-tables': saveTables(); break;
     case 'team-add': addMember(); break;
     case 'team-rm': removeMember(id); break;
@@ -2939,7 +2983,7 @@ function buildAddTimes(want){
 function setAddTime(t){ buildAddTimes(normTime(t)); }
 function buildAddTable(){
   const date = $('a-date').value || V.date, time = normTime($('a-time').value) || SVC[V.svc].time;
-  const sel = $('a-table'), prev = sel.value;
+  const sel = $('a-table'), prev = sel.options.length ? sel.value : 'auto';   // par défaut : table proposée automatiquement
   sel.innerHTML = tableOptions(occupancy(date, svcOf(time)), $('a-zone').value, '', '<option value="auto">Proposer automatiquement</option><option value="">Aucune</option>');
   sel.value = Array.prototype.some.call(sel.options, o => o.value === prev && !o.disabled) ? prev : 'auto';
   addTableInfo();
@@ -2971,13 +3015,14 @@ async function staffAdd(e){
     if(!table) toast('Aucune table adaptée de libre : à placer à la main');
   }
   if(table && TBY[table]) zone = TBY[table].zone;
-  const r = { id: uuid(), name, guests, date, time, zone, table, tel: $('a-tel').value.trim(), notes: $('a-notes').value.trim(), ts: Date.now(), src: 'staff', status: 'confirmed' };
+  const joined = table ? autoJoin(table, guests, new Set(Object.keys(occupancy(date, svcOf(time))))) : [];
+  const r = { id: uuid(), name, guests, date, time, zone, table, joined, tel: $('a-tel').value.trim(), notes: $('a-notes').value.trim(), ts: Date.now(), src: 'staff', status: 'confirmed' };
   $('btn-add').disabled = true;
   try {
     await Store.saveResa(r);
-    ['a-name','a-tel','a-notes'].forEach(i => $(i).value = ''); $('a-guests').value = '2'; $('a-zone').value = '';
+    ['a-name','a-tel','a-notes'].forEach(i => $(i).value = ''); $('a-guests').value = '2'; $('a-zone').value = ''; $('a-table').value = 'auto';
     V.date = date; V.svc = svcOf(time); $('dash-date').value = date;
-    toast('Réservation ajoutée' + (table ? ' · table ' + tName(table) : ''));
+    toast('Réservation ajoutée' + (table ? ' · table ' + tablesTxt(r) : ''));
     openModal(r.id);
   } catch(err){}
   $('btn-add').disabled = false;
@@ -3119,9 +3164,10 @@ function openModal(id){
     (r.notes ? it('Notes', r.notes) : '') + it('Origine', ({web:'Site · ' + ago(r.ts), staff:'Équipe', scan:'Scanner'})[r.src] || '—') +
     (st === 'cancelled' && r.cancelledAt ? it('Annulation', (r.cancelledBy === 'client' ? 'Par le client' : 'Par l\'équipe') + ' · ' + ago(r.cancelledAt) + (r.cancelledBy === 'client' && cancelLate(r) ? ' · tardive' : '')) : '') +
     (r.modAt ? it('Modifiée', 'Par le client · ' + ago(r.modAt) + (r.prev ? ' · avant : ' + prevTxt(r.prev) : '')) : '') +
-    (isActive(r) && r.table && tableReleased(r) ? it('Table', tName(r.table) + ' libérée automatiquement (1 h après l\'heure)') : '');
+    (isActive(r) && r.table && tableReleased(r) ? it('Table', tablesTxt(r) + ' libérée' + (tablesOf(r).length > 1 ? 's' : '') + ' automatiquement (1 h après l\'heure)') : '');
   $('m-table').innerHTML = tableOptions(occupancy(r.date, svcOf(r.time)), '', r.table, '<option value="">Aucune</option>');
   $('m-table').value = r.table || '';
+  renderModalJoin(r);
   const act = {
     pending: [['declined', 'Refuser', 'btn-line btn-danger'], ['confirmed', 'Confirmer', 'btn-primary']],
     confirmed: [['cancelled', 'Annuler', 'btn-line btn-danger'], ['pending', 'Remettre en attente', 'btn-line']],
@@ -3154,16 +3200,39 @@ async function blockModal(){
   catch(e){ toast('Blocage impossible : vérifiez la connexion'); }
   renderAll(); openModal(r.id);
 }
-function closeModal(){ $('overlay').hidden = true; modalId = null; }
+function closeModal(){ $('overlay').hidden = true; modalId = null; joinAll = false; }
 async function setModalStatus(status){
   const r = S.resas.find(x => x.id === modalId); if(!r) return;
   try { await Store.saveResa(Object.assign({}, r, { status })); toast(STATUS[status].label); } catch(e){}
   renderAll(); openModal(r.id);
 }
+/* Fiche : jumeler la table de la réservation avec d'autres tables libres de la même zone. */
+function renderModalJoin(r){
+  const box = $('m-join'), t = TBY[r.table];
+  box.hidden = !t || !isActive(r);
+  if(box.hidden) return;
+  const taken = takenFor(r), joined = r.joined || [], ids = tablesOf(r);
+  const cands = TLIST.filter(x => x.zone === t.zone && x.id !== r.table && (joined.indexOf(x.id) >= 0 || !taken.has(x.id)));
+  const combo = COMBOS.find(c => c.indexOf(r.table) >= 0) || [];
+  cands.sort((a, b) => (combo.indexOf(b.id) >= 0) - (combo.indexOf(a.id) >= 0));
+  const near = cands.filter(x => combo.indexOf(x.id) >= 0 || joined.indexOf(x.id) >= 0), shown = joinAll || !near.length ? cands : near;
+  box.innerHTML = '<span class="note">' + (joined.length ? 'Jumelée : ' + esc(tablesTxt(r)) + ' · ' + seatsOf(ids) + ' places' : 'Jumeler avec une autre table (' + capTxt(t) + (+r.guests > (t.maxCap || t.cap) ? ', ' + r.guests + ' personnes' : '') + ') :') + '</span>' +
+    '<div class="unplaced">' + shown.map(x => '<button type="button" data-join="' + esc(x.id) + '"' + (joined.indexOf(x.id) >= 0 ? ' class="on"' : '') + '>' + (joined.indexOf(x.id) >= 0 ? '✓ ' : '+ ') + esc(x.name) + '</button>').join('') + (shown.length < cands.length ? '<button type="button" data-join-all>Autre table…</button>' : '') + '</div>';
+}
+let joinAll = false;
+async function toggleJoin(id){
+  const r = S.resas.find(x => x.id === modalId); if(!r || !r.table) return;
+  const j = (r.joined || []).slice(), k = j.indexOf(id);
+  if(k >= 0) j.splice(k, 1); else { if(takenFor(r).has(id)){ toast('Cette table est déjà prise'); return; } j.push(id); }
+  const x = Object.assign({}, r, { joined: j });
+  try { await Store.saveResa(x); toast(j.length ? 'Tables ' + tablesTxt(x) : 'Jumelage retiré'); } catch(e){}
+  renderAll(); openModal(r.id);
+}
 async function saveModalTable(){
   const r = S.resas.find(x => x.id === modalId); if(!r) return;
-  const table = $('m-table').value;
-  try { await Store.saveResa(Object.assign({}, r, { table, zone: table && TBY[table] ? TBY[table].zone : r.zone })); toast(table ? 'Table ' + tName(table) + ' attribuée' : 'Table retirée'); } catch(e){}
+  const table = $('m-table').value, joined = table ? (table === r.table ? (r.joined || []) : autoJoin(table, +r.guests, takenFor(r))) : [];
+  const x = Object.assign({}, r, { table, joined, zone: table && TBY[table] ? TBY[table].zone : r.zone });
+  try { await Store.saveResa(x); toast(table ? 'Table ' + tablesTxt(x) + ' attribuée' : 'Table retirée'); } catch(e){}
   renderAll(); openModal(r.id);
 }
 async function deleteModal(){
@@ -3256,6 +3325,10 @@ $('btn-m-table').onclick = saveModalTable;
 $('btn-m-copy').onclick = e => copyText(modalMsg, e.currentTarget);
 $('btn-m-del').onclick = deleteModal;
 $('btn-m-block').onclick = blockModal;
+$('m-join').addEventListener('click', e => {
+  if(e.target.closest('[data-join-all]')){ joinAll = true; const r = S.resas.find(x => x.id === modalId); if(r) renderModalJoin(r); return; }
+  const b = e.target.closest('[data-join]'); if(b) toggleJoin(b.dataset.join);
+});
 $('btn-m-close').onclick = closeModal;
 $('overlay').onclick = e => { if(e.target === $('overlay')) closeModal(); };
 

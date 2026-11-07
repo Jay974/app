@@ -39,6 +39,7 @@ alter table public.reservations add column if not exists cancelled_at timestampt
 alter table public.reservations add column if not exists modified_at timestamptz;   -- dernière modification par le client
 alter table public.reservations add column if not exists modif_count int not null default 0;
 alter table public.reservations add column if not exists previous jsonb;           -- créneau avant la dernière modification
+alter table public.reservations add column if not exists joined_tables text[] not null default '{}';   -- tables jumelées à table_id (grand groupe)
 alter table public.reservations add column if not exists device_id text;   -- identifiant anonyme de l'appareil du client (limite anti-abus)
 alter table public.reservations add column if not exists ip_hash text;     -- empreinte de la connexion (jamais l'adresse IP elle-même)
 create index if not exists reservations_device_idx on public.reservations (device_id) where device_id is not null;
@@ -244,6 +245,7 @@ begin
     date = p_date, time = p_time, guests = p_guests, notes = left(nullif(trim(p_notes), ''), 500),
     status = case when v_slot then 'pending' else status end,
     table_id = case when v_slot then '' else table_id end,
+    joined_tables = case when v_slot then '{}' else joined_tables end,
     previous = case when v_slot then jsonb_build_object('date', v_r.date, 'time', v_r.time, 'guests', v_r.guests, 'status', v_r.status, 'table', v_r.table_id) else previous end,
     modified_at = now(), modif_count = modif_count + 1
   where id = v_r.id;
