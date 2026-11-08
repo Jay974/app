@@ -817,7 +817,6 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
           <button class="cal-nav" data-day-step="1" type="button" aria-label="Jour suivant"><svg class="ico"><use href="#i-arrow"/></svg></button></div>
         <div class="pills" role="group" aria-label="Service">
           <button class="pill" data-svc="midi">Midi<small>12h–14h30 · HH</small></button>
-          <button class="pill" data-svc="hh">Happy Hour<small>17h–19h</small></button>
           <button class="pill" data-svc="soir">Soir<small>19h–23h</small></button>
         </div>
       </div>
@@ -1284,7 +1283,19 @@ const ico = (id, cls) => '<svg class="' + (cls || 'ico') + '"><use href="#' + id
 function isoLocal(d){ return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
 function today(){ return isoLocal(new Date()); }
 function addDays(iso, n){ const d = dt(iso); d.setDate(d.getDate() + n); return isoLocal(d); }
-function autoSvc(){ const h = new Date().getHours(); return h < 16 ? 'midi' : h < 19 ? 'hh' : 'soir'; }
+function autoSvc(){ return new Date().getHours() < 16 ? 'midi' : 'soir'; }
+/* Hub : happy hour et dîner forment un seul écran « Soir » (deux services pour les clients, un seul service pour l'équipe). */
+const VIEWS = { midi: ['midi'], soir: ['hh', 'soir'] };
+const viewOf = k => k === 'hh' ? 'soir' : (VIEWS[k] ? k : 'soir');
+const inView = (time, v) => viewOf(svcOf(time)) === viewOf(v);
+function viewLabel(v){ return SVC[viewOf(v)].label; }
+function viewHours(v){
+  const ks = VIEWS[viewOf(v)], a = String(SVC[ks[0]].hours || '').split(/[–-]/)[0], b = String(SVC[ks[ks.length - 1]].hours || '').split(/[–-]/).pop();
+  return ks.length > 1 && a && b ? a.trim() + '–' + b.trim() : SVC[ks[0]].hours;
+}
+const viewClosed = (date, v) => VIEWS[viewOf(v)].every(k => svcClosed(date, k));
+/* Tables marquées occupées à la main pour un écran (anciennes marques « hh » comprises). */
+function manualOf(date, v){ const m = {}; VIEWS[viewOf(v)].forEach(k => { const o = S.occ[date + '_' + k] || {}; Object.keys(o).forEach(id => { if(o[id]) m[id] = 1; }); }); return m; }
 function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2800); }
 const JOURS = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
 const MOIS = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
@@ -2112,14 +2123,14 @@ function switchTab(tab){
   renderAll(); window.scrollTo(0, 0);
 }
 function occupancy(date, svc){
-  date = date || V.date; svc = svc || V.svc;
-  const m = {}, man = S.occ[date + '_' + svc] || {};
-  Object.keys(man).forEach(id => { if(man[id]) m[id] = { manual: true }; });
-  S.resas.filter(r => r.date === date && svcOf(r.time) === svc && isActive(r) && r.table && !tableReleased(r)).forEach(r => { tablesOf(r).forEach(id => { m[id] = { resa: r, joined: id !== r.table }; }); });
+  date = date || V.date; svc = viewOf(svc || V.svc);
+  const m = {}, man = manualOf(date, svc);
+  Object.keys(man).forEach(id => { m[id] = { manual: true }; });
+  S.resas.filter(r => r.date === date && inView(r.time, svc) && isActive(r) && r.table && !tableReleased(r)).forEach(r => { tablesOf(r).forEach(id => { m[id] = { resa: r, joined: id !== r.table }; }); });
   return m;
 }
 function resasOfView(){
-  return S.resas.filter(r => r.date === V.date && svcOf(r.time) === V.svc)
+  return S.resas.filter(r => r.date === V.date && inView(r.time, V.svc))
     .sort((a, b) => (isActive(b) - isActive(a)) || String(a.time).localeCompare(String(b.time), 'fr', {numeric:true}) || a.ts - b.ts);
 }
 function allowedZones(z){ z = zoneShort(z); return z === 'int' ? ['int'] : z === 'ext' ? ['ter','rof'] : z ? [z] : ['int','ter','rof']; }
@@ -2156,7 +2167,7 @@ function renderAll(){
   try { if(navigator.setAppBadge) (pend.length ? navigator.setAppBadge(pend.length) : navigator.clearAppBadge()).catch(() => {}); } catch(e){}   // pastille sur l'icône
   const titles = { inbox: pend.length ? pend.length + ' demande' + (pend.length > 1 ? 's' : '') + ' à confirmer' : 'Aucune demande en attente', add: 'Ajouter une réservation', clients: 'Fichier clients', settings: 'Réglages', cal: 'Agenda des réservations' };
   $('hub-title').textContent = titles[V.tab] || (V.date === today() ? 'Aujourd\'hui, ' + fmtDateFr(V.date).split(' ').slice(1).join(' ') : cap1(fmtDateFr(V.date)));
-  $('hub-eyebrow').textContent = V.tab === 'cal' ? 'Hub équipe · synchronisé en direct' : V.tab === 'inbox' ? 'Hub équipe · demandes en ligne' : V.tab === 'clients' ? 'Hub équipe · fidélisation' : V.tab === 'settings' ? 'Hub équipe · ' + (IS_ADMIN ? 'administrateur' : 'équipe') : 'Hub équipe · ' + SVC[V.svc].label;
+  $('hub-eyebrow').textContent = V.tab === 'cal' ? 'Hub équipe · synchronisé en direct' : V.tab === 'inbox' ? 'Hub équipe · demandes en ligne' : V.tab === 'clients' ? 'Hub équipe · fidélisation' : V.tab === 'settings' ? 'Hub équipe · ' + (IS_ADMIN ? 'administrateur' : 'équipe') : 'Hub équipe · ' + viewLabel(V.svc);
   if(V.tab === 'inbox') renderInbox(pend);
   if(V.tab === 'plan' || V.tab === 'list'){
     document.querySelectorAll('[data-svc]').forEach(b => b.classList.toggle('active', b.dataset.svc === V.svc));
@@ -2274,10 +2285,12 @@ function renderCal(){
 }
 function renderCalDay(st){
   const d = CAL.sel, x = st[d], resas = S.resas.filter(r => r.date === d).sort((a, b) => String(a.time).localeCompare(String(b.time), 'fr', {numeric:true}));
-  const svcRows = Object.keys(SVC).map(k => {
-    if(svcClosed(d, k) && !(x && x.svc[k])) return '<div class="cal-svc closed"><div class="top"><b>' + SVC[k].label + '</b><span class="note">Fermé</span></div></div>';
-    const v = x && x.svc[k], man = S.occ[d + '_' + k] || {}, taken = (v ? v.tables : 0) + Object.keys(man).filter(id => man[id]).length;
-    return '<div class="cal-svc"><div class="top"><b>' + SVC[k].label + ' <small class="note">' + esc(SVC[k].hours) + '</small></b>' +
+  const svcRows = Object.keys(VIEWS).map(k => {
+    const parts = VIEWS[k].map(s => x && x.svc[s]).filter(Boolean);
+    const v = parts.length ? parts.reduce((a, b) => ({ n: a.n + b.n, cov: a.cov + b.cov, pend: a.pend + b.pend, tables: a.tables + b.tables }), { n: 0, cov: 0, pend: 0, tables: 0 }) : null;
+    if(viewClosed(d, k) && !v) return '<div class="cal-svc closed"><div class="top"><b>' + viewLabel(k) + '</b><span class="note">Fermé</span></div></div>';
+    const taken = (v ? v.tables : 0) + Object.keys(manualOf(d, k)).length;
+    return '<div class="cal-svc"><div class="top"><b>' + viewLabel(k) + ' <small class="note">' + esc(viewHours(k)) + (k === 'soir' ? ' · happy hour + dîner' : '') + '</small></b>' +
       '<span class="acts"><button class="btn-line btn-sm" data-cal-open="plan" data-cal-svc="' + k + '" type="button">Plan</button><button class="btn-line btn-sm" data-cal-open="list" data-cal-svc="' + k + '" type="button">Liste</button></span></div>' +
       '<div class="cal-chips">' + (v ? '<span>' + v.n + ' résa' + (v.n > 1 ? 's' : '') + '</span><span>' + v.cov + ' couverts</span>' + (v.pend ? '<span class="warn">' + v.pend + ' à confirmer</span>' : '') : '<span>Aucune réservation</span>') +
       '<span>' + taken + '/' + TLIST.length + ' tables prises</span></div></div>';
@@ -2295,7 +2308,7 @@ function calClick(e){
   if(d.calDay){ CAL.sel = d.calDay; if(d.calDay.slice(0, 7) !== CAL.month){ CAL.month = d.calDay.slice(0, 7); ensureMonthLoaded(); } renderCal(); }
   else if(d.calMonth){ const [y, m] = CAL.month.split('-').map(Number), n = new Date(y, m - 1 + (+d.calMonth), 1); CAL.month = n.getFullYear() + '-' + pad(n.getMonth() + 1); ensureMonthLoaded(); renderCal(); }
   else if(d.calToday !== undefined){ CAL.sel = today(); CAL.month = CAL.sel.slice(0, 7); renderCal(); }
-  else if(d.calOpen){ V.date = CAL.sel; V.svc = d.calSvc; $('dash-date').value = V.date; switchTab(d.calOpen); }
+  else if(d.calOpen){ V.date = CAL.sel; V.svc = viewOf(d.calSvc); $('dash-date').value = V.date; switchTab(d.calOpen); }
   else if(d.calAdd !== undefined){ $('a-date').value = CAL.sel; switchTab('add'); }
 }
 function stepDay(n){
@@ -2335,10 +2348,14 @@ function renderList(){
       (r.status === 'pending' ? '<span class="badge b-pending">À confirmer</span>' : '')) + '</span></button>').join('');
 }
 async function toggleManual(tid){
-  const key = V.date + '_' + V.svc, cur = Object.assign({}, S.occ[key] || {});
-  if(cur[tid]) delete cur[tid]; else cur[tid] = 1;
-  S.occ[key] = cur; renderAll();
-  await Store.saveOcc(key);
+  const keys = VIEWS[viewOf(V.svc)].map(k => V.date + '_' + k), was = !!manualOf(V.date, V.svc)[tid], main = V.date + '_' + viewOf(V.svc), dirty = [];
+  keys.forEach(key => {
+    const cur = Object.assign({}, S.occ[key] || {});
+    if(was){ if(cur[tid]){ delete cur[tid]; S.occ[key] = cur; dirty.push(key); } }
+    else if(key === main){ cur[tid] = 1; S.occ[key] = cur; dirty.push(key); }
+  });
+  renderAll();
+  for(const k of dirty) await Store.saveOcc(k);
 }
 /* Toucher une table : réservée → sa fiche ; occupée à la main → libérée ; libre → choix (créer, placer, occuper). */
 function onTableTap(tid){
@@ -2356,7 +2373,7 @@ function openTableSheet(tid){
     (r.status === 'pending' ? '<span class="badges"><span class="badge b-pending">À confirmer</span></span>' : '') + '</button>';
   const un = resas.filter(r => !r.table), placed = resas.filter(r => r.table && r.table !== tid);
   const fin = resasOfView().find(r => isActive(r) && tablesOf(r).indexOf(tid) >= 0 && tableReleased(r));
-  openEditor('<span class="eyebrow">' + esc(cap1(fmtDateFr(V.date))) + ' · ' + SVC[V.svc].label + '</span><h2 class="h2" style="margin:2px 0 4px">Table ' + esc(t.name) + '</h2><p class="note">' + capTxt(t) + ' · libre</p>' +
+  openEditor('<span class="eyebrow">' + esc(cap1(fmtDateFr(V.date))) + ' · ' + viewLabel(V.svc) + '</span><h2 class="h2" style="margin:2px 0 4px">Table ' + esc(t.name) + '</h2><p class="note">' + capTxt(t) + ' · libre</p>' +
     (fin ? '<div class="card" style="margin-top:10px;padding:12px"><p class="note" style="margin:0">Libérée automatiquement ' + holdTxt() + ' après la réservation de <b>' + esc(fin.name) + '</b> (' + esc(fin.time) + ', ' + esc(fin.guests) + ' pers.). Clients encore là ? Touchez « Marquer occupée ».</p><button class="btn-text" data-tt-see="' + esc(fin.id) + '" type="button" style="align-self:flex-start;padding:6px 0 0">Voir la réservation</button></div>' : '') +
     '<div class="stack" style="gap:10px;margin-top:14px">' +
     '<button class="btn-primary" data-tt-new type="button">' + ico('i-plus') + 'Créer une réservation sur cette table</button>' +
@@ -2377,7 +2394,7 @@ async function tableSheetClick(e){
   if(d.ttOcc !== undefined){ closeEditor(); await toggleManual(tid); toast('Table ' + tName(tid) + ' marquée occupée'); return; }
   if(d.ttNew !== undefined){
     closeEditor();
-    $('a-date').value = V.date; setAddTime(normTime($('a-time').value) && svcOf(normTime($('a-time').value)) === V.svc ? $('a-time').value : SVC[V.svc].time);
+    $('a-date').value = V.date; setAddTime(normTime($('a-time').value) && inView(normTime($('a-time').value), V.svc) ? $('a-time').value : SVC[viewOf(V.svc)].time);
     $('a-guests').value = TBY[tid].cap; $('a-zone').value = TBY[tid].zone;
     switchTab('add'); buildAddTable(); $('a-table').value = tid; addTableInfo();
     toast('Nouvelle réservation sur la table ' + tName(tid)); $('a-name').focus(); return;
@@ -2473,8 +2490,8 @@ function applySettings(d){
     if('hideEmpty' in el.dataset) el.hidden = !v;
   });
   document.querySelectorAll('.pill[data-svc]').forEach(b => {
-    const k = b.dataset.svc, hh = k === 'midi' && HAPPY_HOURS.some(h => svcOf(h[0]) === 'midi');
-    b.innerHTML = esc(SVC[k].label) + '<small>' + esc(SVC[k].hours) + (hh ? ' · HH' : '') + '</small>';
+    const k = viewOf(b.dataset.svc), hh = k === 'soir' || HAPPY_HOURS.some(h => viewOf(svcOf(h[0])) === k);
+    b.innerHTML = esc(viewLabel(k)) + '<small>' + esc(viewHours(k)) + (hh ? ' · HH' : '') + '</small>';
   });
 }
 /* Carte : lignes de la base -> structure d'affichage (rubriques > sous-titres > lignes). */
@@ -3048,7 +3065,7 @@ async function staffAdd(e){
   try {
     await Store.saveResa(r);
     ['a-name','a-tel','a-notes'].forEach(i => $(i).value = ''); $('a-guests').value = '2'; $('a-zone').value = ''; $('a-table').value = 'auto';
-    V.date = date; V.svc = svcOf(time); $('dash-date').value = date;
+    V.date = date; V.svc = viewOf(svcOf(time)); $('dash-date').value = date;
     toast('Réservation ajoutée' + (table ? ' · table ' + tablesTxt(r) : ''));
     openModal(r.id);
   } catch(err){}
@@ -3138,7 +3155,7 @@ function buildScanRows(entries){
   });
   if(!scanRows.length){ st.textContent = 'Aucune ligne reconnue. Essayez une photo plus nette ou plus proche.'; st.className = 'st err'; return; }
   st.textContent = '';
-  $('scan-context').textContent = 'Appliqué sur : ' + fmtDateFr(V.date) + ' · ' + SVC[V.svc].label + '. Changez la date ou le service dans l\'onglet Plan si besoin.';
+  $('scan-context').textContent = 'Appliqué sur : ' + fmtDateFr(V.date) + ' · ' + viewLabel(V.svc) + '. Changez la date ou le service dans l\'onglet Plan si besoin.';
   renderScanRows(); $('scan-result').hidden = false;
 }
 function renderScanRows(){
@@ -3280,7 +3297,7 @@ document.addEventListener('click', e => {
   else if(d.pickSvc){ let day = B.date && B.date >= today() ? B.date : today(); for(let i = 0; i < 7 && !firstFreeSlot(day, d.pickSvc); i++) day = addDays(day, 1); B.date = day; B.time = firstFreeSlot(day, d.pickSvc); location.hash = 'reserver'; }
   else if(d.pickZone){ B.zone = d.pickZone; location.hash = 'reserver'; }
   else if(d.pickCat){ menuCat = d.pickCat; menuQuery = ''; if(location.hash === '#carte') renderMenu(); }
-  else if(d.svc){ V.svc = d.svc; renderAll(); }
+  else if(d.svc){ V.svc = viewOf(d.svc); renderAll(); }
   else if(d.pz){ V.pz = d.pz; renderAll(); }
   else if(d.tab) switchTab(d.tab);
   else if(d.tid) onTableTap(d.tid);
