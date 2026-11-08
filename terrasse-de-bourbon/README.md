@@ -22,6 +22,8 @@ Statuts : `pending` (en attente) → `confirmed` / `declined`, et `cancelled` si
 
 ## Agenda des réservations (hub)
 
+- Dans le hub, **happy hour et dîner forment un seul écran « Soir »** (17h–23h) : plan, liste, statistiques et agenda les regroupent. Côté client, les deux créneaux restent proposés séparément.
+
 - Onglet **Agenda** : calendrier du mois, semaine du lundi au dimanche. Chaque jour montre le nombre de couverts, trois cases M · H · S (midi, happy hour, soir : foncée si le service a des réservations, barrée s'il est fermé) et, en rouge, les demandes à confirmer.
 - Toucher un jour affiche le détail par service (réservations, couverts, tables prises) et la liste du jour. **Plan** ou **Liste** ouvre directement ce service avec les tables réservées déjà marquées ; **Ajouter** prépare une saisie à cette date.
 - Tout est synchronisé en direct : demandes du site, confirmations, modifications et annulations des clients, saisies de l'équipe et du scanner apparaissent sans recharger.
