@@ -138,4 +138,5 @@ Les fondations sont posées : fiches clients reliées aux réservations, consent
 1. **Espace client, suite** : connexion par lien e-mail une fois le domaine acheté (historique sur tous les appareils).
 2. **Domaine + e-mails** : achat du domaine, branchement Vercel, authentification du domaine dans Brevo, `MAIL_FROM`, puis activation de l'interrupteur e-mail.
 3. **Hub de gestion complet** (remplacer L'Addition à terme) : prise de commande par table, envoi en cuisine et au bar, addition et encaissement, clôture de caisse, statistiques. À cadrer : conformité caisse (loi anti-fraude TVA, certification NF525 ou équivalent) avant tout encaissement.
+   - **Suivi cuisine à distance** : liste des dernières tables envoyées, dans l'ordre d'envoi (table, heure d'envoi, plats, temps écoulé, statut en préparation / prêt / servi), consultable depuis la salle sans aller en cuisine. Elle se remplira avec la future fonction d'envoi des plats (comme dans L'Addition) ; écran cuisine assorti pour marquer « prêt ».
 4. **Version générique** pour d'autres restaurants (multi-établissements, abonnements, module RH).
