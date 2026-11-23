@@ -335,6 +335,8 @@ create table if not exists public.customers (
   notes            text,
   auth_user_id     uuid unique references auth.users(id) on delete set null   -- futur compte client
 );
+alter table public.customers add column if not exists visits_extra int not null default 0;   -- visites en salle sans réservation (fidélité)
+alter table public.customers add column if not exists rewards_used int not null default 0;   -- récompenses fidélité déjà offertes
 alter table public.reservations add column if not exists customer_id uuid references public.customers(id) on delete set null;
 create index if not exists reservations_customer_idx on public.reservations (customer_id);
 
@@ -397,6 +399,18 @@ on conflict (phone) do nothing;
 update public.reservations r set customer_id = c.id
 from public.customers c
 where r.customer_id is null and c.phone = public.norm_phone(r.tel);
+
+-- Fidélité vue par le client, depuis sa page de suivi (jeton secret d'une de ses réservations) :
+-- visites honorées (réservations confirmées dont l'heure est passée) + visites en salle, récompenses déjà offertes.
+create or replace function public.loyalty_status(p_token uuid) returns json
+language sql stable security definer set search_path = public as $$
+  select json_build_object(
+    'visits', (select count(*) from reservations r2 where r2.customer_id = c.id and r2.status = 'confirmed' and public.resa_at(r2.date, r2.time) < now()) + c.visits_extra,
+    'rewards_used', c.rewards_used)
+  from reservations r join customers c on c.id = r.customer_id
+  where r.access_token = p_token;
+$$;
+grant execute on function public.loyalty_status(uuid) to anon, authenticated;
 
 -- ── Rôles de l'équipe ──────────────────────────────────────
 -- admin : réglages du restaurant et gestion de l'équipe ; staff : réservations, clients et carte.
@@ -523,6 +537,7 @@ create table if not exists public.menu_items (
   updated_at  timestamptz not null default now()
 );
 create index if not exists menu_items_category_idx on public.menu_items (category_id, sort);
+alter table public.menu_items add column if not exists badge text check (badge in ('new', 'top'));   -- « Nouveau » ou « Le plus commandé »
 drop trigger if exists menu_items_touch on public.menu_items;
 create trigger menu_items_touch before update on public.menu_items
   for each row execute function public.touch_updated_at();

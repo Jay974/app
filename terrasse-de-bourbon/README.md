@@ -20,6 +20,15 @@ Statuts : `pending` (en attente) → `confirmed` / `declined`, et `cancelled` si
 - **Modification par le client** : depuis sa page de suivi, jusqu'à l'heure de la réservation et 3 fois au plus. Changer le jour, l'heure ou le nombre de personnes remet la réservation **en attente** (table retirée) ; l'équipe est prévenue (notification « Réservation modifiée · à reconfirmer ») et voit l'ancien créneau sur la demande. Modifier seulement les notes la garde confirmée.
 - **Tables libérées automatiquement** : après l'heure d'une réservation, sa table redevient libre sur le plan au bout d'un délai réglable (Réglages > Plan de salle : 1 h par défaut, jusqu'à 3 h, ou jamais). La table reste repérable en pointillés « Libérée · nom heure » ; si les clients sont encore là, la toucher puis « Marquer occupée ». Les tables marquées « Occupée » à la main restent à libérer à la main.
 
+## Vitrine : offre, suggestions du bar, fidélité, pages légales
+
+- **Offre du moment** (Réglages > Offre du moment et fidélité) : bandeau rouge sur l'accueil et la carte avec bouton « Réserver ma table », retiré automatiquement après la date choisie.
+- **Les suggestions du bar** : sur l'accueil, carrousel des boissons avec photo, mises en avant ou avec pastille. Pastilles « Nouveau » / « Le plus commandé » réglables dans la fiche de chaque ligne de la carte.
+- **Loi Évin** : mention « L'abus d'alcool est dangereux pour la santé… » sur les photos et sous les rubriques d'alcool.
+- **Sous-titres décoratifs** dans la carte (police manuscrite). **Formules** : créer une rubrique « Nos formules » (Réglages > Carte), les horaires dans sa note.
+- **Fidélité** : X visites = une récompense. Visites = réservations confirmées passées + visites en salle ajoutées dans la fiche client ; bouton « Récompense offerte ». Le client voit sa progression sur l'accueil et la carte (appareil ayant déjà réservé).
+- **Mentions légales** et **Confidentialité** (`#mentions-legales`, `#confidentialite`), remplies depuis Réglages > Informations du restaurant > Informations légales.
+
 ## Agenda des réservations (hub)
 
 - Dans le hub, **happy hour et dîner forment un seul écran « Soir »** (17h–23h) : plan, liste, statistiques et agenda les regroupent. Côté client, les deux créneaux restent proposés séparément.
@@ -138,4 +147,5 @@ Les fondations sont posées : fiches clients reliées aux réservations, consent
 1. **Espace client, suite** : connexion par lien e-mail une fois le domaine acheté (historique sur tous les appareils).
 2. **Domaine + e-mails** : achat du domaine, branchement Vercel, authentification du domaine dans Brevo, `MAIL_FROM`, puis activation de l'interrupteur e-mail.
 3. **Hub de gestion complet** (remplacer L'Addition à terme) : prise de commande par table, envoi en cuisine et au bar, addition et encaissement, clôture de caisse, statistiques. À cadrer : conformité caisse (loi anti-fraude TVA, certification NF525 ou équivalent) avant tout encaissement.
+   - **Suivi cuisine à distance** : liste des dernières tables envoyées, dans l'ordre d'envoi (table, heure d'envoi, plats, temps écoulé, statut en préparation / prêt / servi), consultable depuis la salle sans aller en cuisine. Elle se remplira avec la future fonction d'envoi des plats (comme dans L'Addition) ; écran cuisine assorti pour marquer « prêt ».
 4. **Version générique** pour d'autres restaurants (multi-établissements, abonnements, module RH).
