@@ -17,7 +17,7 @@
 <title>La Terrasse de Bourbon</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Montserrat:wght@400;500;600;700&family=Parisienne&display=swap" rel="stylesheet">
 
 <style>
 /* Layout : app mobile centrée. Client = bandeau vert + cartes crème + barre de navigation en pilule (clair d'abord).
@@ -228,6 +228,39 @@ svg { display: block; }
 .al { font-size: 10px; font-weight: 600; padding: 2px 8px 2px 6px; border-radius: 99px; background: var(--field); color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
 .al::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--al-c, var(--faint)); }
 .al-yellow { --al-c: var(--al-yellow); } .al-blue { --al-c: var(--al-blue); } .al-pink { --al-c: var(--al-pink); } .al-tan { --al-c: var(--al-tan); } .al-green { --al-c: var(--al-green); }
+.grp-title { font-family: 'Parisienne', var(--font-display), cursive; font-size: 30px; line-height: 1.2; color: var(--ink); margin: 10px 0 2px; font-weight: 400; }
+.badge-new, .badge-top { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; vertical-align: 2px; margin-left: 6px; white-space: nowrap; }
+.badge-new { border: 1px solid var(--gold-line); color: var(--gold); }
+.badge-top { background: var(--ink); color: var(--bg); }
+.evin { display: block; font-size: 9.5px; line-height: 1.3; color: var(--faint); text-align: center; padding: 4px 6px 0; }
+.photo-wrap { position: relative; }
+.photo-wrap .evin-on { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 6px 5px; font-size: 8.5px; line-height: 1.25; text-align: center; color: #fff; background: linear-gradient(transparent, rgba(0,0,0,.65)); border-radius: 0 0 10px 10px; }
+.promo { display: flex; flex-direction: column; gap: 8px; padding: 18px 18px 16px; border-radius: var(--r); background: #A3122E; color: #fff; text-decoration: none; box-shadow: var(--shadow); }
+.promo .promo-top { display: flex; justify-content: space-between; gap: 10px; font-size: 10.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; opacity: .9; }
+.promo .promo-top span:first-child::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 99px; background: #fff; margin-right: 7px; vertical-align: 1px; }
+.promo h2 { font-family: var(--font-display); font-size: 26px; line-height: 1.15; margin: 2px 0 0; font-weight: 600; color: #fff; }
+.promo p { margin: 0; font-size: 14px; line-height: 1.45; }
+.promo .promo-cta { align-self: flex-start; margin-top: 6px; background: #fff; color: #A3122E; font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; padding: 10px 16px; border-radius: 6px; }
+.bar-card { flex: none; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; display: flex; flex-direction: column; text-decoration: none; color: var(--ink); box-shadow: var(--shadow); min-width: 0; }
+.bar-card img { width: 100%; aspect-ratio: .9; object-fit: cover; display: block; border-radius: 0; }
+.bar-card .bc-txt { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
+.bar-card .bc-txt small { font-size: 9.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
+.bar-card .bc-txt b { font-family: var(--font-display); font-size: 17px; font-weight: 600; }
+.bar-card .bc-txt span { font-size: 12px; color: var(--muted); line-height: 1.35; }
+.bar-scroll { grid-auto-columns: 220px; }
+.loyal { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); text-decoration: none; }
+.loyal .ico { color: var(--gold); flex: none; }
+.loyal div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.loyal b { font-size: 14px; }
+.loyal span { font-size: 12px; color: var(--muted); }
+.loyal .dots { display: flex; gap: 4px; margin-top: 4px; }
+.loyal .dots i { width: 14px; height: 14px; border-radius: 99px; border: 1.5px solid var(--gold-line); }
+.loyal .dots i.on { background: var(--gold); border-color: var(--gold); }
+.legal-page h2 { font-family: var(--font-display); font-size: 20px; margin: 18px 0 6px; }
+.legal-page p, .legal-page li { font-size: 14px; line-height: 1.6; color: var(--ink); }
+.legal-page ul { padding-left: 18px; margin: 4px 0; }
+.legal-page .miss { color: var(--busy); }
+.foot-links { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
 .legal { font-size: 11px; color: var(--faint); text-align: center; text-wrap: balance; }
 .hh-banner { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r); background: var(--gold-soft); border: 1px solid var(--gold-line); text-decoration: none; color: var(--ink); }
 .hh-banner .ico { color: var(--gold); }
@@ -638,7 +671,14 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <div class="hero-txt"><span class="hero-eyebrow" id="hero-eyebrow">Ce soir à Saint-Denis</span><span class="hero-title">Réserver une table</span></div>
       <span class="hero-go"><svg class="ico"><use href="#i-arrow"/></svg></span>
     </a>
+    <div id="home-promo"></div>
     <div id="home-hh"></div>
+    <section class="sec" id="home-bar-sec" hidden>
+      <div class="sec-head"><h2 class="h2">Les suggestions du bar</h2><a href="#carte" data-pick-cat="cocktails">Voir les cocktails →</a></div>
+      <div class="dish-scroll bar-scroll" id="home-bar"></div>
+      <p class="legal">L'abus d'alcool est dangereux pour la santé, à consommer avec modération.</p>
+    </section>
+    <div id="home-loyal"></div>
     <section class="sec">
       <div class="sec-head"><h2 class="h2">Les services</h2></div>
       <div class="svc-row" id="svc-row"></div>
@@ -652,7 +692,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
       <div class="sec-head"><h2 class="h2">À la carte</h2><a href="#carte">Voir la carte →</a></div>
       <div class="dish-scroll" id="home-dishes"></div>
     </section>
-    <div class="foot"><span>Réservations : <b class="num" data-c="phone">+262 692 25 35 38</b></span><span data-c="address" data-hide-empty></span><span data-c="instagram" data-hide-empty>@LaTerrasseDeBourbon</span><a href="/equipe">Espace équipe</a></div>
+    <div class="foot"><span>Réservations : <b class="num" data-c="phone">+262 692 25 35 38</b></span><span data-c="address" data-hide-empty></span><span data-c="instagram" data-hide-empty>@LaTerrasseDeBourbon</span><span class="foot-links"><a href="#mentions-legales">Mentions légales</a><a href="#confidentialite">Confidentialité</a><a href="/equipe">Espace équipe</a></span></div>
   </div>
 
   <!-- Carte -->
@@ -734,6 +774,14 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
   </div>
 
   <!-- Suivi -->
+  <div id="v-legal" class="app cpad" hidden>
+    <div class="topbar">
+      <a class="icon-btn" href="#" aria-label="Accueil"><svg class="ico"><use href="#i-back"/></svg></a>
+      <button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button>
+    </div>
+    <div class="legal-page" id="legal-body"></div>
+  </div>
+
   <div id="v-track" class="app cpad" hidden>
     <div class="topbar">
       <a class="icon-btn" href="#mes-reservations" aria-label="Mes réservations"><svg class="ico"><use href="#i-back"/></svg></a>
@@ -1701,14 +1749,14 @@ function tileSVG(t){ const n = Math.min(t.cap, 10); return '<svg viewBox="0 0 12
 const EMPTY_SVG = '<svg viewBox="0 0 120 70">' + seatsSVG(4, 60, 35, 1.1) + '</svg>';
 
 /* ── ROUTAGE ────────────────────────────────────────────── */
-const ROUTES = { '': 'home', accueil: 'home', carte: 'menu', reserver: 'book', 'mes-reservations': 'mine', equipe: 'hub' };
+const ROUTES = { '': 'home', accueil: 'home', carte: 'menu', reserver: 'book', 'mes-reservations': 'mine', equipe: 'hub', 'mentions-legales': 'legal', confidentialite: 'legal' };
 function route(){
   const h = location.hash.slice(1);
   const view = location.pathname.indexOf('/equipe') === 0 ? 'hub' : h.indexOf('suivi-') === 0 ? 'track' : (ROUTES[h] || 'home');
   const hub = view === 'hub';
   document.body.classList.toggle('is-hub', hub);
   $('client').hidden = hub; $('view-hub').hidden = !hub;
-  ['home','menu','book','mine','track'].forEach(v => $('v-' + v).hidden = v !== view);
+  ['home','menu','book','mine','track','legal'].forEach(v => $('v-' + v).hidden = v !== view);
   document.querySelectorAll('[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === view || (view === 'track' && a.dataset.nav === 'mine')));
   clearInterval(trackTimer);
   if(view === 'home') renderHome();
@@ -1716,6 +1764,7 @@ function route(){
   if(view === 'book') renderBook();
   if(view === 'mine') renderMine();
   if(view === 'track') openTrack(h.slice(6));
+  if(view === 'legal') renderLegal(h);
   if(hub) openHub();
   renderStatusBar(view);
   if(!hub) document.title = RESTO;
@@ -1743,9 +1792,73 @@ function renderHome(){
   $('svc-row').innerHTML = Object.keys(SVC).map(k => '<button class="svc-card' + (k === svc ? ' now' : '') + '" data-pick-svc="' + k + '"><b>' + SVC[k].label + '</b><span class="svc-hours">' + SVC[k].hours + '</span><span>' + SVC[k].what + '</span></button>').join('');
   $('zone-row').innerHTML = ['int','ter','rof'].map(z => '<button class="zone-card" data-pick-zone="' + z + '"><div class="scene">' + sceneSVG('z' + z, svc, z, svc === 'midi' ? 0 : 14) + '</div><div class="txt"><b>' + zoneLabel(z) + '</b><span>' + ZONE_TXT[z] + '</span></div></button>').join('');
   $('home-hh').innerHTML = hhBanner();
+  $('home-promo').innerHTML = promoHTML();
+  $('home-loyal').innerHTML = loyaltyHTML();
+  loyaltyProgress();
+  const bar = [];
+  MENU_CATS.forEach(c => { if(c.food) return; c.groups.forEach(g => g[1].forEach(it => { const m = it[5] || {}; if(m.photo && m.available !== false && (it[4] || m.badge)) bar.push([c, g[0], it]); })); });
+  bar.sort((a, b) => ((b[2][5].badge === 'top') - (a[2][5].badge === 'top')));
+  $('home-bar-sec').hidden = !bar.length;
+  $('home-bar').innerHTML = bar.slice(0, 10).map(([c, sub, it]) => {
+    const m = it[5], kicker = m.badge === 'top' ? 'Le plus commandé en ce moment' : (m.badge === 'new' ? 'Nouveau' : 'Suggestion') + (sub ? ' · ' + sub : '');
+    return '<a class="bar-card" href="#carte" data-pick-cat="' + c.id + '"><span class="photo-wrap"><img src="' + esc(m.photo) + '" alt="" loading="lazy">' + (c.alcohol ? '<span class="evin-on">L\'abus d\'alcool est dangereux pour la santé, à consommer avec modération.</span>' : '') + '</span>' +
+      '<span class="bc-txt"><small>' + esc(kicker) + '</small><b>' + esc(it[0]) + '</b><span>' + (Array.isArray(it[1]) ? fmtPrice(+it[1][0][1]) : fmtPrice(it[1])) + (it[2] ? ' · ' + esc(it[2]) : '') + '</span></span></a>';
+  }).join('');
   const featured = [];
-  MENU_CATS.forEach(c => c.groups.forEach(g => g[1].forEach(it => { if(it[4] && !(it[5] && it[5].available === false)) featured.push([c, it]); })));
+  MENU_CATS.forEach(c => c.groups.forEach(g => g[1].forEach(it => { if(it[4] && c.food && !(it[5] && it[5].available === false)) featured.push([c, it]); })));
   $('home-dishes').innerHTML = featured.map(([c, it]) => '<a class="dish-card" href="#carte" data-pick-cat="' + c.id + '" style="text-decoration:none">' + (it[5] && it[5].photo ? '<img class="ph" src="' + esc(it[5].photo) + '" alt="" loading="lazy">' : '<div class="thumb c-' + c.color + '">' + ico(c.icon, '') + '</div>') + '<b>' + esc(it[0]) + '</b><span class="note" style="font-size:11px;margin-top:-6px">' + esc(c.label) + '</span><div class="dish-meta"><span class="price">' + (Array.isArray(it[1]) ? fmtPrice(+it[1][0][1]) : fmtPrice(it[1])) + '</span></div></a>').join('');
+}
+
+/* Bandeau « offre du moment » réglé dans le hub (Réglages > Offre et fidélité). */
+function promoHTML(){
+  const p = PROMO;
+  if(!p || !p.on || !p.title) return '';
+  if(p.until && p.until < today()) return '';
+  return '<a class="promo" href="#reserver"><span class="promo-top"><span>' + esc(p.tag || 'Offre limitée') + '</span><span>' + esc(p.dates || '') + '</span></span><h2>' + esc(p.title) + '</h2>' +
+    (p.text ? '<p>' + esc(p.text) + '</p>' : '') + '<span class="promo-cta">' + esc(p.cta || 'Réserver ma table') + ' ›</span></a>';
+}
+/* Carte de fidélité : X visites = une récompense. Progression lue avec le lien de suivi d'une réservation de cet appareil. */
+function loyaltyHTML(){
+  if(!LOYALTY.on) return '';
+  return '<a class="loyal" href="#mes-reservations">' + ico('i-ticket') + '<div><b>Programme fidélité</b><span>' + esc(LOYALTY.goal) + ' visites · ' + esc(LOYALTY.reward) + '</span><span class="loyal-prog" hidden></span></div>' + ico('i-arrow') + '</a>';
+}
+async function loyaltyProgress(){
+  if(!LOYALTY.on || !Store.live) return;
+  const m = mine(); if(!m.length) return;
+  let st = null;
+  for(const x of m.slice().reverse()){ try { const { data } = await Store.sb.rpc('loyalty_status', { p_token: x.token }); if(data){ st = data; break; } } catch(e){} }
+  if(!st) return;
+  const goal = Math.max(1, +LOYALTY.goal || 5), left = Math.max(0, st.visits - st.rewards_used * goal), done = Math.min(goal, left);
+  document.querySelectorAll('.loyal-prog').forEach(el => {
+    el.hidden = false;
+    el.innerHTML = (left >= goal ? '<b style="color:var(--gold)">Récompense disponible : demandez-la en salle !</b>' : done + ' / ' + goal + ' visites') +
+      '<span class="dots">' + Array.from({ length: goal }, (_, i) => '<i' + (i < done ? ' class="on"' : '') + '></i>').join('') + '</span>';
+  });
+}
+/* Pages « Mentions légales » et « Confidentialité » (obligatoires), remplies depuis Réglages > Informations du restaurant. */
+function renderLegal(h){
+  const L = LEGAL, v = (k, ph) => L[k] ? esc(L[k]) : '<span class="miss">' + ph + '</span>';
+  const phone = esc(CONTACT.phone || ''), host = 'Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis (vercel.com)';
+  $('legal-body').innerHTML = h === 'confidentialite' ?
+    '<div class="title-block"><span class="eyebrow">' + esc(RESTO) + '</span><h1 class="h1">Confidentialité</h1></div>' +
+    '<p>Cette page explique quelles données nous recueillons quand vous réservez en ligne, pourquoi, et comment exercer vos droits (règlement européen RGPD et loi Informatique et Libertés).</p>' +
+    '<h2>Responsable du traitement</h2><p>' + v('company', '[raison sociale]') + ', ' + v('address', '[adresse du siège]') + '. Contact : ' + phone + (L.email ? ' · ' + esc(L.email) : '') + '.</p>' +
+    '<h2>Données recueillies</h2><ul><li>Nom, téléphone, e-mail facultatif, date, heure, nombre de personnes, préférence d\'espace et notes de votre réservation.</li><li>Votre accord pour recevoir nos offres, s\'il est donné, avec sa date.</li><li>Un identifiant anonyme de votre appareil et une empreinte non réversible de votre connexion, pour limiter les réservations abusives.</li><li>Si vous l\'activez, l\'adresse technique de notification de votre appareil.</li></ul>' +
+    '<h2>Pourquoi</h2><ul><li>Gérer votre réservation et vous prévenir de sa confirmation (exécution de votre demande).</li><li>Tenir notre fichier clients et le programme fidélité (intérêt légitime).</li><li>Vous envoyer nos offres, uniquement si vous l\'avez accepté (consentement, retirable à tout moment).</li><li>Prévenir les abus (intérêt légitime).</li></ul>' +
+    '<h2>Durée de conservation</h2><p>Les réservations et la fiche client sont conservées 3 ans après votre dernière visite ou réservation, puis supprimées. Vous pouvez retirer votre accord aux offres à tout moment.</p>' +
+    '<h2>Destinataires et hébergement</h2><p>Seule l\'équipe du restaurant accède à vos données. Elles sont hébergées par Supabase (base de données, serveurs dans l\'Union européenne) et le site par ' + host + '. Les e-mails éventuels sont envoyés par Brevo (France). Aucune donnée n\'est vendue ni cédée.</p>' +
+    '<h2>Vos droits</h2><p>Vous pouvez demander l\'accès, la rectification, la suppression de vos données, vous opposer à leur utilisation ou retirer votre consentement : appelez-nous au ' + phone + (L.email ? ' ou écrivez à ' + esc(L.email) : '') + '. En cas de désaccord, vous pouvez saisir la CNIL (cnil.fr).</p>' +
+    '<h2>Cookies et stockage</h2><p>Le site n\'utilise ni cookie publicitaire ni outil de mesure d\'audience. Il garde seulement sur votre appareil vos réservations récentes, votre choix de mode jour ou nuit et l\'identifiant anonyme de l\'appareil.</p>'
+    :
+    '<div class="title-block"><span class="eyebrow">' + esc(RESTO) + '</span><h1 class="h1">Mentions légales</h1></div>' +
+    '<h2>Éditeur du site</h2><p>' + v('company', '[raison sociale]') + (L.form ? ', ' + esc(L.form) : '') + (L.capital ? ' au capital de ' + esc(L.capital) : '') + '<br>Nom commercial : ' + esc(RESTO) + '<br>Siège : ' + v('address', '[adresse du siège]') +
+    '<br>SIREN : ' + v('siren', '[numéro SIREN]') + (L.rcs ? ' · ' + esc(L.rcs) : '') + (L.tva ? '<br>TVA intracommunautaire : ' + esc(L.tva) : '') +
+    '<br>Téléphone : ' + phone + (L.email ? '<br>E-mail : ' + esc(L.email) : '') + '</p>' +
+    '<h2>Directeur de la publication</h2><p>' + v('director', '[nom du responsable]') + '</p>' +
+    '<h2>Hébergement</h2><p>Site : ' + host + '.<br>Données : Supabase Inc., serveurs situés dans l\'Union européenne.</p>' +
+    '<h2>Propriété</h2><p>Textes, photos, logo et carte sont la propriété de ' + v('company', '[raison sociale]') + ' et ne peuvent être réutilisés sans autorisation.</p>' +
+    '<h2>Alcool</h2><p>L\'abus d\'alcool est dangereux pour la santé, à consommer avec modération. La vente d\'alcool aux mineurs est interdite.</p>' +
+    '<p><a href="#confidentialite">Politique de confidentialité →</a></p>';
 }
 
 /* ── CLIENT : CARTE ─────────────────────────────────────── */
@@ -1760,9 +1873,10 @@ function itemHTML(it){
   const [name, price, desc, al] = it, meta = it[5] || {};
   const prices = Array.isArray(price) ? price.map(([l, p]) => '<span><small>' + l + '</small>' + fmtPrice(p) + '</span>').join('') : '<span>' + fmtPrice(price) + '</span>';
   const als = al ? '<div class="als">' + al.split(' ').map(k => '<span class="al al-' + ALLERGENS[k][1] + '">' + ALLERGENS[k][0] + '</span>').join('') + '</div>' : '';
-  return '<div class="item' + (meta.photo ? ' has-photo' : '') + (meta.available === false ? ' out' : '') + '">' + (meta.photo ? '<img class="item-photo" src="' + esc(meta.photo) + '" alt="" loading="lazy">' : '') +
-    '<div style="min-width:0"><b>' + esc(name) + '</b>' + (meta.available === false ? ' <span class="tag out">Épuisé</span>' : '') + (desc ? '<p>' + esc(desc) + '</p>' : '') + als + '</div><div class="item-price">' + prices + '</div></div>';
+  return '<div class="item' + (meta.photo ? ' has-photo' : '') + (meta.available === false ? ' out' : '') + '">' + (meta.photo ? (meta.alcohol ? '<span class="photo-wrap"><img class="item-photo" src="' + esc(meta.photo) + '" alt="" loading="lazy"></span>' : '<img class="item-photo" src="' + esc(meta.photo) + '" alt="" loading="lazy">') : '') +
+    '<div style="min-width:0"><b>' + esc(name) + '</b>' + badgeHTML(meta.badge) + (meta.available === false ? ' <span class="tag out">Épuisé</span>' : '') + (desc ? '<p>' + esc(desc) + '</p>' : '') + als + '</div><div class="item-price">' + prices + '</div></div>';
 }
+function badgeHTML(b){ return b === 'new' ? '<span class="badge-new">Nouveau</span>' : b === 'top' ? '<span class="badge-top">Le plus commandé</span>' : ''; }
 function catFoot(c){
   return c.food ? '<p class="legal">Allergènes indiqués selon notre carte. Signalez toute allergie ou restriction alimentaire à nos serveurs.</p>' :
     c.alcohol ? '<p class="legal">L\'abus d\'alcool est dangereux pour la santé, à consommer avec modération.</p>' : '';
@@ -1787,7 +1901,7 @@ function renderMenuBody(){
     return;
   }
   if(!menuCat){
-    el.innerHTML = hhBanner() + '<div class="cat-grid">' + MENU_CATS.map(c => {
+    el.innerHTML = promoHTML() + hhBanner() + loyaltyHTML() + '<div class="cat-grid">' + MENU_CATS.map(c => {
       const n = c.groups.reduce((s, g) => s + g[1].length, 0);
       return '<button class="cat-card" data-cat="' + c.id + '"><div class="thumb c-' + c.color + '">' + ico(c.icon, '') + '</div><b>' + esc(c.label) + '</b><span>' + n + ' choix</span></button>';
     }).join('') + '</div>';
@@ -1795,7 +1909,7 @@ function renderMenuBody(){
   }
   const c = MENU_CATS.find(x => x.id === menuCat);
   el.innerHTML = '<div class="cat-head"><div class="thumb c-' + c.color + '">' + ico(c.icon, '') + '</div><div class="title-block"><h2 class="h2">' + esc(c.label) + '</h2>' + (c.note ? '<span class="note">' + esc(c.note) + '</span>' : '') + '</div></div>' +
-    c.groups.map(([sub, its]) => (sub ? '<span class="section-lbl">' + esc(sub) + '</span>' : '') + '<div class="items">' + its.map(itemHTML).join('') + '</div>').join('') + catFoot(c);
+    c.groups.map(([sub, its]) => (sub ? '<h3 class="grp-title">' + esc(sub) + '</h3>' : '') + '<div class="items">' + its.map(itemHTML).join('') + '</div>').join('') + catFoot(c);
 }
 
 /* ── CLIENT : RÉSERVER ──────────────────────────────────── */
@@ -2460,6 +2574,8 @@ $('cust-list').addEventListener('click', e => { const b = e.target.closest('[dat
 /* Les réglages du restaurant et la carte sont modifiables dans le hub (Réglages).
    Les valeurs écrites dans ce fichier ne servent qu'au premier chargement et en mode démo. */
 let CFG = null, DEFAULT_CFG = null, MENU_RAW = null;
+/* Offre du moment, fidélité et informations légales (Réglages du hub). */
+let PROMO = { on: false }, LOYALTY = { on: false, goal: 5, reward: '1 boisson offerte' }, LEGAL = {};
 /* Tables jumelables : groupes de tables voisines qu'on rapproche pour un grand groupe (Réglages > Plan de salle). */
 let COMBOS = [['t108', 't108bis', 't108ter']];
 function rebuildTables(){
@@ -2478,6 +2594,9 @@ function applySettings(d){
   if(Array.isArray(d.happyHours)) HAPPY_HOURS = d.happyHours;
   if(d.closed) CLOSED = Object.assign({ midi: [], hh: [], soir: [] }, d.closed);
   if(d.tableHold != null && !isNaN(+d.tableHold)) TABLE_HOLD_MIN = +d.tableHold;
+  if(d.promo) PROMO = Object.assign({ on: false }, d.promo);
+  if(d.loyalty) LOYALTY = Object.assign({ on: false, goal: 5, reward: '1 boisson offerte' }, d.loyalty);
+  if(d.legal) LEGAL = Object.assign({}, d.legal);
   if(Array.isArray(d.combos)) COMBOS = d.combos.filter(c => Array.isArray(c) && c.length > 1);
   if(Array.isArray(d.zones) && d.zones.length){
     ZONES = d.zones.map(z => ({ short: z.short, label: z.label, tables: (z.tables || []).map(t => Object.assign({}, t)) }));
@@ -2504,7 +2623,7 @@ function applyMenu(raw){
       let g = groups.find(x => x[0] === (i.grp || ''));
       if(!g){ g = [i.grp || '', []]; groups.push(g); }
       g[1].push([i.name, i.prices && i.prices.length ? i.prices : +i.price, i.description || '', (i.allergens || []).join(' '), i.featured ? 1 : 0,
-        { id: i.id, photo: i.photo_url || '', available: i.available !== false }]);
+        { id: i.id, photo: i.photo_url || '', available: i.available !== false, badge: i.badge || '', alcohol: !!c.alcohol }]);
     });
     return { id: c.id, label: c.label, icon: c.icon, color: c.color, note: c.note || '', food: c.food, alcohol: c.alcohol, groups };
   });
@@ -2515,7 +2634,8 @@ function buildDefaultCfg(){
     services: JSON.parse(JSON.stringify(SVC)), happyHours: HAPPY_HOURS.map(h => h.slice()), closed: JSON.parse(JSON.stringify(CLOSED)),
     zones: ZONES.map(z => ({ short: z.short, label: z.label, txt: ZONE_TXT[z.short], tables: z.tables.map(t => {
       const o = { id: t.id, name: t.name, cap: t.cap }; if(t.maxCap) o.maxCap = t.maxCap; if(t.salon) o.salon = true; return o; }) })),
-    combos: COMBOS.map(c => c.slice()), tableHold: TABLE_HOLD_MIN
+    combos: COMBOS.map(c => c.slice()), tableHold: TABLE_HOLD_MIN,
+    promo: Object.assign({}, PROMO), loyalty: Object.assign({}, LOYALTY), legal: Object.assign({}, LEGAL)
   };
   const cats = [], items = [];
   MENU_CATS.forEach((c, i) => {
@@ -2579,14 +2699,16 @@ function renderSettings(){
   if(v === 'menu') return renderMenuEditor();
   if(v === 'info' && IS_ADMIN) return renderInfoEditor();
   if(v === 'services' && IS_ADMIN) return renderServicesEditor();
+  if(v === 'promo' && IS_ADMIN) return renderPromoEditor();
   if(v === 'tables' && IS_ADMIN) return renderTablesEditor();
   if(v === 'team' && IS_ADMIN) return renderTeam();
   if(v === 'device') return renderDevice();
   const row = (k, icon, t, sub, admin) => admin && !IS_ADMIN ? '' : '<button class="set-row" data-act="set-open" data-v="' + k + '" type="button"><span class="ico-wrap">' + ico(icon) + '</span><span class="set-txt"><b>' + t + '</b><small>' + sub + '</small></span><span class="chev">' + ico('i-arrow') + '</span></button>';
   $('set-body').innerHTML = '<div class="set-list">' +
     row('menu', 'i-menu', 'Carte et photos', CFG.cats.length + ' rubriques · ' + CFG.items.length + ' lignes · épuisés, prix, photos', false) +
-    row('info', 'i-pin', 'Informations du restaurant', 'Nom, téléphone, Instagram, adresse', true) +
+    row('info', 'i-pin', 'Informations du restaurant', 'Nom, téléphone, adresse, mentions légales', true) +
     row('services', 'i-clock', 'Services et horaires', 'Créneaux, jours de fermeture, happy hour', true) +
+    row('promo', 'i-ticket', 'Offre du moment et fidélité', (PROMO.on ? 'Offre en ligne' : 'Aucune offre') + ' · ' + (LOYALTY.on ? 'fidélité ' + LOYALTY.goal + ' visites' : 'fidélité désactivée'), true) +
     row('tables', 'i-plan', 'Plan de salle', TLIST.length + ' tables', true) +
     row('team', 'i-team', 'Équipe', 'Comptes et rôles', true) +
     row('device', 'i-theme', 'Cet appareil', 'Mode nuit, son, notifications, déconnexion', false) + '</div>' +
@@ -2648,6 +2770,8 @@ function renderItemEditor(){
       : '<input class="input" id="ed-price" type="number" step="0.1" min="0" inputmode="decimal" value="' + (d.price == null ? '' : esc(d.price)) + '" placeholder="Prix en €">') + '</div>' +
     '<div class="field"><label>Allergènes</label><div class="checks">' + Object.keys(ALLERGENS).map(k => '<label class="check"><input type="checkbox" data-al="' + k + '"' + (d.allergens.indexOf(k) >= 0 ? ' checked' : '') + '>' + ALLERGENS[k][0] + '</label>').join('') + '</div></div>' +
     '<div class="checks"><label class="check"><input type="checkbox" id="ed-avail"' + (d.available !== false ? ' checked' : '') + '>Disponible</label><label class="check"><input type="checkbox" id="ed-feat"' + (d.featured ? ' checked' : '') + '>Mis en avant sur l\'accueil</label></div>' +
+    '<div class="field"><label for="ed-badge">Pastille</label><select class="input" id="ed-badge">' + [['', 'Aucune'], ['new', 'Nouveau'], ['top', 'Le plus commandé']].map(o => '<option value="' + o[0] + '"' + ((d.badge || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>' +
+    '<p class="note">Une boisson avec photo, mise en avant ou avec pastille, apparaît dans « Les suggestions du bar » sur l\'accueil.</p></div>' +
     '<p class="st err" id="ed-err" role="alert"></p>' +
     '<div class="modal-actions">' + (d._new ? '<button class="btn-line" data-act="ed-close" type="button">Annuler</button>' : '<button class="btn-line btn-danger' + (armed['del' + d.id] ? ' armed' : '') + '" data-act="item-del" type="button">' + (armed['del' + d.id] ? 'Confirmer la suppression' : 'Supprimer') + '</button>') +
     '<button class="btn-primary" data-act="item-save" type="button">Enregistrer</button></div><button class="btn-text" data-act="ed-close" type="button">Fermer</button>');
@@ -2658,7 +2782,7 @@ function readDraft(){
   if($('ed-price')) d.price = $('ed-price').value === '' ? null : +$('ed-price').value;
   document.querySelectorAll('#ed-body [data-fmt]').forEach(i => { const p = d.prices[+i.dataset.k]; if(i.dataset.fmt === 'l') p[0] = i.value.trim(); else p[1] = i.value === '' ? null : +i.value; });
   d.allergens = Array.from(document.querySelectorAll('#ed-body [data-al]')).filter(x => x.checked).map(x => x.dataset.al);
-  d.available = $('ed-avail').checked; d.featured = $('ed-feat').checked;
+  d.available = $('ed-avail').checked; d.featured = $('ed-feat').checked; d.badge = $('ed-badge').value || null;
   return d;
 }
 function toggleMulti(on){
@@ -2681,7 +2805,7 @@ async function saveDraft(){
   const prev = CFG.items.find(i => i.id === d.id);
   const sort = prev && prev.category_id === d.category_id ? prev.sort : CFG.items.filter(i => i.category_id === d.category_id && i.id !== d.id).reduce((m, i) => Math.max(m, i.sort + 1), 0);
   const rec = { id: d.id, category_id: d.category_id, grp: d.grp, name: d.name, description: d.description || null, price: d.prices ? null : d.price, prices: d.prices || null,
-    allergens: d.allergens, photo_url: d.photo_url || null, featured: d.featured, available: d.available, sort };
+    allergens: d.allergens, photo_url: d.photo_url || null, featured: d.featured, available: d.available, badge: d.badge || null, sort };
   $('ed-err').textContent = '';
   try { await Store.saveItem(rec); upsertLocal('items', rec); SET.cat = rec.category_id; closeEditor(); afterMenuChange(); toast('« ' + rec.name + ' » enregistré'); }
   catch(e){ $('ed-err').textContent = 'Enregistrement impossible : ' + errText(e); }
@@ -2764,13 +2888,43 @@ function renderInfoEditor(){
     '<div class="row2">' + fieldIn('st-phone', 'Téléphone des réservations', s.phone, ' type="tel"') + fieldIn('st-insta', 'Instagram', s.instagram) + '</div>' +
     fieldIn('st-address', 'Adresse', s.address, ' placeholder="Affichée en bas de l\'accueil"') +
     '<label class="check" style="align-self:flex-start"><input type="checkbox" id="st-email"' + (s.emailConfirm ? ' checked' : '') + '>Confirmation par e-mail aux clients</label>' +
-    '<p class="note">Ajoute un champ e-mail facultatif au formulaire : le client reçoit « demande reçue » puis « confirmée » ou « non disponible ». À activer une fois Brevo configuré dans Vercel (BREVO_API_KEY et MAIL_FROM).</p>' +
+    '<p class="note">Ajoute un champ e-mail facultatif au formulaire : le client reçoit « demande reçue » puis « confirmée » ou « non disponible ». À activer une fois Brevo configuré dans Vercel (BREVO_API_KEY et MAIL_FROM).</p></div>' +
+    '<div class="card"><h3 class="h3">Informations légales</h3><p class="hint">Affichées dans les pages « Mentions légales » et « Confidentialité » du site (obligatoires). Elles figurent sur l\'extrait Kbis ou sur annuaire-entreprises.data.gouv.fr.</p>' +
+    fieldIn('lg-company', 'Raison sociale', (s.legal || {}).company) +
+    '<div class="row2">' + fieldIn('lg-form', 'Forme juridique', (s.legal || {}).form, ' placeholder="SAS, SARL…"') + fieldIn('lg-capital', 'Capital social', (s.legal || {}).capital, ' placeholder="1 000 €"') + '</div>' +
+    fieldIn('lg-address', 'Adresse du siège', (s.legal || {}).address) +
+    '<div class="row2">' + fieldIn('lg-siren', 'SIREN', (s.legal || {}).siren, ' inputmode="numeric"') + fieldIn('lg-rcs', 'RCS', (s.legal || {}).rcs, ' placeholder="RCS Saint-Denis"') + '</div>' +
+    '<div class="row2">' + fieldIn('lg-tva', 'N° TVA intracommunautaire', (s.legal || {}).tva) + fieldIn('lg-director', 'Directeur de la publication', (s.legal || {}).director, ' placeholder="Nom du gérant ou président"') + '</div>' +
+    fieldIn('lg-email', 'E-mail pour les demandes RGPD (facultatif)', (s.legal || {}).email, ' type="email"') +
+    '<p class="note"><a href="/#mentions-legales" target="_blank" rel="noopener">Voir les mentions légales</a> · <a href="/#confidentialite" target="_blank" rel="noopener">Voir la confidentialité</a></p>' +
     '<p class="st err" id="st-err" role="alert"></p><button class="btn-primary" data-act="save-info" type="button">Enregistrer</button></div>';
 }
 function saveInfo(){
   const v = id => $(id).value.trim();
   if(!v('st-name')){ $('st-err').textContent = 'Indiquez le nom du restaurant.'; return; }
-  saveSettingsPatch({ emailConfirm: $('st-email').checked, name: v('st-name'), tagline: v('st-tagline'), city: v('st-city'), phone: v('st-phone'), instagram: v('st-insta'), address: v('st-address') }, 'Informations enregistrées');
+  const legal = {}; ['company', 'form', 'capital', 'address', 'siren', 'rcs', 'tva', 'director', 'email'].forEach(k => { legal[k] = v('lg-' + k); });
+  saveSettingsPatch({ legal, emailConfirm: $('st-email').checked, name: v('st-name'), tagline: v('st-tagline'), city: v('st-city'), phone: v('st-phone'), instagram: v('st-insta'), address: v('st-address') }, 'Informations enregistrées');
+}
+function renderPromoEditor(){
+  const p = Object.assign({ on: false }, CFG.settings.promo || PROMO), l = Object.assign({ on: false, goal: 5, reward: '1 boisson offerte' }, CFG.settings.loyalty || LOYALTY);
+  $('set-body').innerHTML = setHead('Offre du moment et fidélité') +
+    '<div class="card"><h3 class="h3">Offre du moment</h3><p class="hint">Bandeau rouge en haut de l\'accueil et de la carte, avec un bouton vers la réservation. Ex. réveillons, soirée à thème, cocktail du mois.</p>' +
+    '<label class="check" style="align-self:flex-start"><input type="checkbox" id="pr-on"' + (p.on ? ' checked' : '') + '>Afficher l\'offre sur le site</label>' +
+    '<div class="row2">' + fieldIn('pr-tag', 'Petit titre', p.tag || 'Offre limitée') + fieldIn('pr-dates', 'Dates affichées', p.dates, ' placeholder="24 & 31 déc."') + '</div>' +
+    fieldIn('pr-title', 'Titre', p.title, ' placeholder="10 mocktails offerts" maxlength="60"') +
+    '<div class="field"><label for="pr-text">Texte</label><textarea class="input" id="pr-text" maxlength="240" placeholder="Aux 10 premières réservations des réveillons.">' + esc(p.text || '') + '</textarea></div>' +
+    '<div class="row2">' + fieldIn('pr-cta', 'Bouton', p.cta || 'Réserver ma table') + '<div class="field"><label for="pr-until">Retirer automatiquement après le</label><input class="input" type="date" id="pr-until" value="' + esc(p.until || '') + '"></div></div></div>' +
+    '<div class="card"><h3 class="h3">Programme fidélité</h3><p class="hint">Chaque réservation confirmée et passée compte une visite ; l\'équipe peut ajouter une visite en salle depuis la fiche client et noter la récompense offerte.</p>' +
+    '<label class="check" style="align-self:flex-start"><input type="checkbox" id="lo-on"' + (l.on ? ' checked' : '') + '>Afficher le programme fidélité</label>' +
+    '<div class="row2"><div class="field"><label for="lo-goal">Nombre de visites</label><input class="input num" type="number" min="2" max="20" id="lo-goal" value="' + esc(l.goal) + '"></div>' + fieldIn('lo-reward', 'Récompense', l.reward, ' placeholder="1 boisson offerte"') + '</div></div>' +
+    '<p class="st err" id="st-err" role="alert"></p><button class="btn-primary" data-act="save-promo" type="button">Enregistrer</button>';
+}
+function savePromo(){
+  const v = id => $(id).value.trim();
+  const promo = { on: $('pr-on').checked, tag: v('pr-tag'), dates: v('pr-dates'), title: v('pr-title'), text: v('pr-text'), cta: v('pr-cta'), until: $('pr-until').value || '' };
+  const goal = parseInt($('lo-goal').value, 10), loyalty = { on: $('lo-on').checked, goal: goal >= 2 ? goal : 5, reward: v('lo-reward') || '1 boisson offerte' };
+  if(promo.on && !promo.title){ $('st-err').textContent = 'Indiquez le titre de l\'offre.'; return; }
+  saveSettingsPatch({ promo, loyalty }, 'Offre et fidélité enregistrées');
 }
 function renderServicesEditor(){
   const s = CFG.settings;
@@ -2910,6 +3064,7 @@ async function openCustomer(id){
     '<div class="checks"><span class="badge ' + (c.marketing_opt_in ? 'b-optin">Offres acceptées' : 'b-none">Pas d\'offres') + '</span>' +
     '<span class="badge b-none">' + c.requests + ' réservation' + (c.requests > 1 ? 's' : '') + '</span><span class="badge b-table">' + c.visits + ' confirmée' + (c.visits > 1 ? 's' : '') + '</span></div>' +
     (c.first_seen ? '<p class="note">Client depuis le ' + esc(fmtDateFr(String(c.first_seen).slice(0, 10))) + '</p>' : '') +
+    (LOYALTY.on ? '<div class="card" id="cust-loyal" style="padding:12px"><p class="note" style="margin:0">Fidélité : chargement…</p></div>' : '') +
     '<div class="row2">' + fieldIn('cu-name', 'Nom', c.name, ' maxlength="80"') + fieldIn('cu-phone', 'Téléphone', fmtPhone(c.phone), ' type="tel" maxlength="30"') + '</div>' +
     fieldIn('cu-email', 'E-mail', c.email, ' type="email" placeholder="Facultatif"') +
     '<div class="field"><label for="cust-notes">Notes de l\'équipe</label><textarea class="input" id="cust-notes" placeholder="Allergies, préférences, table favorite, occasion…">' + esc(c.notes || '') + '</textarea></div>' +
@@ -2922,8 +3077,28 @@ async function openCustomer(id){
   let hist = [];
   try { hist = await Store.customerHistory(c); } catch(e){ if($('cust-hist')) $('cust-hist').innerHTML = '<p class="st err">Historique indisponible : vérifiez la connexion.</p>'; return; }
   if(SET.cust !== c || !$('cust-hist')) return;
+  SET.custHist = hist; drawCustLoyal();
   $('cust-hist').innerHTML = hist.length ? hist.map(r => '<div><span><b>' + esc(cap1(fmtDateFr(r.date))) + '</b> · ' + esc(r.time) + ' · ' + esc(r.guests) + ' pers.' + (r.table ? ' · table ' + esc(tName(r.table)) : '') +
     (r.notes ? '<br><span class="note">« ' + esc(r.notes) + ' »</span>' : '') + '</span><span class="status ' + (r.status || 'confirmed') + '">' + STATUS[r.status || 'confirmed'].short + '</span></div>').join('') : '<p class="note">Aucune réservation enregistrée.</p>';
+}
+/* Fidélité dans la fiche client : visites honorées + visites en salle, moins les récompenses déjà offertes. */
+function custLoyal(c, hist){
+  const goal = Math.max(1, +LOYALTY.goal || 5);
+  const honored = (hist || []).filter(r => (r.status || 'confirmed') === 'confirmed' && resaTs(r) < Date.now()).length + (+c.visits_extra || 0);
+  return { goal, honored, cur: Math.max(0, honored - (+c.rewards_used || 0) * goal) };
+}
+function drawCustLoyal(){
+  const c = SET.cust, box = $('cust-loyal'); if(!c || !box) return;
+  const L = custLoyal(c, SET.custHist);
+  box.innerHTML = '<div class="row-between"><b>Fidélité : ' + Math.min(L.cur, L.goal) + ' / ' + L.goal + ' visites' + (L.cur >= L.goal ? ' · <span style="color:var(--gold)">' + esc(LOYALTY.reward) + ' à offrir</span>' : '') + '</b></div>' +
+    '<p class="note" style="margin:4px 0 8px">' + L.honored + ' visite' + (L.honored > 1 ? 's' : '') + ' au total (dont ' + (+c.visits_extra || 0) + ' en salle) · ' + (+c.rewards_used || 0) + ' récompense' + ((+c.rewards_used || 0) > 1 ? 's' : '') + ' offerte' + ((+c.rewards_used || 0) > 1 ? 's' : '') + '</p>' +
+    '<div class="row2"><button class="btn-line btn-sm" data-act="cust-visit" type="button">+1 visite en salle</button><button class="btn-' + (L.cur >= L.goal ? 'primary' : 'line') + ' btn-sm" data-act="cust-reward" type="button"' + (L.cur >= L.goal ? '' : ' disabled') + '>Récompense offerte</button></div>';
+}
+async function loyaltyAdjust(kind){
+  const c = SET.cust; if(!c) return;
+  const patch = kind === 'visit' ? { visits_extra: (+c.visits_extra || 0) + 1 } : { rewards_used: (+c.rewards_used || 0) + 1 };
+  try { await Store.updateCustomer(c.id, patch); Object.assign(c, patch); drawCustLoyal(); toast(kind === 'visit' ? 'Visite ajoutée' : 'Récompense notée'); }
+  catch(e){ toast('Enregistrement impossible : ' + errText(e)); }
 }
 async function saveCustomer(){
   const c = SET.cust; if(!c) return;
@@ -2967,6 +3142,9 @@ function setAction(act, t){
     case 'ed-close': closeEditor(); break;
     case 'save-info': saveInfo(); break;
     case 'save-services': saveServices(); break;
+    case 'save-promo': savePromo(); break;
+    case 'cust-visit': loyaltyAdjust('visit'); break;
+    case 'cust-reward': loyaltyAdjust('reward'); break;
     case 'tb-add': readTables(); SET.zonesDraft[+t.dataset.z].tables.push({ id: 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: '', cap: 2 }); renderTablesEditor(); break;
     case 'tb-del': readTables(); SET.zonesDraft[+t.dataset.z].tables.splice(+t.dataset.t, 1); renderTablesEditor(); break;
     case 'tb-cancel': SET.zonesDraft = null; SET.combosDraft = null; SET.holdDraft = null; SET.view = 'home'; renderSettings(); break;
