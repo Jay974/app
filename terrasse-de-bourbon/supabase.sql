@@ -537,6 +537,8 @@ create table if not exists public.menu_items (
   updated_at  timestamptz not null default now()
 );
 create index if not exists menu_items_category_idx on public.menu_items (category_id, sort);
+alter table public.menu_items add column if not exists i18n jsonb not null default '{}'::jsonb;   -- traductions saisies dans le hub : {"en": {"name", "description"}, "de": {...}}
+alter table public.menu_categories add column if not exists i18n jsonb not null default '{}'::jsonb;   -- {"en": {"label", "note"}, "de": {...}}
 alter table public.menu_items add column if not exists badge text check (badge in ('new', 'top'));   -- « Nouveau » ou « Le plus commandé »
 drop trigger if exists menu_items_touch on public.menu_items;
 create trigger menu_items_touch before update on public.menu_items
