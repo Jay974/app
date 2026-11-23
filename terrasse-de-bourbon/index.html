@@ -260,6 +260,9 @@ svg { display: block; }
 .legal-page p, .legal-page li { font-size: 14px; line-height: 1.6; color: var(--ink); }
 .legal-page ul { padding-left: 18px; margin: 4px 0; }
 .legal-page .miss { color: var(--busy); }
+.top-acts { display: flex; align-items: center; gap: 8px; }
+.lang-sel { appearance: none; -webkit-appearance: none; font: 600 12px/1 var(--font-body); letter-spacing: .08em; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 99px; padding: 8px 12px; cursor: pointer; opacity: .85; }
+.lang-sel option { color: #1A2F1A; }
 .foot-links { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
 .legal { font-size: 11px; color: var(--faint); text-align: center; text-wrap: balance; }
 .hh-banner { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r); background: var(--gold-soft); border: 1px solid var(--gold-line); text-decoration: none; color: var(--ink); }
@@ -400,6 +403,9 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
 .day-step { display: flex; gap: 8px; align-items: center; }
 .day-step .pill-field { flex: 1; }
 .unplaced { display: flex; flex-wrap: wrap; gap: 8px; }
+.tr-box { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 10px 12px; }
+.tr-box summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.tr-box[open] summary { margin-bottom: 8px; }
 .combo-row { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-sm); }
 .unplaced button.on { border-style: solid; background: var(--gold); color: #fff; }
 .unplaced button { border: 1px dashed var(--gold-line); color: var(--gold); background: var(--gold-soft); border-radius: 99px; padding: 6px 12px; font: 600 12px/1.2 inherit; font-family: inherit; cursor: pointer; }
@@ -658,7 +664,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
     <header class="band lift">
       <div class="band-top">
         <span class="brand"><span class="brand-mark"><svg><use href="#i-pin"/></svg></span><span data-c="name">La Terrasse de Bourbon</span></span>
-        <button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button>
+        <span class="top-acts"><select class="lang-sel" data-lang-sel aria-label="Langue / Language"><option value="fr">FR</option><option value="en">EN</option><option value="de">DE</option></select><button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button></span>
       </div>
       <div class="title-block">
         <p class="hello" id="hello">Bonsoir</p>
@@ -700,7 +706,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
     <header class="band">
       <div class="band-top">
         <span class="brand"><span class="brand-mark"><svg><use href="#i-pin"/></svg></span>La carte</span>
-        <button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button>
+        <span class="top-acts"><select class="lang-sel" data-lang-sel aria-label="Langue / Language"><option value="fr">FR</option><option value="en">EN</option><option value="de">DE</option></select><button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button></span>
       </div>
       <label class="search"><svg class="ico"><use href="#i-search"/></svg><input id="menu-search" type="search" placeholder="Un plat, un cocktail…" aria-label="Chercher dans la carte"></label>
       <div class="chips" id="menu-cats" role="group" aria-label="Catégories"></div>
@@ -712,7 +718,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
   <div id="v-book" class="app cpad" hidden>
     <div class="topbar">
       <a class="icon-btn" href="#" aria-label="Accueil"><svg class="ico"><use href="#i-back"/></svg></a>
-      <button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button>
+      <span class="top-acts"><select class="lang-sel" data-lang-sel aria-label="Langue / Language"><option value="fr">FR</option><option value="en">EN</option><option value="de">DE</option></select><button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button></span>
     </div>
     <div class="title-block"><span class="eyebrow">La Terrasse de Bourbon</span><h1 class="h1">Réserver une table</h1></div>
     <div class="scene framed" id="scene-book" aria-hidden="true"></div>
@@ -767,7 +773,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
   <div id="v-mine" class="app cpad" hidden>
     <div class="topbar">
       <a class="icon-btn" href="#" aria-label="Accueil"><svg class="ico"><use href="#i-back"/></svg></a>
-      <button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button>
+      <span class="top-acts"><select class="lang-sel" data-lang-sel aria-label="Langue / Language"><option value="fr">FR</option><option value="en">EN</option><option value="de">DE</option></select><button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button></span>
     </div>
     <div class="title-block"><span class="eyebrow">Sur cet appareil</span><h1 class="h1">Mes réservations</h1></div>
     <div class="list" id="mine-list"></div>
@@ -777,7 +783,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
   <div id="v-legal" class="app cpad" hidden>
     <div class="topbar">
       <a class="icon-btn" href="#" aria-label="Accueil"><svg class="ico"><use href="#i-back"/></svg></a>
-      <button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button>
+      <span class="top-acts"><select class="lang-sel" data-lang-sel aria-label="Langue / Language"><option value="fr">FR</option><option value="en">EN</option><option value="de">DE</option></select><button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button></span>
     </div>
     <div class="legal-page" id="legal-body"></div>
   </div>
@@ -785,7 +791,7 @@ select.input option, select.input optgroup { background: var(--sheet); color: va
   <div id="v-track" class="app cpad" hidden>
     <div class="topbar">
       <a class="icon-btn" href="#mes-reservations" aria-label="Mes réservations"><svg class="ico"><use href="#i-back"/></svg></a>
-      <button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button>
+      <span class="top-acts"><select class="lang-sel" data-lang-sel aria-label="Langue / Language"><option value="fr">FR</option><option value="en">EN</option><option value="de">DE</option></select><button class="icon-btn" data-theme-toggle aria-label="Mode nuit"><svg class="ico t-moon"><use href="#i-theme"/></svg><svg class="ico t-sun"><use href="#i-sun"/></svg></button></span>
     </div>
     <div class="mark" id="t-mark"><svg class="ico"><use href="#i-clock"/></svg></div>
     <div class="title-block">
@@ -1344,7 +1350,75 @@ function viewHours(v){
 const viewClosed = (date, v) => VIEWS[viewOf(v)].every(k => svcClosed(date, k));
 /* Tables marquées occupées à la main pour un écran (anciennes marques « hh » comprises). */
 function manualOf(date, v){ const m = {}; VIEWS[viewOf(v)].forEach(k => { const o = S.occ[date + '_' + k] || {}; Object.keys(o).forEach(id => { if(o[id]) m[id] = 1; }); }); return m; }
-function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2800); }
+/* ── LANGUES (côté client ; le hub reste en français) ──
+   Textes de l'interface et de la carte traduits par i18n.js (chargé à la demande), indexés par le texte français.
+   localize() remplace les textes visibles ; tr() traduit une phrase à trous côté code. */
+const LANGS = ['fr', 'en', 'de'];
+let LANG = (() => { try { const v = localStorage.getItem('tdb_lang'); if(LANGS.indexOf(v) >= 0) return v; } catch(e){} const n = (navigator.language || 'fr').slice(0, 2).toLowerCase(); return LANGS.indexOf(n) >= 0 ? n : 'fr'; })();
+let I18N_READY = false;
+const isHubPage = () => location.pathname.indexOf('/equipe') === 0;
+const curLang = () => isHubPage() ? 'fr' : LANG;
+function trRaw(fr){
+  const L = curLang(); if(L === 'fr' || !I18N_READY) return null;
+  const k = LANGS.indexOf(L) - 1, d = (window.UI_I18N && window.UI_I18N[fr]) || (window.MENU_I18N && window.MENU_I18N[fr]);
+  return d && d[k] ? d[k] : null;
+}
+/* tr('Jusqu\'à {t}', { t: '19h' }) : la phrase française sert de clé, les {x} sont remplacés après traduction. */
+function tr(fr, vars){
+  let out = trRaw(fr) || fr;
+  if(vars) Object.keys(vars).forEach(k => { out = out.split('{' + k + '}').join(vars[k]); });
+  return out;
+}
+function loadI18n(){
+  if(I18N_READY || curLang() === 'fr') return Promise.resolve();
+  if(loadI18n._p) return loadI18n._p;
+  return loadI18n._p = new Promise(ok => { const sc = document.createElement('script'); sc.src = '/i18n.js?v=1'; sc.onload = () => { I18N_READY = true; ok(); }; sc.onerror = () => ok(); document.head.appendChild(sc); });
+}
+const L10N_ATTRS = ['placeholder', 'aria-label', 'title'];
+let l10nBusy = false;
+function localize(root){
+  root = root || $('client'); if(!root) return;
+  l10nBusy = true;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentNode && (/^(SCRIPT|STYLE|OPTION)$/.test(n.parentNode.nodeName) || (n.parentNode.closest && n.parentNode.closest('[data-no-l10n="1"],.lang-sel'))) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+  let n;
+  while((n = w.nextNode())){
+    const v = n.nodeValue; if(!v || !v.trim()) continue;
+    if(n.__fr === undefined || (n.__tr !== v && n.__fr !== v)) n.__fr = v;   // texte réécrit par le code : nouvel original
+    const key = n.__fr.trim(), t = trRaw(key), out = t ? n.__fr.replace(key, t) : n.__fr;
+    if(!t && I18N_READY && curLang() !== 'fr' && /[a-zà-ÿ]{3}/i.test(key)) (window.__l10nMiss = window.__l10nMiss || new Set()).add(key);
+    if(v !== out) n.nodeValue = out;
+    n.__tr = out;
+  }
+  root.querySelectorAll('[placeholder],[aria-label],[title]').forEach(el => {
+    L10N_ATTRS.forEach(a => {
+      if(!el.hasAttribute(a)) return;
+      const store = '__fr_' + a, cur = el.getAttribute(a);
+      if(el[store] === undefined || (el['__tr_' + a] !== cur && el[store] !== cur)) el[store] = cur;
+      const t = trRaw(el[store].trim()), out = t || el[store];
+      if(!t && I18N_READY && curLang() !== 'fr' && /[a-zà-ÿ]{3}/i.test(el[store])) (window.__l10nMiss = window.__l10nMiss || new Set()).add(el[store].trim());
+      if(cur !== out) el.setAttribute(a, out);
+      el['__tr_' + a] = out;
+    });
+  });
+  l10nBusy = false;
+}
+let l10nTimer = null;
+const l10nObs = new MutationObserver(() => { if(l10nBusy || curLang() === 'fr' && !l10nObs._wasOther) return; clearTimeout(l10nTimer); l10nTimer = setTimeout(() => localize(), 0); });
+async function setLang(l){
+  if(LANGS.indexOf(l) < 0) l = 'fr';
+  LANG = l; try { localStorage.setItem('tdb_lang', l); } catch(e){}
+  if(l !== 'fr') l10nObs._wasOther = true;
+  await loadI18n();
+  applyLangToMenu();
+  document.documentElement.lang = curLang();
+  document.querySelectorAll('[data-lang-sel]').forEach(s => { s.value = LANG; });
+  if(!isHubPage()) route(); else localize();
+}
+/* Dates côté client dans la langue choisie (le hub garde le français). */
+function fmtDateL(iso){ return curLang() === 'fr' || !iso ? fmtDateFr(iso) : dt(iso).toLocaleDateString(curLang(), { weekday: 'long', day: 'numeric', month: 'short' }); }
+function dayShortL(iso){ return curLang() === 'fr' ? JOURS[dt(iso).getDay()].slice(0, 3) + '.' : dt(iso).toLocaleDateString(curLang(), { weekday: 'short' }); }
+function monShortL(iso){ return curLang() === 'fr' ? MOIS[dt(iso).getMonth()] : dt(iso).toLocaleDateString(curLang(), { month: 'short' }); }
+function toast(msg){ const t = $('toast'); if(!isHubPage()) msg = tr(msg); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2800); }
 const JOURS = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
 const MOIS = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 function dt(iso){ return new Date(iso + 'T12:00:00'); }
@@ -1713,8 +1787,8 @@ function sceneSVG(uid, svc, zone, lit){
 function renderBookScene(){
   const svc = B.time ? svcOf(B.time) : 'soir', lit = Math.min(B.guests, 14);
   $('scene-book').innerHTML = sceneSVG('book', svc, B.zone, lit);
-  $('scene-cap').textContent = SVC[svc].label + ' à Saint-Denis' + (B.zone ? ' · ' + zoneLabel(B.zone) : '') + ' · ' +
-    (B.guests > 14 ? 'guirlande allumée pour votre groupe de ' + B.guests : lit + ' ampoule' + (lit > 1 ? 's' : '') + ', une par convive');
+  $('scene-cap').textContent = tr('{s} à Saint-Denis', { s: tr(SVC[svc].label) }) + (B.zone ? ' · ' + tr(zoneLabel(B.zone)) : '') + ' · ' +
+    (B.guests > 14 ? tr('guirlande allumée pour votre groupe de {n}', { n: B.guests }) : tr(lit > 1 ? '{n} ampoules, une par convive' : '{n} ampoule, une par convive', { n: lit }));
 }
 
 /* ── DESSIN DES TABLES (hub) ────────────────────────────── */
@@ -1768,6 +1842,7 @@ function route(){
   if(hub) openHub();
   renderStatusBar(view);
   if(!hub) document.title = RESTO;
+  if(!hub) localize();
   themeColor();
   window.scrollTo(0, 0);
 }
@@ -1787,7 +1862,7 @@ function themeColor(){
 function renderHome(){
   const h = new Date().getHours(), svc = autoSvc();
   $('hello').textContent = h < 5 || h >= 18 ? 'Bonsoir' : 'Bonjour';
-  $('hero-eyebrow').textContent = ({ midi: 'Ce midi', hh: 'À l\'happy hour', soir: 'Ce soir' })[svc] + ' à Saint-Denis';
+  $('hero-eyebrow').textContent = tr(({ midi: 'Ce midi à Saint-Denis', hh: 'À l\'happy hour à Saint-Denis', soir: 'Ce soir à Saint-Denis' })[svc]);
   $('scene-home').innerHTML = sceneSVG('home', svc, 'ter', svc === 'midi' ? 0 : 14);
   $('svc-row').innerHTML = Object.keys(SVC).map(k => '<button class="svc-card' + (k === svc ? ' now' : '') + '" data-pick-svc="' + k + '"><b>' + SVC[k].label + '</b><span class="svc-hours">' + SVC[k].hours + '</span><span>' + SVC[k].what + '</span></button>').join('');
   $('zone-row').innerHTML = ['int','ter','rof'].map(z => '<button class="zone-card" data-pick-zone="' + z + '"><div class="scene">' + sceneSVG('z' + z, svc, z, svc === 'midi' ? 0 : 14) + '</div><div class="txt"><b>' + zoneLabel(z) + '</b><span>' + ZONE_TXT[z] + '</span></div></button>').join('');
@@ -1820,7 +1895,7 @@ function promoHTML(){
 /* Carte de fidélité : X visites = une récompense. Progression lue avec le lien de suivi d'une réservation de cet appareil. */
 function loyaltyHTML(){
   if(!LOYALTY.on) return '';
-  return '<a class="loyal" href="#mes-reservations">' + ico('i-ticket') + '<div><b>Programme fidélité</b><span>' + esc(LOYALTY.goal) + ' visites · ' + esc(LOYALTY.reward) + '</span><span class="loyal-prog" hidden></span></div>' + ico('i-arrow') + '</a>';
+  return '<a class="loyal" href="#mes-reservations">' + ico('i-ticket') + '<div><b>Programme fidélité</b><span>' + esc(tr('{n} visites', { n: LOYALTY.goal })) + ' · ' + esc(tr(LOYALTY.reward)) + '</span><span class="loyal-prog" hidden></span></div>' + ico('i-arrow') + '</a>';
 }
 async function loyaltyProgress(){
   if(!LOYALTY.on || !Store.live) return;
@@ -1831,7 +1906,7 @@ async function loyaltyProgress(){
   const goal = Math.max(1, +LOYALTY.goal || 5), left = Math.max(0, st.visits - st.rewards_used * goal), done = Math.min(goal, left);
   document.querySelectorAll('.loyal-prog').forEach(el => {
     el.hidden = false;
-    el.innerHTML = (left >= goal ? '<b style="color:var(--gold)">Récompense disponible : demandez-la en salle !</b>' : done + ' / ' + goal + ' visites') +
+    el.innerHTML = (left >= goal ? '<b style="color:var(--gold)">Récompense disponible : demandez-la en salle !</b>' : esc(tr('{a} / {b} visites', { a: done, b: goal }))) +
       '<span class="dots">' + Array.from({ length: goal }, (_, i) => '<i' + (i < done ? ' class="on"' : '') + '></i>').join('') + '</span>';
   });
 }
@@ -1839,7 +1914,8 @@ async function loyaltyProgress(){
 function renderLegal(h){
   const L = LEGAL, v = (k, ph) => L[k] ? esc(L[k]) : '<span class="miss">' + ph + '</span>';
   const phone = esc(CONTACT.phone || ''), host = 'Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis (vercel.com)';
-  $('legal-body').innerHTML = h === 'confidentialite' ?
+  const fo = curLang() !== 'fr' ? '<p class="note" style="font-style:italic">' + esc(tr('Cette page n\'existe qu\'en français, qui fait foi.')) + '</p>' : '';
+  $('legal-body').innerHTML = fo + (h === 'confidentialite' ?
     '<div class="title-block"><span class="eyebrow">' + esc(RESTO) + '</span><h1 class="h1">Confidentialité</h1></div>' +
     '<p>Cette page explique quelles données nous recueillons quand vous réservez en ligne, pourquoi, et comment exercer vos droits (règlement européen RGPD et loi Informatique et Libertés).</p>' +
     '<h2>Responsable du traitement</h2><p>' + v('company', '[raison sociale]') + ', ' + v('address', '[adresse du siège]') + '. Contact : ' + phone + (L.email ? ' · ' + esc(L.email) : '') + '.</p>' +
@@ -1858,7 +1934,8 @@ function renderLegal(h){
     '<h2>Hébergement</h2><p>Site : ' + host + '.<br>Données : Supabase Inc., serveurs situés dans l\'Union européenne.</p>' +
     '<h2>Propriété</h2><p>Textes, photos, logo et carte sont la propriété de ' + v('company', '[raison sociale]') + ' et ne peuvent être réutilisés sans autorisation.</p>' +
     '<h2>Alcool</h2><p>L\'abus d\'alcool est dangereux pour la santé, à consommer avec modération. La vente d\'alcool aux mineurs est interdite.</p>' +
-    '<p><a href="#confidentialite">Politique de confidentialité →</a></p>';
+    '<p><a href="#confidentialite">Politique de confidentialité →</a></p>');
+  $('legal-body').dataset.noL10n = curLang() === 'fr' ? '' : '1';
 }
 
 /* ── CLIENT : CARTE ─────────────────────────────────────── */
@@ -1867,7 +1944,7 @@ const toMin = t => { const [h, m] = t.split('h').map(Number); return h * 60 + m;
 function hhNow(){ const n = new Date(), m = n.getHours() * 60 + n.getMinutes(), h = HAPPY_HOURS.find(([a, b]) => m >= toMin(a) && m < toMin(b)); return h && !svcClosed(today(), svcOf(h[0])) ? h : null; }
 function hhBanner(){
   const h = hhNow();
-  return h ? '<a class="hh-banner" href="#carte" data-pick-cat="hh">' + ico('c-cocktails') + '<div><b>Happy Hour en cours</b><span>Jusqu\'à ' + h[1] + ' · cocktails dès 5 €</span></div>' + ico('i-arrow') + '</a>' : '';
+  return h ? '<a class="hh-banner" href="#carte" data-pick-cat="hh">' + ico('c-cocktails') + '<div><b>Happy Hour en cours</b><span>' + esc(tr('Jusqu\'à {t} · cocktails dès 5 €', { t: h[1] })) + '</span></div>' + ico('i-arrow') + '</a>' : '';
 }
 function itemHTML(it){
   const [name, price, desc, al] = it, meta = it[5] || {};
@@ -1897,13 +1974,13 @@ function renderMenuBody(){
       const its = c.groups.flatMap(g => g[1]).filter(it => norm(it[0] + ' ' + (it[2] || '')).indexOf(q) >= 0);
       if(its.length){ n += its.length; html += '<span class="section-lbl">' + esc(c.label) + '</span><div class="items">' + its.map(itemHTML).join('') + '</div>'; }
     });
-    el.innerHTML = n ? html : '<div class="empty">Rien ne correspond à « ' + esc(menuQuery) + ' ». Essayez un autre mot.</div>';
+    el.innerHTML = n ? html : '<div class="empty">' + esc(tr('Rien ne correspond à « {q} ». Essayez un autre mot.', { q: menuQuery })) + '</div>';
     return;
   }
   if(!menuCat){
     el.innerHTML = promoHTML() + hhBanner() + loyaltyHTML() + '<div class="cat-grid">' + MENU_CATS.map(c => {
       const n = c.groups.reduce((s, g) => s + g[1].length, 0);
-      return '<button class="cat-card" data-cat="' + c.id + '"><div class="thumb c-' + c.color + '">' + ico(c.icon, '') + '</div><b>' + esc(c.label) + '</b><span>' + n + ' choix</span></button>';
+      return '<button class="cat-card" data-cat="' + c.id + '"><div class="thumb c-' + c.color + '">' + ico(c.icon, '') + '</div><b>' + esc(c.label) + '</b><span>' + esc(tr('{n} choix', { n })) + '</span></button>';
     }).join('') + '</div>';
     return;
   }
@@ -1922,11 +1999,11 @@ function renderBook(){
   const custom = days.indexOf(B.date) < 0;
   $('days').innerHTML = days.map((d, i) => {
     const D = dt(d);
-    return '<button type="button" class="day' + (d === B.date ? ' active' : '') + '" data-day="' + d + '" aria-label="' + esc(fmtDateFr(d)) + '"><small>' + (i === 0 ? 'Auj.' : i === 1 ? 'Dem.' : JOURS[D.getDay()].slice(0, 3) + '.') + '</small><b>' + D.getDate() + '</b><small>' + MOIS[D.getMonth()] + '</small></button>';
-  }).join('') + '<label class="day other' + (custom ? ' active' : '') + '"><small>' + (custom ? JOURS[dt(B.date).getDay()].slice(0, 3) + '.' : 'Autre') + '</small><b>' + (custom ? dt(B.date).getDate() : '…') + '</b><small>' + (custom ? MOIS[dt(B.date).getMonth()] : 'date') + '</small><input type="date" id="f-date-other" min="' + t0 + '" max="' + addDays(t0, 180) + '" aria-label="Choisir une autre date"></label>';
+    return '<button type="button" class="day' + (d === B.date ? ' active' : '') + '" data-day="' + d + '" aria-label="' + esc(fmtDateL(d)) + '"><small>' + (i === 0 ? 'Auj.' : i === 1 ? 'Dem.' : esc(dayShortL(d))) + '</small><b>' + D.getDate() + '</b><small>' + esc(monShortL(d)) + '</small></button>';
+  }).join('') + '<label class="day other' + (custom ? ' active' : '') + '"><small>' + (custom ? esc(dayShortL(B.date)) : 'Autre') + '</small><b>' + (custom ? dt(B.date).getDate() : '…') + '</b><small>' + (custom ? esc(monShortL(B.date)) : 'date') + '</small><input type="date" id="f-date-other" min="' + t0 + '" max="' + addDays(t0, 180) + '" aria-label="Choisir une autre date"></label>';
   $('slots').innerHTML = Object.keys(SVC).map(k => {
     const all = SVC[k].slots, open = all.filter(t => !slotPast(B.date, t)), closed = svcClosed(B.date, k);
-    return '<div class="slot-group"><span>' + SVC[k].label + ' · ' + SVC[k].what + '</span><div class="slots">' +
+    return '<div class="slot-group"><span>' + esc(tr(SVC[k].label)) + ' · ' + esc(tr(SVC[k].what)) + '</span><div class="slots">' +
       (closed ? '<span class="note">Fermé ce jour-là</span>' : open.length ? all.map(t => '<button type="button" class="chip' + (t === B.time ? ' active' : '') + '" data-slot="' + t + '"' + (slotPast(B.date, t) ? ' disabled' : '') + '>' + t + '</button>').join('') : '<span class="note">Service passé pour aujourd\'hui</span>') + '</div></div>';
   }).join('');
   $('guest-count').textContent = B.guests;
@@ -1963,8 +2040,8 @@ async function submitBooking(e){
   } catch(err){
     const m = String(err && err.message || '');
     $('f-err').textContent = m.indexOf('trop_de_demandes') >= 0 ? 'Plusieurs demandes viennent d\'être envoyées. Patientez un peu ou appelez-nous.' :
-      m.indexOf('limite_appareil') >= 0 ? 'Vous avez déjà des demandes en cours depuis cet appareil. Retrouvez-les dans « Mes résas », ou appelez-nous au ' + CONTACT.phone + ' pour une demande supplémentaire.' :
-      m.indexOf('appareil_bloque') >= 0 ? 'La réservation en ligne n\'est pas disponible depuis cet appareil. Appelez-nous au ' + CONTACT.phone + '.' :
+      m.indexOf('limite_appareil') >= 0 ? tr('Vous avez déjà des demandes en cours depuis cet appareil. Retrouvez-les dans « Mes résas », ou appelez-nous au {phone} pour une demande supplémentaire.', { phone: CONTACT.phone }) :
+      m.indexOf('appareil_bloque') >= 0 ? tr('La réservation en ligne n\'est pas disponible depuis cet appareil. Appelez-nous au {phone}.', { phone: CONTACT.phone }) :
       m.indexOf('email_invalide') >= 0 ? 'Cette adresse e-mail semble incorrecte.' :
       m.indexOf('tel_requis') >= 0 ? 'Indiquez un numéro de téléphone valide pour que l\'équipe puisse vous joindre.' :
       m.indexOf('nom_requis') >= 0 ? 'Indiquez votre nom.' :
@@ -1972,7 +2049,7 @@ async function submitBooking(e){
       m.indexOf('service_ferme') >= 0 ? 'Ce service est fermé ce jour-là. Choisissez un autre créneau.' :
       m.indexOf('ferme_dimanche_soir') >= 0 ? 'Le restaurant est fermé le dimanche soir. Choisissez le midi ou un autre jour.' :
       m.indexOf('date_invalide') >= 0 ? 'Cette date n\'est pas réservable en ligne. Choisissez une date dans les 6 prochains mois.' :
-      'L\'envoi n\'a pas abouti. Vérifiez votre connexion et réessayez, ou appelez le ' + CONTACT.phone + '.';
+      tr('L\'envoi n\'a pas abouti. Vérifiez votre connexion et réessayez, ou appelez le {phone}.', { phone: CONTACT.phone });
   }
   $('btn-book').disabled = false; $('btn-book').textContent = 'Envoyer ma demande';
 }
@@ -1987,8 +2064,8 @@ async function renderMine(){
   const sts = await statuses(list);
   el.innerHTML = list.map((m, i) => {
     const D = dt(m.date), past = m.date < today(), st = sts[i];
-    return '<a class="ticket" href="#suivi-' + esc(m.token) + '"' + (past ? ' style="opacity:.55"' : '') + '><div class="ticket-day"><small>' + JOURS[D.getDay()].slice(0, 3) + '.</small><b>' + D.getDate() + '</b><small>' + MOIS[D.getMonth()] + '</small></div>' +
-      '<div class="ticket-main"><b>' + esc(m.time) + ' · ' + SVC[svcOf(m.time)].label + '</b><span>' + esc(m.guests) + ' personne' + (m.guests > 1 ? 's' : '') + '</span>' +
+    return '<a class="ticket" href="#suivi-' + esc(m.token) + '"' + (past ? ' style="opacity:.55"' : '') + '><div class="ticket-day"><small>' + esc(dayShortL(m.date)) + '</small><b>' + D.getDate() + '</b><small>' + esc(monShortL(m.date)) + '</small></div>' +
+      '<div class="ticket-main"><b>' + esc(m.time) + ' · ' + esc(tr(SVC[svcOf(m.time)].label)) + '</b><span>' + esc(tr(m.guests > 1 ? '{n} personnes' : '{n} personne', { n: m.guests })) + '</span>' +
       (st ? '<span class="status ' + st + '">' + STATUS[st].label + '</span>' : '') + '</div>' + ico('i-arrow') + '</a>';
   }).join('');
 }
@@ -2002,7 +2079,7 @@ async function renderStatusBar(view){
   if(st === 'cancelled' || st === 'declined'){ bar.hidden = true; return; }
   bar.href = '#suivi-' + m.token;
   $('sb-title').textContent = st === 'confirmed' ? 'Votre table est confirmée' : 'Demande en attente de confirmation';
-  $('sb-sub').textContent = cap1(fmtDateFr(m.date)) + ' · ' + m.time + ' · ' + m.guests + ' pers.';
+  $('sb-sub').textContent = cap1(fmtDateL(m.date)) + ' · ' + m.time + ' · ' + tr('{n} pers.', { n: m.guests });
   bar.hidden = false;
 }
 async function openTrack(token){
@@ -2023,7 +2100,7 @@ async function refreshTrack(){
   }
   const st = r.status || 'pending';
   $('t-sheet').hidden = false;
-  $('t-eyebrow').textContent = 'Réservation au nom de ' + r.name;
+  $('t-eyebrow').textContent = tr('Réservation au nom de {n}', { n: r.name });
   const look = { pending: ['', 'i-clock', 'Demande reçue, l\'équipe vérifie la disponibilité'], confirmed: ['ok', 'i-check', 'Votre table vous attend'],
                  declined: ['no', 'i-x', 'Nous ne pouvons pas vous accueillir sur ce créneau'], cancelled: ['off', 'i-x', 'Réservation annulée'] }[st];
   $('t-mark').className = 'mark ' + look[0]; $('t-mark').innerHTML = ico(look[1]);
@@ -2034,9 +2111,9 @@ async function refreshTrack(){
   $('t-steps').className = 'steps' + (st === 'confirmed' ? ' done' : '');
   Array.prototype.forEach.call($('t-steps').children, (s, i) => s.classList.toggle('on', i < steps));
   const row = (l, v) => '<dt>' + l + '</dt><dd>' + esc(v) + '</dd>';
-  $('t-recap').innerHTML = row('Date', cap1(fmtDateFr(r.date))) + row('Heure', r.time + ' · ' + SVC[svcOf(r.time)].label) + row('Personnes', r.guests) +
+  $('t-recap').innerHTML = row('Date', cap1(fmtDateL(r.date))) + row('Heure', r.time + ' · ' + tr(SVC[svcOf(r.time)].label)) + row('Personnes', r.guests) +
     (zoneLabel(r.zone) ? row('Préférence', zoneLabel(r.zone)) : '') + (r.notes ? row('Notes', r.notes) : '') +
-    (r.previous && st === 'pending' ? row('Avant', cap1(fmtDateFr(r.previous.date)) + ' · ' + r.previous.time + ' · ' + r.previous.guests + ' pers.') : '');
+    (r.previous && st === 'pending' ? row('Avant', cap1(fmtDateL(r.previous.date)) + ' · ' + r.previous.time + ' · ' + tr('{n} pers.', { n: r.previous.guests })) : '');
   $('t-note').innerHTML = {
     pending: 'Cette page se met à jour toute seule. <strong>Gardez le lien</strong> ou retrouvez-la dans « Mes résas ».',
     confirmed: 'Merci ! Un changement ou un empêchement ? Modifiez ou annulez ici <strong>jusqu\'à l\'heure de la réservation</strong>.',
@@ -2077,9 +2154,9 @@ function editTimes(date, cur){
     if(svcClosed(date, k)) return;
     const ok = SVC[k].slots.filter(t => !slotPast(date, t));
     if(!ok.length) return;
-    html += '<optgroup label="' + esc(SVC[k].label) + '">' + ok.map(t => { if(t === cur) found = true; return '<option value="' + t + '"' + (t === cur ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</optgroup>';
+    html += '<optgroup label="' + esc(tr(SVC[k].label)) + '">' + ok.map(t => { if(t === cur) found = true; return '<option value="' + t + '"' + (t === cur ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</optgroup>';
   });
-  $('e-time').innerHTML = html || '<option value="">Aucun créneau ce jour-là</option>';
+  $('e-time').innerHTML = html || '<option value="">' + esc(tr('Aucun créneau ce jour-là')) + '</option>';
   if(!found && cur && html) $('e-time').selectedIndex = 0;
 }
 function openEdit(){
@@ -2087,11 +2164,11 @@ function openEdit(){
   const t0 = today();
   $('e-date').min = t0; $('e-date').max = addDays(t0, 180); $('e-date').value = r.date;
   editTimes(r.date, r.time);
-  $('e-guests').innerHTML = Array.from({ length: 40 }, (_, i) => '<option value="' + (i + 1) + '"' + (i + 1 === +r.guests ? ' selected' : '') + '>' + (i + 1) + ' personne' + (i ? 's' : '') + '</option>').join('');
+  $('e-guests').innerHTML = Array.from({ length: 40 }, (_, i) => '<option value="' + (i + 1) + '"' + (i + 1 === +r.guests ? ' selected' : '') + '>' + esc(tr(i ? '{n} personnes' : '{n} personne', { n: i + 1 })) + '</option>').join('');
   $('e-notes').value = r.notes || '';
   const left = r.modif_left != null ? r.modif_left : 3;
-  $('e-note').textContent = (r.status === 'confirmed' ? 'Changer le jour, l\'heure ou le nombre de personnes remet la réservation en attente : l\'équipe la reconfirme. Modifier seulement les notes la garde confirmée. ' : 'L\'équipe verra votre demande modifiée. ') +
-    (left === 1 ? 'Dernière modification possible en ligne.' : left + ' modifications possibles en ligne.');
+  $('e-note').textContent = tr(r.status === 'confirmed' ? 'Changer le jour, l\'heure ou le nombre de personnes remet la réservation en attente : l\'équipe la reconfirme. Modifier seulement les notes la garde confirmée.' : 'L\'équipe verra votre demande modifiée.') + ' ' +
+    (left === 1 ? tr('Dernière modification possible en ligne.') : tr('{n} modifications possibles en ligne.', { n: left }));
   $('e-err').textContent = '';
   $('t-edit').hidden = false; $('btn-modify').hidden = true; $('btn-cancel').hidden = true;
   $('e-date').focus();
@@ -2110,11 +2187,11 @@ async function saveEdit(){
   } catch(err){
     const e = String(err && err.message || '');
     $('e-err').textContent = /trop_tard/.test(e) ? 'L\'heure de la réservation est passée : appelez-nous.' :
-      /trop_de_modifs/.test(e) ? 'Vous avez déjà modifié cette réservation 3 fois. Pour un autre changement, appelez-nous au ' + CONTACT.phone + '.' :
+      /trop_de_modifs/.test(e) ? tr('Vous avez déjà modifié cette réservation 3 fois. Pour un autre changement, appelez-nous au {phone}.', { phone: CONTACT.phone }) :
       /service_ferme/.test(e) ? 'Ce service est fermé ce jour-là. Choisissez un autre créneau.' :
       /date_invalide/.test(e) ? 'Ce créneau n\'est pas réservable en ligne. Choisissez-en un autre.' :
       /non_modifiable/.test(e) ? 'Cette réservation ne peut plus être modifiée.' :
-      'La modification n\'a pas abouti. Réessayez ou appelez-nous au ' + CONTACT.phone + '.';
+      tr('La modification n\'a pas abouti. Réessayez ou appelez-nous au {phone}.', { phone: CONTACT.phone });
   }
   $('btn-e-save').disabled = false;
 }
@@ -2622,12 +2699,31 @@ function applyMenu(raw){
     raw.items.filter(i => i.category_id === c.id).sort((a, b) => a.sort - b.sort).forEach(i => {
       let g = groups.find(x => x[0] === (i.grp || ''));
       if(!g){ g = [i.grp || '', []]; groups.push(g); }
-      g[1].push([i.name, i.prices && i.prices.length ? i.prices : +i.price, i.description || '', (i.allergens || []).join(' '), i.featured ? 1 : 0,
+      const o = (i.i18n && curLang() !== 'fr' && i.i18n[curLang()]) || {};
+      g[1].push([o.name || i.name, i.prices && i.prices.length ? i.prices : +i.price, o.description || i.description || '', (i.allergens || []).join(' '), i.featured ? 1 : 0,
         { id: i.id, photo: i.photo_url || '', available: i.available !== false, badge: i.badge || '', alcohol: !!c.alcohol }]);
     });
-    return { id: c.id, label: c.label, icon: c.icon, color: c.color, note: c.note || '', food: c.food, alcohol: c.alcohol, groups };
+    const co = (c.i18n && curLang() !== 'fr' && c.i18n[curLang()]) || {};
+    return { id: c.id, label: co.label || c.label, icon: c.icon, color: c.color, note: co.note || c.note || '', food: c.food, alcohol: c.alcohol, groups };
   });
 }
+/* Hub : traduction automatique (i18n.js) affichée en grisé dans les champs de traduction. */
+function loadDict(){
+  if(window.MENU_I18N) return Promise.resolve();
+  if(loadDict._p) return loadDict._p;
+  return loadDict._p = new Promise(ok => { const sc = document.createElement('script'); sc.src = '/i18n.js?v=1'; sc.onload = ok; sc.onerror = ok; document.head.appendChild(sc); });
+}
+function autoTr(fr, lang){ const d = fr && ((window.MENU_I18N && window.MENU_I18N[fr]) || (window.UI_I18N && window.UI_I18N[fr])); return d ? d[lang === 'en' ? 0 : 1] || '' : ''; }
+function trFields(prefix, obj, fields){
+  return '<details class="tr-box"><summary>Traductions (anglais, allemand)</summary><p class="note">Laissez vide pour garder la traduction automatique (en gris). Ce que vous écrivez la remplace.</p>' +
+    ['en', 'de'].map(l => '<div class="row2">' + fields.map(([k, lbl, src]) => '<div class="field"><label for="' + prefix + '-' + k + '-' + l + '">' + lbl + (l === 'en' ? ' (anglais)' : ' (allemand)') + '</label><input class="input" id="' + prefix + '-' + k + '-' + l + '" value="' + esc(((obj.i18n || {})[l] || {})[k] || '') + '" placeholder="' + esc(autoTr(src, l) || (src ? 'pas de traduction automatique' : '')) + '"></div>').join('') + '</div>').join('') + '</details>';
+}
+function readTr(prefix, fields){
+  const out = {};
+  ['en', 'de'].forEach(l => { const o = {}; fields.forEach(k => { const el = $(prefix + '-' + k + '-' + l); if(el && el.value.trim()) o[k] = el.value.trim(); }); if(Object.keys(o).length) out[l] = o; });
+  return out;
+}
+function applyLangToMenu(){ if(MENU_RAW) applyMenu(MENU_RAW); }
 function buildDefaultCfg(){
   const settings = {
     name: RESTO, emailConfirm: EMAIL_ON, tagline: CONTACT.tagline, city: CONTACT.city, phone: CONTACT.phone, instagram: CONTACT.instagram, address: CONTACT.address, hoursText: CONTACT.hoursText,
@@ -2696,7 +2792,7 @@ function soundOn(){ try { return localStorage.getItem('tdb_sound') !== 'off'; } 
 
 function renderSettings(){
   const v = SET.view;
-  if(v === 'menu') return renderMenuEditor();
+  if(v === 'menu'){ loadDict(); return renderMenuEditor(); }
   if(v === 'info' && IS_ADMIN) return renderInfoEditor();
   if(v === 'services' && IS_ADMIN) return renderServicesEditor();
   if(v === 'promo' && IS_ADMIN) return renderPromoEditor();
@@ -2749,6 +2845,7 @@ function openItemEditor(id){
   if(!src) return;
   SET.draft = JSON.parse(JSON.stringify(src));
   renderItemEditor();
+  if(!window.MENU_I18N) loadDict().then(() => { if(SET.draft && SET.draft.id === src.id){ readDraft(); renderItemEditor(); } });
 }
 function renderItemEditor(){
   const d = SET.draft, multi = !!(d.prices && d.prices.length), cat = CFG.cats.find(c => c.id === d.category_id) || {};
@@ -2770,6 +2867,7 @@ function renderItemEditor(){
       : '<input class="input" id="ed-price" type="number" step="0.1" min="0" inputmode="decimal" value="' + (d.price == null ? '' : esc(d.price)) + '" placeholder="Prix en €">') + '</div>' +
     '<div class="field"><label>Allergènes</label><div class="checks">' + Object.keys(ALLERGENS).map(k => '<label class="check"><input type="checkbox" data-al="' + k + '"' + (d.allergens.indexOf(k) >= 0 ? ' checked' : '') + '>' + ALLERGENS[k][0] + '</label>').join('') + '</div></div>' +
     '<div class="checks"><label class="check"><input type="checkbox" id="ed-avail"' + (d.available !== false ? ' checked' : '') + '>Disponible</label><label class="check"><input type="checkbox" id="ed-feat"' + (d.featured ? ' checked' : '') + '>Mis en avant sur l\'accueil</label></div>' +
+    trFields('ed', d, [['name', 'Nom', d.name], ['description', 'Description', d.description]]) +
     '<div class="field"><label for="ed-badge">Pastille</label><select class="input" id="ed-badge">' + [['', 'Aucune'], ['new', 'Nouveau'], ['top', 'Le plus commandé']].map(o => '<option value="' + o[0] + '"' + ((d.badge || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>' +
     '<p class="note">Une boisson avec photo, mise en avant ou avec pastille, apparaît dans « Les suggestions du bar » sur l\'accueil.</p></div>' +
     '<p class="st err" id="ed-err" role="alert"></p>' +
@@ -2783,6 +2881,7 @@ function readDraft(){
   document.querySelectorAll('#ed-body [data-fmt]').forEach(i => { const p = d.prices[+i.dataset.k]; if(i.dataset.fmt === 'l') p[0] = i.value.trim(); else p[1] = i.value === '' ? null : +i.value; });
   d.allergens = Array.from(document.querySelectorAll('#ed-body [data-al]')).filter(x => x.checked).map(x => x.dataset.al);
   d.available = $('ed-avail').checked; d.featured = $('ed-feat').checked; d.badge = $('ed-badge').value || null;
+  d.i18n = readTr('ed', ['name', 'description']);
   return d;
 }
 function toggleMulti(on){
@@ -2805,7 +2904,7 @@ async function saveDraft(){
   const prev = CFG.items.find(i => i.id === d.id);
   const sort = prev && prev.category_id === d.category_id ? prev.sort : CFG.items.filter(i => i.category_id === d.category_id && i.id !== d.id).reduce((m, i) => Math.max(m, i.sort + 1), 0);
   const rec = { id: d.id, category_id: d.category_id, grp: d.grp, name: d.name, description: d.description || null, price: d.prices ? null : d.price, prices: d.prices || null,
-    allergens: d.allergens, photo_url: d.photo_url || null, featured: d.featured, available: d.available, badge: d.badge || null, sort };
+    allergens: d.allergens, photo_url: d.photo_url || null, featured: d.featured, available: d.available, badge: d.badge || null, i18n: d.i18n || {}, sort };
   $('ed-err').textContent = '';
   try { await Store.saveItem(rec); upsertLocal('items', rec); SET.cat = rec.category_id; closeEditor(); afterMenuChange(); toast('« ' + rec.name + ' » enregistré'); }
   catch(e){ $('ed-err').textContent = 'Enregistrement impossible : ' + errText(e); }
@@ -2840,6 +2939,7 @@ function openCatEditor(id){
   const n = CFG.items.filter(i => i.category_id === c.id).length;
   openEditor('<h2 class="h2">' + (c._new ? 'Nouvelle rubrique' : 'Rubrique « ' + esc(c.label) + ' »') + '</h2>' +
     fieldIn('cat-label', 'Nom', c.label, ' maxlength="60"') + fieldIn('cat-note', 'Précision sous le titre', c.note, ' placeholder="Ex. : servis avec 2 accompagnements au choix"') +
+    trFields('cat', c, [['label', 'Nom', c.label], ['note', 'Précision', c.note]]) +
     '<div class="row2"><div class="field"><label for="cat-icon">Icône</label><select class="input" id="cat-icon">' + ICONS.map(([v, l]) => '<option value="' + v + '"' + (c.icon === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></div>' +
     '<div class="field"><label for="cat-color">Couleur</label><select class="input" id="cat-color">' + [['green', 'Vert'], ['orange', 'Orange'], ['rose', 'Rose']].map(([v, l]) => '<option value="' + v + '"' + (c.color === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select></div></div>' +
     '<div class="checks"><label class="check"><input type="checkbox" id="cat-visible"' + (c.visible !== false ? ' checked' : '') + '>Visible sur la carte</label>' +
@@ -2855,7 +2955,7 @@ async function saveCat(){
   const d = SET.catDraft, label = $('cat-label').value.trim();
   if(!label){ $('ed-err').textContent = 'Indiquez un nom.'; return; }
   const rec = { id: d.id, label, note: $('cat-note').value.trim() || null, icon: $('cat-icon').value, color: $('cat-color').value,
-    visible: $('cat-visible').checked, food: $('cat-food').checked, alcohol: $('cat-alcohol').checked, sort: d.sort };
+    visible: $('cat-visible').checked, food: $('cat-food').checked, alcohol: $('cat-alcohol').checked, sort: d.sort, i18n: readTr('cat', ['label', 'note']) };
   try { await Store.saveCategory(rec); upsertLocal('cats', rec); SET.cat = rec.id; closeEditor(); afterMenuChange(); toast('Rubrique enregistrée'); }
   catch(e){ $('ed-err').textContent = 'Enregistrement impossible : ' + errText(e); }
 }
@@ -3562,6 +3662,10 @@ $('overlay').onclick = e => { if(e.target === $('overlay')) closeModal(); };
   CFG = Config.cached() || DEFAULT_CFG;          // dernière configuration connue : affichage immédiat, même hors connexion
   Config.apply(CFG);
   try { await Store.init(); } catch(e){ toast('Connexion au serveur impossible : réessayez plus tard'); }
+  document.querySelectorAll('[data-lang-sel]').forEach(sel => { sel.value = LANG; sel.addEventListener('change', () => setLang(sel.value)); });
+  document.documentElement.lang = curLang();
+  l10nObs.observe($('client'), { childList: true, subtree: true, characterData: true });
+  if(curLang() !== 'fr'){ await loadI18n(); applyLangToMenu(); }
   route();
   loadConfig();
 })();

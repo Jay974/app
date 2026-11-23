@@ -29,6 +29,14 @@ Statuts : `pending` (en attente) → `confirmed` / `declined`, et `cancelled` si
 - **Fidélité** : X visites = une récompense. Visites = réservations confirmées passées + visites en salle ajoutées dans la fiche client ; bouton « Récompense offerte ». Le client voit sa progression sur l'accueil et la carte (appareil ayant déjà réservé).
 - **Mentions légales** et **Confidentialité** (`#mentions-legales`, `#confidentialite`), remplies depuis Réglages > Informations du restaurant > Informations légales.
 
+## Langues (site client)
+
+- Français, **anglais** et **allemand** : sélecteur FR / EN / DE en haut de chaque page du site client ; la langue du téléphone est choisie d'office la première fois. Le hub équipe reste en français.
+- Les traductions sont dans `i18n.js` (chargé seulement si le client choisit une autre langue), indexées par le texte français : interface (`UI_I18N`) et carte (`MENU_I18N`).
+- Dans le hub, la fiche d'une ligne de la carte et celle d'une rubrique ont un volet **Traductions** : la traduction automatique s'affiche en gris, ce qu'on écrit la remplace (colonnes `i18n` de `menu_items` et `menu_categories`). Une ligne nouvelle ou modifiée sans traduction s'affiche en français.
+- Ajouter une langue : une colonne de plus dans `i18n.js` et le code dans `LANGS` et le sélecteur.
+- Restent en français : pages légales (le français fait foi), offre du moment, notifications et e-mails aux clients.
+
 ## Agenda des réservations (hub)
 
 - Dans le hub, **happy hour et dîner forment un seul écran « Soir »** (17h–23h) : plan, liste, statistiques et agenda les regroupent. Côté client, les deux créneaux restent proposés séparément.
