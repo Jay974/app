@@ -1,0 +1,13 @@
+{
+  "name": "life-dashboard",
+  "version": "1.0.0",
+  "description": "Dashboard personnel (PWA) synchronisé en temps réel entre PC et téléphone",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "icons": "node scripts/gen-icons.js",
+    "test": "node scripts/test.js"
+  },
+  "engines": { "node": ">=18" }
+}
