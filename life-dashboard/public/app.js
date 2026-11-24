@@ -50,7 +50,7 @@ const MOODS = ['😞', '😕', '😐', '🙂', '😄'];
 const S = { docs: LS.get('ld_docs', {}), pending: LS.get('ld_pending', {}), seq: LS.get('ld_seq', 0), token: LS.get('ld_token', null), offset: LS.get('ld_off', 0) };
 let status = 'off'; // ok | off | busy
 const persist = () => { LS.set('ld_docs', S.docs); LS.set('ld_pending', S.pending); LS.set('ld_seq', S.seq); LS.set('ld_off', S.offset); };
-const nowT = () => Date.now() + S.offset;
+const nowT = () => Date.now();
 
 function val(id) {
   const d = S.docs[id], o = {};
@@ -68,54 +68,48 @@ function put(id, patch) {
 }
 const ids = prefix => Object.keys(S.docs).filter(k => k.startsWith(prefix));
 
-async function api(path, opts = {}) {
-  const r = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', ...(S.token ? { Authorization: 'Bearer ' + S.token } : {}) } });
-  if (r.status === 401 && S.token) { localLogout(); throw new Error('401'); }
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw Object.assign(new Error(data.error || r.status), { data });
-  return data;
-}
-let flushT = null, flushing = false;
+const CFG = window.LIFE_CONFIG || {};
+const sb = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+let flushT = null, flushing = false, chan = null;
 function flushSoon() { clearTimeout(flushT); flushT = setTimeout(flush, 250); }
 async function flush() {
   if (flushing || !S.token || !Object.keys(S.pending).length) return;
   flushing = true;
-  const snap = JSON.parse(JSON.stringify(S.pending));
+  const snap = JSON.parse(JSON.stringify(S.pending)), rows = [];
+  for (const doc in snap) for (const field in snap[doc]) rows.push({ doc, field, v: snap[doc][field].v, t: snap[doc][field].t });
   try {
-    const r = await api('/api/sync', { method: 'POST', body: JSON.stringify({ docs: snap }) });
-    S.offset = r.now - Date.now();
+    const { error } = await sb.rpc('push_fields', { rows });
+    if (error) throw error;
     for (const id in snap) for (const k in snap[id]) if (S.pending[id]?.[k]?.t === snap[id][k].t) delete S.pending[id][k];
     for (const id in S.pending) if (!Object.keys(S.pending[id]).length) delete S.pending[id];
     persist(); setStatus('ok');
-  } catch (e) { if (e.message !== '401') setStatus('off'); }
+  } catch (e) { setStatus('off'); }
   flushing = false;
   if (Object.keys(S.pending).length && status === 'ok') flushSoon();
 }
 async function pull() {
   if (!S.token) return;
   try {
-    const r = await api('/api/sync?since=' + S.seq);
-    S.offset = r.now - Date.now();
-    let changed = false;
-    for (const id in r.docs) {
-      const loc = S.docs[id] = S.docs[id] || {};
-      for (const k in r.docs[id]) {
-        const c = r.docs[id][k];
-        if (!loc[k] || c.t > loc[k].t) { loc[k] = c; changed = true; }
+    let changed = false, since = S.seq, more = true;
+    while (more) {
+      const { data, error } = await sb.from('fields').select('doc,field,v,t,seq').gt('seq', since).order('seq').limit(1000);
+      if (error) throw error;
+      for (const r of data) {
+        const loc = S.docs[r.doc] = S.docs[r.doc] || {};
+        if (!loc[r.field] || r.t > loc[r.field].t) { loc[r.field] = { v: r.v, t: r.t }; changed = true; }
+        since = r.seq;
       }
+      more = data.length === 1000;
     }
-    S.seq = r.seq; persist(); setStatus('ok');
+    S.seq = since; persist(); setStatus('ok');
     if (changed) render(false);
-  } catch (e) { if (e.message !== '401') setStatus('off'); }
+  } catch (e) { setStatus('off'); }
 }
-let es = null;
 function connect() {
   if (!S.token) return;
-  if (es) es.close();
-  es = new EventSource('/api/events?token=' + S.token);
-  es.addEventListener('seq', e => { if (Number(e.data) > S.seq) pull(); });
-  es.onopen = () => { setStatus('ok'); flush(); pull(); };
-  es.onerror = () => { setStatus('off'); if (es.readyState === 2) setTimeout(connect, 5000); };
+  if (chan) sb.removeChannel(chan);
+  chan = sb.channel('fields-sync').on('postgres_changes', { event: '*', schema: 'public', table: 'fields' }, () => pull())
+    .subscribe(st => { if (st === 'SUBSCRIBED') { setStatus('ok'); flush(); pull(); } else if (st === 'CLOSED' || st === 'CHANNEL_ERROR') setStatus('off'); });
 }
 function setStatus(s) {
   if (status === s) return;
@@ -124,11 +118,12 @@ function setStatus(s) {
 }
 const syncHtml = () => `<i class="dot ${status === 'ok' ? 'ok' : 'off'}"></i>${status === 'ok' ? (Object.keys(S.pending).length ? 'Envoi…' : 'Synchronisé') : 'Hors-ligne — sera synchronisé'}`;
 window.addEventListener('online', () => { flush(); pull(); connect(); });
+sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT' && S.token) localLogout(); });
 window.addEventListener('offline', () => setStatus('off'));
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { pull(); flush(); } });
 
 function localLogout() {
-  if (es) es.close();
+  if (chan) sb.removeChannel(chan);
   S.token = null; LS.del('ld_token');
   render();
 }
@@ -444,15 +439,13 @@ const VIEWS = { home: vHome, today: vToday, weight: vWeight, sport: vSport, food
 /* ============================== rendu ============================== */
 function vLogin(initialized, err = '') {
   return `<div class="login"><form class="card" data-form="login"><div class="brand"><b>${ic('logo')}</b>Ma Vie</div>
-  <p>${initialized ? 'Entre ton mot de passe pour ouvrir ton dashboard.' : 'Bienvenue ! Choisis un mot de passe (6 caractères min.) pour protéger tes données.'}</p>
-  <input class="field" type="password" name="password" placeholder="Mot de passe" autocomplete="${initialized ? 'current-password' : 'new-password'}" required minlength="6" autofocus>
-  <button class="btn pri" style="width:100%;justify-content:center;margin-top:12px">${initialized ? 'Entrer' : 'Créer mon espace'}</button><div class="err">${esc(err)}</div></form></div>`;
+  <p>Connecte-toi pour ouvrir ton dashboard.</p>
+  <input class="field" type="email" name="email" placeholder="Email" autocomplete="email" required style="margin-bottom:8px">
+  <input class="field" type="password" name="password" placeholder="Mot de passe (6 car. min.)" autocomplete="current-password" required minlength="6">
+  <button class="btn pri" style="width:100%;justify-content:center;margin-top:12px">Se connecter</button>
+  <button type="button" class="btn ghost sm" style="margin-top:6px" data-act="signup">Créer le compte</button><div class="err">${esc(err)}</div></form></div>`;
 }
-let loginState = null;
-async function renderLogin(err) {
-  if (!loginState) { try { loginState = (await (await fetch('/api/status')).json()).initialized; } catch { loginState = true; } }
-  $('#app').innerHTML = vLogin(loginState, err);
-}
+async function renderLogin(err) { $('#app').innerHTML = vLogin(true, err); }
 let renderQ = false;
 function render(local = false) {
   applyTheme();
@@ -495,7 +488,8 @@ const ACTS = {
   theme: el => { LS.set('ld_theme', el.dataset.v); render(true); },
   install: async () => { if (installEvt) { installEvt.prompt(); installEvt = null; render(true); } },
   export: () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(S.docs, null, 1)], { type: 'application/json' })); a.download = `ma-vie-${today()}.json`; a.click(); },
-  logout: async () => { try { await api('/api/logout', { method: 'POST' }); } catch { /* */ } S.docs = {}; S.pending = {}; S.seq = 0; persist(); localLogout(); },
+  signup: () => { const f = $('form[data-form=login]'); if (f.reportValidity()) auth(Object.fromEntries(new FormData(f)), true); },
+  logout: async () => { try { await sb.auth.signOut(); } catch { /* */ } S.docs = {}; S.pending = {}; S.seq = 0; persist(); localLogout(); },
   palette: () => palette()
 };
 document.addEventListener('click', e => { const el = e.target.closest('[data-act]'); if (el && ACTS[el.dataset.act]) { e.preventDefault(); ACTS[el.dataset.act](el); } });
@@ -513,15 +507,19 @@ document.addEventListener('submit', async e => {
   if (f.dataset.form === 'meal') {
     setDay({ meals: [...(day(ui.date).meals || []), { id: uid(), name: fd.name.trim(), kcal: Number(fd.kcal) || 0, slot: fd.slot }] });
   } else if (f.dataset.form === 'login') {
-    try {
-      const r = await api('/api/login', { method: 'POST', body: JSON.stringify({ password: fd.password }) });
-      S.token = r.token; LS.set('ld_token', r.token); loginState = true; render(true); connect(); pull(); flush();
-    } catch (err) { renderLogin(err.data?.error || 'Connexion impossible'); }
+    await auth(fd, false);
   } else if (f.dataset.form === 'pay') {
     if (!fd.amount || Number(fd.amount) <= 0) return;
     put('pay:' + uid(), { date: fd.date || today(), amount: Number(fd.amount), note: fd.note || null }); closeModal(); toast('Remboursement ajouté ✓');
   }
 });
+async function auth(fd, signup) {
+  const creds = { email: fd.email, password: fd.password };
+  const { data, error } = signup ? await sb.auth.signUp(creds) : await sb.auth.signInWithPassword(creds);
+  if (error) return renderLogin(error.message);
+  if (!data.session) return renderLogin('Compte créé : confirme ton email puis reconnecte-toi.');
+  S.token = true; LS.set('ld_token', true); render(true); connect(); pull(); flush();
+}
 async function importFile(file) {
   if (!file) return;
   try {
@@ -594,6 +592,6 @@ matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', () => r
 window.addEventListener('hashchange', () => { const t = location.hash.slice(2); if (TABS.some(x => x[0] === t) && t !== ui.tab) { ui.tab = t; render(true); } });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => { });
 render(true);
-if (S.token) { connect(); pull(); flush(); }
+sb.auth.getSession().then(({ data }) => { if (data.session) { if (!S.token) { S.token = true; LS.set('ld_token', true); render(true); } connect(); pull(); flush(); } else if (S.token && navigator.onLine) localLogout(); });
 window.__life = { S, put, val, ui, go }; // utile pour les tests
 })();
