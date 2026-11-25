@@ -312,7 +312,7 @@ const ui = { tab: (location.hash.slice(2) || 'home'), date: today(), range: 30, 
 if (!TABS.some(t => t[0] === ui.tab)) ui.tab = 'home';
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
-const theme = () => cfg().theme || 'dark'; // sombre par défaut ; seul le réglage synchronisé compte
+const theme = () => cfg().theme === 'light' ? 'light' : 'dark'; // sombre par défaut ; seul le réglage synchronisé compte
 function applyTheme() {
   const c = cfg(), t = theme();
   const light = t === 'light' || (t === 'auto' && matchMedia('(prefers-color-scheme: light)').matches);
@@ -498,7 +498,7 @@ function vSettings() {
   <div class="card c6"><h3>Profil & objectifs</h3><div class="f2" style="gap:12px"><div style="grid-column:span 2"><label class="l">Prénom</label><input class="field" data-cfg="name" value="${esc(c.name)}"></div>
     ${n('goalWeight', 'Poids objectif (kg)', '0.1')}${n('startWeight', 'Poids de départ (kg)', '0.1', 'auto')}${n('height', 'Taille (cm)')}${n('kcalGoal', 'Objectif calories / jour')}${n('waterGoal', 'Verres d’eau / jour')}${n('sportTarget', 'Séances / semaine')}${n('protGoal', 'Protéines (g/jour)', '1', 'auto')}${n('carbGoal', 'Glucides (g/jour)', '1', 'auto')}${n('fatGoal', 'Lipides (g/jour)', '1', 'auto')}${n('weekHours', 'Horaires hebdomadaires (h)', '0.25', 'ex. 35')}${n('netSalary', 'Salaire net / mois (€)', '1')}</div><button class="btn pri" style="margin-top:16px;width:100%;justify-content:center" data-act="savecfg">💾 Enregistrer et synchroniser</button></div>
   <div class="card c6"><h3>Apparence</h3><label class="l">Couleur (synchronisée)</label><div class="swatches">${Object.entries(ACCENTS).map(([k, v]) => `<button class="${c.accent === k ? 'on' : ''}" style="background:rgb(${v})" data-act="accent" data-v="${k}" aria-label="${k}"></button>`).join('')}</div>
-    <label class="l" style="margin-top:18px">Thème (synchronisé)</label><div class="seg">${[['dark', 'Sombre'], ['light', 'Clair'], ['auto', 'Auto']].map(([k, l]) => `<button class="${th === k ? 'on' : ''}" data-act="theme" data-v="${k}">${l}</button>`).join('')}</div>
+    <label class="l" style="margin-top:18px">Thème (synchronisé)</label><div class="seg">${[['dark', 'Sombre'], ['light', 'Clair']].map(([k, l]) => `<button class="${th === k ? 'on' : ''}" data-act="theme" data-v="${k}">${l}</button>`).join('')}</div>
     <h3 style="margin-top:24px">Synchronisation</h3><p class="sub" data-sync>${syncHtml()}</p><p class="sub">Tout ce que tu saisis est enregistré sur ton appareil puis envoyé au serveur ; tes autres appareils se mettent à jour en direct.</p>
     <div class="row" style="margin-top:10px">${installEvt ? `<button class="btn pri" data-act="install">Installer l’application</button>` : ''}<button class="btn" data-act="export">Exporter (JSON)</button><label class="btn" style="cursor:pointer">Importer<input type="file" accept="application/json" id="imp" hidden></label><button class="btn danger" data-act="logout">Se déconnecter</button></div></div></div>`;
 }
