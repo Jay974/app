@@ -172,10 +172,18 @@ function score(d) {
   const items = [x.weight != null, !!x.sport, !!x.work, (x.water || 0) >= c.waterGoal, (x.meals || []).length > 0, x.sleep != null, x.mood != null];
   return items.filter(Boolean).length / items.length;
 }
+const MET = { Muscu: 5, Cardio: 7, Course: 9.8, Marche: 3.8, Vélo: 7.5, Natation: 7, Yoga: 2.5, Autre: 5 }; // équivalents métaboliques (MET)
+function burnedAuto(d) { // kcal = MET × poids (kg) × heures
+  const x = day(d); if (x.sport !== 'done' || !x.sportMin) return 0;
+  const w = [...weights()].filter(k => k.date <= d).pop()?.w ?? cfg().startWeight ?? 70;
+  return Math.round((MET[x.sportType || 'Autre'] || 5) * w * x.sportMin / 60);
+}
+const burned = d => day(d).sport === 'done' ? (day(d).sportKcal ?? burnedAuto(d)) : 0;
+const burnLine = d => `<div style="margin-top:12px"><label class="l">Calories brûlées (auto, modifiable)</label><input class="field" data-day="sportKcal" data-num type="number" inputmode="numeric" placeholder="${burnedAuto(d) || 'auto'}" value="${day(d).sportKcal ?? ''}"></div><div class="sub" style="margin-top:8px" title="Estimation : MET du sport × poids × durée">🔥 ≈ <b>${fmt(burned(d), 0)} kcal</b> brûlées</div>`;
 function weekStats(d0) {
-  const ws = weekStart(d0); let n = 0, min = 0;
-  for (let i = 0; i < 7; i++) { const x = day(addDays(ws, i)); if (x.sport === 'done') { n++; min += x.sportMin || 0; } }
-  return { n, min };
+  const ws = weekStart(d0); let n = 0, min = 0, kcal = 0;
+  for (let i = 0; i < 7; i++) { const x = day(addDays(ws, i)); if (x.sport === 'done') { n++; min += x.sportMin || 0; kcal += burned(addDays(ws, i)); } }
+  return { n, min, kcal };
 }
 function monthDays(m) { // m = 'YYYY-MM'
   const first = parse(m + '-01'), out = [];
@@ -221,12 +229,12 @@ function creditScenarios() {
 function coachData(mode) {
   const c = cfg(), t = today(), cr = creditStats();
   if (mode === 'week') {
-    const days = Array.from({ length: 14 }, (_, i) => addDays(t, i - 13)).map(d => { const x = day(d); return { date: d, poids: x.weight, sport: x.sport, sportType: x.sportType, minutes: x.sportMin, travail: x.work, kcal: kcalOf(d) || undefined, eau: x.water, sommeil: x.sleep, humeur: x.mood }; });
+    const days = Array.from({ length: 14 }, (_, i) => addDays(t, i - 13)).map(d => { const x = day(d); return { date: d, poids: x.weight, sport: x.sport, sportType: x.sportType, minutes: x.sportMin, travail: x.work, kcal: kcalOf(d) || undefined, eau: x.water, sommeil: x.sleep, humeur: x.mood, kcalBrulees: burned(d) || undefined }; });
     const f = weightForecast();
     return { jours: days, objectifs: { poidsCible: c.goalWeight, kcal: c.kcalGoal, eau: c.waterGoal, seancesParSemaine: c.sportTarget, tailleCm: c.height }, tendancePoidsKgParSemaine: f.ok ? Number(f.perWeek.toFixed(2)) : null };
   }
   if (mode === 'nutrition') {
-    const g = macroGoals(), days = Array.from({ length: 7 }, (_, i) => addDays(t, -i)).map(d => { const m = macrosOf(d); return { date: d, kcal: kcalOf(d), proteinesG: Math.round(m.p), glucidesG: Math.round(m.c), lipidesG: Math.round(m.f), repas: (day(d).meals || []).map(x => x.name) }; });
+    const g = macroGoals(), days = Array.from({ length: 7 }, (_, i) => addDays(t, -i)).map(d => { const m = macrosOf(d); return { date: d, kcal: kcalOf(d), kcalBruleesSport: burned(d), proteinesG: Math.round(m.p), glucidesG: Math.round(m.c), lipidesG: Math.round(m.f), repas: (day(d).meals || []).map(x => x.name) }; });
     const f = weightForecast();
     return { aujourdhui: days[0], sept_derniers_jours: days, objectifs: { kcal: c.kcalGoal, proteinesG: g.p, glucidesG: g.c, lipidesG: g.f }, poidsActuel: weights().slice(-1)[0]?.w, poidsCible: c.goalWeight, tendancePoidsKgParSemaine: f.ok ? Number(f.perWeek.toFixed(2)) : null, seancesSportSemaine: weekStats(t).n };
   }
@@ -368,7 +376,7 @@ function vToday() {
   <div class="card c4"><h3>${ic('work')}Travail</h3><div class="seg" data-seg="work">${[['work', 'Travaillé'], ['off', 'Repos'], ['leave', 'Congé']].map(([k, l]) => `<button class="${x.work === k ? 'on' : ''}" data-act="set" data-k="work" data-v="${k}">${l}</button>`).join('')}</div>
     ${x.work === 'work' ? (() => { const t = tpl(c, d) || {}; return `<div class="f2" style="margin-top:12px;grid-template-columns:1fr 1fr 1fr"><div><label class="l">Début</label><input class="field" type="time" data-day="workS" value="${x.workS ?? t.s ?? ''}"></div><div><label class="l">Fin</label><input class="field" type="time" data-day="workE" value="${x.workE ?? t.e ?? ''}"></div><div><label class="l">Pause (min)</label><input class="field" data-day="workB" data-num type="number" inputmode="numeric" placeholder="0" value="${x.workB ?? t.b ?? ''}"></div></div><div class="sub" style="margin-top:8px">= <b>${fmt(workedHours(d, c), 2)} h</b> travaillées${tpl(c, d) && x.workS == null ? ' (horaires types)' : ''}</div>`; })() : ''}</div>
   <div class="card c6"><h3>${ic('sport')}Sport</h3><div class="seg">${[['done', '✅ Séance faite'], ['rest', '😴 Repos']].map(([k, l]) => `<button class="${x.sport === k ? 'on' : ''}" data-act="set" data-k="sport" data-v="${k}">${l}</button>`).join('')}</div>
-    ${x.sport === 'done' ? `<div class="chips" style="margin-top:12px">${SPORTS.map(s => `<button class="${x.sportType === s ? 'on' : ''}" data-act="set" data-k="sportType" data-v="${s}">${s}</button>`).join('')}</div><div style="margin-top:12px"><label class="l">Durée (minutes)</label><input class="field" data-day="sportMin" data-num type="number" inputmode="numeric" placeholder="45" value="${x.sportMin ?? ''}"></div>` : ''}</div>
+    ${x.sport === 'done' ? `<div class="chips" style="margin-top:12px">${SPORTS.map(s => `<button class="${x.sportType === s ? 'on' : ''}" data-act="set" data-k="sportType" data-v="${s}">${s}</button>`).join('')}</div><div style="margin-top:12px"><label class="l">Durée (minutes)</label><input class="field" data-day="sportMin" data-num type="number" inputmode="numeric" placeholder="45" value="${x.sportMin ?? ''}"></div>${burnLine(d)}` : ''}</div>
   <div class="card c3"><h3>💧 Eau</h3><div class="stepper"><button data-act="water" data-n="-1" aria-label="Moins">−</button><b>${x.water || 0}</b><button data-act="water" data-n="1" aria-label="Plus">+</button></div><div class="drops">${Array.from({ length: Math.max(c.waterGoal, x.water || 0) }, (_, i) => `<i class="${i < (x.water || 0) ? 'on' : ''}"></i>`).join('')}</div><div class="sub">objectif ${c.waterGoal} verres</div></div>
   <div class="card c3"><h3>🌙 Sommeil</h3><div class="big-in"><input data-day="sleep" data-num type="number" step="0.25" inputmode="decimal" placeholder="--" style="width:90px" value="${x.sleep ?? ''}"><span>h</span></div><h3 style="margin-top:14px">Humeur</h3><div class="moods">${MOODS.map((m, i) => `<button class="${x.mood === i + 1 ? 'on' : ''}" data-act="set" data-k="mood" data-v="${i + 1}" data-num aria-label="Humeur ${i + 1}">${m}</button>`).join('')}</div></div>
   ${mealsCard(d)}
@@ -400,7 +408,7 @@ function vHome() {
   <div class="card c3 kpis"><h3>${ic('weight')}Poids</h3><div class="val">${fmt(lastW?.w)}<small>kg</small></div><div class="sub">${delta != null ? `<span class="chip ${delta <= 0 ? 'up' : 'down'}">${delta <= 0 ? '▼' : '▲'} ${fmt(Math.abs(delta))} kg / 30 j</span>` : 'Entre ton poids'}</div>${lineChart('sp-w', wy, days30.map(shortDate), { spark: true })}</div>
   <div class="card c3 kpis"><h3>${ic('credit')}Crédit</h3><div class="val">${Math.round(cs.pct * 100)}<small>% remboursé</small></div><div class="sub">${cs.c.total ? `Reste ${eur(cs.remaining)}` : 'À configurer'}</div><div class="bar" style="margin-top:16px"><i style="width:${cs.pct * 100}%"></i></div><div class="sub" style="margin-top:8px">${cs.end ? 'Fin estimée ' + cs.end.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) : ''}</div></div>
   <div class="card c3 kpis"><h3>${ic('work')}Travail</h3>${(() => { const tg = monthTarget(c), h = ms.reduce((a, d) => a + workedHours(d, c), 0); return tg ? `<div class="val">${fmt(h, 0)}<small>/ ${fmt(tg, 0)} h ce mois</small></div><div class="bar" style="margin-top:16px"><i style="width:${Math.min(h / tg * 100, 100)}%"></i></div><div class="sub" style="margin-top:8px">${c.netSalary ? 'Salaire net ' + eur(c.netSalary) : worked + ' jours travaillés'}</div>` : `<div class="val">${worked}<small>jour${worked > 1 ? 's' : ''} ce mois</small></div><div class="sub" style="margin-top:16px">Renseigne tes heures hebdo dans Réglages</div>`; })()}</div>
-  <div class="card c3 kpis"><h3>${ic('sport')}Sport</h3><div class="val">${wk.n}<small>/ ${c.sportTarget} séances</small></div><div class="bar" style="margin-top:16px"><i style="width:${Math.min(wk.n / c.sportTarget * 100, 100)}%"></i></div><div class="sub" style="margin-top:8px">${wk.min} min cette semaine</div></div>
+  <div class="card c3 kpis"><h3>${ic('sport')}Sport</h3><div class="val">${wk.n}<small>/ ${c.sportTarget} séances</small></div><div class="bar" style="margin-top:16px"><i style="width:${Math.min(wk.n / c.sportTarget * 100, 100)}%"></i></div><div class="sub" style="margin-top:8px">${wk.min} min · 🔥 ${fmt(wk.kcal, 0)} kcal cette semaine</div></div>
   <div class="card c8"><h3>${ic('weight')}Évolution du poids · 30 jours</h3>${lineChart('home-w', wy, days30.map(shortDate), { goal: c.goalWeight, unit: ' kg', empty: 'Entre ton poids pour voir la courbe bouger 📈' })}</div>
   <div class="card c4"><h3>Moyennes · 7 jours</h3><div class="list"><div class="item"><div class="grow t">🌙 Sommeil</div><b>${fmt(mean(sleepArr))} h</b></div><div class="item"><div class="grow t">🍽️ Calories</div><b>${fmt(mean(kcalArr), 0)} kcal</b></div><div class="item"><div class="grow t">💧 Eau</div><b>${fmt(mean(waterArr))} verres</b></div><div class="item"><div class="grow t">😊 Humeur</div><b>${fmt(mean(Array.from({ length: 7 }, (_, i) => day(addDays(t, -i)).mood).filter(v => v != null)))} / 5</b></div></div></div>
   <div class="card c12"><h3>Cette semaine</h3><div class="heat"><span></span>${wdays.map(d => `<span class="hd">${parse(d).toLocaleDateString('fr-FR', { weekday: 'short' })}</span>`).join('')}${heatRows.map(([l, fn]) => `<span>${l}</span>${wdays.map(d => `<span class="c ${fn(d)}" data-act="goday" data-d="${d}" style="cursor:pointer">${fn(d) === 'on' ? '✓' : fn(d) === 'mid' ? '·' : ''}</span>`).join('')}`).join('')}</div></div>
@@ -431,17 +439,17 @@ function vWeight() {
 function vSport() {
   const c = cfg(), t = today(), wk = weekStats(t), ws0 = weekStart(t);
   const weeks = Array.from({ length: 8 }, (_, i) => addDays(ws0, (i - 7) * 7));
-  const mdays = monthDays(t.slice(0, 7)), mCount = mdays.filter(d => day(d).sport === 'done').length, mMin = mdays.reduce((s, d) => s + (day(d).sport === 'done' ? day(d).sportMin || 0 : 0), 0);
+  const mdays = monthDays(t.slice(0, 7)), mCount = mdays.filter(d => day(d).sport === 'done').length, mMin = mdays.reduce((s, d) => s + (day(d).sport === 'done' ? day(d).sportMin || 0 : 0), 0), mBurn = mdays.reduce((s, d) => s + burned(d), 0);
   let streak = 0; for (let i = 1; i < 60; i++) { if (weekStats(addDays(ws0, -7 * i)).n >= c.sportTarget) streak++; else break; } if (wk.n >= c.sportTarget) streak++;
   const types = {}; dayIds().forEach(d => { const x = day(d); if (x.sport === 'done') types[x.sportType || 'Autre'] = (types[x.sportType || 'Autre'] || 0) + 1; });
   const tmax = Math.max(1, ...Object.values(types));
   const recent = dayIds().filter(d => day(d).sport === 'done').reverse().slice(0, 8);
   return head('Sport', 'Coche tes séances, garde la série', dateBar()) + `<div class="grid">
   <div class="card c4 hero" style="display:flex;align-items:center;justify-content:space-between"><div><h3>Cette semaine</h3><div class="big">${wk.n} / ${c.sportTarget}</div><p>${wk.n >= c.sportTarget ? 'Objectif atteint 🔥' : `Encore ${c.sportTarget - wk.n} séance(s)`}</p></div>${ring('sportw', wk.n / c.sportTarget, Math.round(Math.min(wk.n / c.sportTarget, 1) * 100) + '%', { size: 110 })}</div>
-  <div class="card c4"><h3>Ce mois-ci</h3><div class="val">${mCount}<small>séances</small></div><div class="sub">${mMin} min au total</div></div>
+  <div class="card c4"><h3>Ce mois-ci</h3><div class="val">${mCount}<small>séances</small></div><div class="sub">${mMin} min · 🔥 ${fmt(mBurn, 0)} kcal brûlées</div></div>
   <div class="card c4"><h3>Série</h3><div class="val">${streak}<small>semaine(s) d’objectif</small></div><div class="sub">Objectif : ${c.sportTarget} séances / semaine</div></div>
   <div class="card c6" id="sportday"><h3>Séance du ${shortDate(ui.date)}</h3><div class="seg">${[['done', '✅ Faite'], ['rest', '😴 Repos']].map(([k, l]) => `<button class="${day(ui.date).sport === k ? 'on' : ''}" data-act="set" data-k="sport" data-v="${k}">${l}</button>`).join('')}</div>
-    ${day(ui.date).sport === 'done' ? `<div class="chips" style="margin-top:12px">${SPORTS.map(s => `<button class="${day(ui.date).sportType === s ? 'on' : ''}" data-act="set" data-k="sportType" data-v="${s}">${s}</button>`).join('')}</div><div style="margin-top:12px"><label class="l">Durée (min)</label><input class="field" data-day="sportMin" data-num type="number" inputmode="numeric" value="${day(ui.date).sportMin ?? ''}"></div>` : ''}</div>
+    ${day(ui.date).sport === 'done' ? `<div class="chips" style="margin-top:12px">${SPORTS.map(s => `<button class="${day(ui.date).sportType === s ? 'on' : ''}" data-act="set" data-k="sportType" data-v="${s}">${s}</button>`).join('')}</div><div style="margin-top:12px"><label class="l">Durée (min)</label><input class="field" data-day="sportMin" data-num type="number" inputmode="numeric" value="${day(ui.date).sportMin ?? ''}"></div>${burnLine(ui.date)}` : ''}</div>
   <div class="card c6"><h3>8 dernières semaines · touche un jour pour le modifier</h3><div class="heat"><span></span>${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(l => `<span class="hd">${l}</span>`).join('')}${weeks.map(w => `<span>${shortDate(w)}</span>${Array.from({ length: 7 }, (_, i) => { const d = addDays(w, i), s = day(d).sport; return `<span class="c ${s === 'done' ? 'on' : s === 'rest' ? 'mid' : ''}" data-act="pickday" data-d="${d}" style="cursor:pointer;${d > t ? 'opacity:.35;' : ''}${d === ui.date ? 'outline:2px solid var(--acc);outline-offset:1px;' : ''}">${s === 'done' ? '✓' : ''}</span>`; }).join('')}`).join('')}</div></div>
   <div class="card c6"><h3>Types de séance</h3><div class="list">${Object.entries(types).sort((a, b) => b[1] - a[1]).map(([k, n]) => `<div><div class="row" style="justify-content:space-between"><span>${k}</span><b>${n}</b></div><div class="bar"><i style="width:${n / tmax * 100}%"></i></div></div>`).join('') || '<div class="empty">Pas encore de séance</div>'}</div></div>
   <div class="card c6"><h3>Dernières séances</h3><div class="list">${recent.map(d => `<div class="item"><div class="grow"><div class="t">${esc(day(d).sportType || 'Séance')}</div><div class="s">${longDate(d)}</div></div><b>${day(d).sportMin ? day(d).sportMin + ' min' : ''}</b></div>`).join('') || '<div class="empty">—</div>'}</div></div></div>`;
@@ -461,7 +469,7 @@ function vFood() {
   const days = Array.from({ length: 14 }, (_, i) => addDays(t, i - 13));
   const k = days.map(d => kcalOf(d)), logged = k.filter(v => v > 0), avg = logged.length ? logged.reduce((s, v) => s + v, 0) / logged.length : null;
   return head('Repas', 'Note ce que tu manges, suis tes calories', dateBar()) + `<div class="grid">
-  <div class="card c4 hero" style="display:flex;align-items:center;justify-content:space-between"><div><h3>${ui.date === t ? 'Aujourd’hui' : shortDate(ui.date)}</h3><div class="big">${fmt(kcalOf(ui.date), 0)} <em>kcal</em></div><p>sur ${fmt(c.kcalGoal, 0)} visées</p></div>${ring('kcal', kcalOf(ui.date) / c.kcalGoal, Math.round(kcalOf(ui.date) / c.kcalGoal * 100) + '%', { size: 108 })}</div>
+  <div class="card c4 hero" style="display:flex;align-items:center;justify-content:space-between"><div><h3>${ui.date === t ? 'Aujourd’hui' : shortDate(ui.date)}</h3><div class="big">${fmt(kcalOf(ui.date), 0)} <em>kcal</em></div><p>sur ${fmt(c.kcalGoal, 0)} visées${burned(ui.date) ? ` · 🔥 ${fmt(burned(ui.date), 0)} brûlées · net ${fmt(kcalOf(ui.date) - burned(ui.date), 0)}` : ''}</p></div>${ring('kcal', kcalOf(ui.date) / c.kcalGoal, Math.round(kcalOf(ui.date) / c.kcalGoal * 100) + '%', { size: 108 })}</div>
   <div class="card c8"><h3>14 derniers jours · moyenne ${fmt(avg, 0)} kcal</h3>${bars('kc', days.map((d, i) => ({ label: parse(d).getDate(), v: k[i] })), { goal: c.kcalGoal, unit: ' kcal' })}</div>
   ${mealsCard(ui.date)}
   ${nutritionCard()}
