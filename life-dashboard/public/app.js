@@ -35,6 +35,7 @@ const ICONS = {
   credit: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
   budget: '<path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zM3 7l2-3h12M16 13.5h2"/>',
   bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>',
+  billing: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7"/>',
   settings: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
   plus: '<path d="M12 5v14M5 12h14"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>',
@@ -42,7 +43,7 @@ const ICONS = {
 };
 ICONS.reminders = ICONS.bell;
 const ic = (n, c = 'ic') => `<svg class="${c}" viewBox="0 0 24 24">${ICONS[n] || ''}</svg>`;
-const TABS = [['home', 'Dashboard'], ['today', 'Aujourd’hui'], ['weight', 'Poids'], ['sport', 'Sport'], ['food', 'Repas'], ['work', 'Travail'], ['credit', 'Crédit'], ['budget', 'Budget'], ['reminders', 'Rappels'], ['settings', 'Réglages']];
+const TABS = [['home', 'Dashboard'], ['today', 'Aujourd’hui'], ['weight', 'Poids'], ['sport', 'Sport'], ['food', 'Repas'], ['work', 'Travail'], ['credit', 'Crédit'], ['budget', 'Budget'], ['reminders', 'Rappels'], ['billing', 'Facturation'], ['settings', 'Réglages']];
 const ACCENTS = { Jade: '0,168,150', Corail: '255,90,79', Violet: '139,92,246', Océan: '56,189,248', Menthe: '45,212,160', Ambre: '245,158,11', Rose: '244,114,182' };
 const SPORTS = ['Muscu', 'Cardio', 'Course', 'Marche', 'Vélo', 'Natation', 'Yoga', 'Autre'];
 const SLOTS = ['Petit-déj', 'Déjeuner', 'Dîner', 'Collation'];
@@ -129,7 +130,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { pu
 
 function localLogout() {
   if (chan) sb.removeChannel(chan);
-  S.token = null; LS.del('ld_token');
+  S.token = null; LS.del('ld_token'); LS.del('ld_owner'); ui.owner = false;
   render();
 }
 
@@ -383,7 +384,7 @@ function bars(id, items, { goal, h = 150, unit = '' } = {}) { // items: [{label,
 }
 
 /* ============================== UI state ============================== */
-const ui = { bmonth: today().slice(0, 7), tab: (location.hash.slice(2) || 'home'), date: today(), range: 30, month: today().slice(0, 7), dirty: false, anim: true };
+const ui = { owner: LS.get('ld_owner', false), bmonth: today().slice(0, 7), tab: (location.hash.slice(2) || 'home'), date: today(), range: 30, month: today().slice(0, 7), dirty: false, anim: true };
 if (!TABS.some(t => t[0] === ui.tab)) ui.tab = 'home';
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
@@ -748,7 +749,15 @@ function vSettings() {
     <div class="row" style="margin-top:10px">${installEvt ? `<button class="btn pri" data-act="install">Installer l’application</button>` : ''}<button class="btn" data-act="export">Exporter (JSON)</button><label class="btn" style="cursor:pointer">Importer<input type="file" accept="application/json" id="imp" hidden></label><button class="btn danger" data-act="logout">Se déconnecter</button></div></div></div>`;
 }
 
-const VIEWS = { reminders: vReminders, budget: vBudget, home: vHome, today: vToday, weight: vWeight, sport: vSport, food: vFood, work: vWork, credit: vCredit, settings: vSettings };
+function vBilling() { // module chargé à la demande, uniquement pour le propriétaire
+  if (window.Billing) return window.Billing.view();
+  if (!ui.billingLoading) {
+    ui.billingLoading = true;
+    (async () => { try { for (const f of ['/vendor/jspdf.min.js', '/vendor/jspdf-autotable.min.js', '/billing.js']) await new Promise((ok, ko) => { const el = document.createElement('script'); el.src = f; el.onload = ok; el.onerror = () => ko(new Error(f)); document.head.appendChild(el); }); } catch (e) { toast('Chargement impossible : ' + e.message); ui.billingLoading = false; return; } render(true); })();
+  }
+  return head('Facturation', 'Réservé au propriétaire') + '<div class="card c12">Chargement…</div>';
+}
+const VIEWS = { billing: vBilling, reminders: vReminders, budget: vBudget, home: vHome, today: vToday, weight: vWeight, sport: vSport, food: vFood, work: vWork, credit: vCredit, settings: vSettings };
 
 /* ============================== rendu ============================== */
 function vLogin(initialized, err = '') {
@@ -768,8 +777,8 @@ function render(local = false) {
   if (renderQ) return; renderQ = true;
   requestAnimationFrame(() => {
     renderQ = false; ui.dirty = false;
-    const y = window.scrollY;
-    const nav = TABS.map(([k, l]) => `<a data-act="go" data-to="${k}" class="${ui.tab === k ? 'on' : ''}">${ic(k)}<span>${l}</span></a>`).join('');
+    const y = window.scrollY; if (ui.tab === 'billing' && !ui.owner) ui.tab = 'home';
+    const nav = TABS.filter(t => t[0] !== 'billing' || ui.owner).map(([k, l]) => `<a data-act="go" data-to="${k}" class="${ui.tab === k ? 'on' : ''}">${ic(k)}<span>${l}</span></a>`).join('');
     $('#app').innerHTML = `<div class="shell"><aside class="side"><div class="brand"><b>${ic('logo')}</b>Ma Vie</div><nav class="nav">${nav}</nav><div class="grow"></div>
       <a class="nav" style="display:flex"><button class="btn ghost" data-act="palette" style="width:100%;justify-content:space-between">${ic('search')}Rechercher<span class="kbd">⌘K</span></button></a><div class="sync" data-sync>${syncHtml()}</div></aside>
       <main>${VIEWS[ui.tab]()}</main></div><nav class="bottom">${nav}</nav>`;
@@ -1010,6 +1019,6 @@ matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', () => r
 window.addEventListener('hashchange', () => { const t = location.hash.slice(2); if (TABS.some(x => x[0] === t) && t !== ui.tab) { ui.tab = t; render(true); } });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => { });
 render(true); refreshPush();
-sb.auth.getSession().then(({ data }) => { if (data.session) { if (!S.token) { S.token = true; LS.set('ld_token', true); render(true); } connect(); pull(); flush(); } else if (S.token && navigator.onLine) localLogout(); });
-window.__life = { S, put, val, ui, go }; // utile pour les tests
+sb.auth.getSession().then(({ data }) => { if (data.session) { const own = data.session.user?.app_metadata?.owner === true; if (own !== ui.owner) { ui.owner = own; LS.set('ld_owner', own); render(true); } if (!S.token) { S.token = true; LS.set('ld_token', true); render(true); } connect(); pull(); flush(); } else if (S.token && navigator.onLine) localLogout(); });
+window.__life = { S, put, val, ui, go, api: { sb, toast, render, esc, ic, head, today, addDays, uid, put } }; // utile pour les tests
 })();
