@@ -34,13 +34,15 @@ const ICONS = {
   work: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/>',
   credit: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
   budget: '<path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zM3 7l2-3h12M16 13.5h2"/>',
+  bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>',
   settings: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
   plus: '<path d="M12 5v14M5 12h14"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>',
   l: '<path d="M15 6l-6 6 6 6"/>', r: '<path d="M9 6l6 6-6 6"/>', logo: '<circle cx="12" cy="12" r="7"/><path d="M12 5a7 7 0 0 1 7 7"/>'
 };
+ICONS.reminders = ICONS.bell;
 const ic = (n, c = 'ic') => `<svg class="${c}" viewBox="0 0 24 24">${ICONS[n] || ''}</svg>`;
-const TABS = [['home', 'Dashboard'], ['today', 'Aujourd’hui'], ['weight', 'Poids'], ['sport', 'Sport'], ['food', 'Repas'], ['work', 'Travail'], ['credit', 'Crédit'], ['budget', 'Budget'], ['settings', 'Réglages']];
+const TABS = [['home', 'Dashboard'], ['today', 'Aujourd’hui'], ['weight', 'Poids'], ['sport', 'Sport'], ['food', 'Repas'], ['work', 'Travail'], ['credit', 'Crédit'], ['budget', 'Budget'], ['reminders', 'Rappels'], ['settings', 'Réglages']];
 const ACCENTS = { Jade: '0,168,150', Corail: '255,90,79', Violet: '139,92,246', Océan: '56,189,248', Menthe: '45,212,160', Ambre: '245,158,11', Rose: '244,114,182' };
 const SPORTS = ['Muscu', 'Cardio', 'Course', 'Marche', 'Vélo', 'Natation', 'Yoga', 'Autre'];
 const SLOTS = ['Petit-déj', 'Déjeuner', 'Dîner', 'Collation'];
@@ -352,7 +354,7 @@ function toast(msg) {
   const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg;
   $('#toasts').appendChild(el); setTimeout(() => el.remove(), 2200);
 }
-function go(tab, keep) { if (!keep) ui.date = today(); ui.anim = true; ui.tab = tab; history.replaceState(null, '', '#/' + tab); render(true); window.scrollTo(0, 0); }
+function go(tab, keep) { if (tab === 'reminders') refreshPush(); if (!keep) ui.date = today(); ui.anim = true; ui.tab = tab; history.replaceState(null, '', '#/' + tab); render(true); window.scrollTo(0, 0); }
 
 /* ============================== vues ============================== */
 const head = (title, sub, right = '') => `<div class="top"><div><h1>${title}</h1>${sub ? `<p>${sub}</p>` : ''}</div><div class="row">${right}<span class="chip" data-sync>${syncHtml()}</span></div></div>`;
@@ -378,7 +380,8 @@ function vToday() {
   return head('Aujourd’hui', longDate(d), dateBar()) + `<div class="grid">
   <div class="card c4 hero" style="display:flex;gap:16px;align-items:center;justify-content:space-between"><div><h3>Journée remplie</h3><div class="big">${Math.round(sc * 100)} <em>%</em></div><p>${sc === 1 ? 'Parfait, tout est noté 🎉' : 'Coche tout ce que tu as fait.'}</p></div>${ring('today-' + d, sc, Math.round(sc * 100) + '%', { size: 112 })}</div>
   <div class="card c4"><h3>${ic('weight')}Poids</h3><div class="big-in"><input data-day="weight" data-num type="number" step="0.1" inputmode="decimal" placeholder="--,-" value="${x.weight ?? ''}"><span>kg</span></div>
-    <div class="sub">${x.weight != null && lastW ? `${x.weight > lastW.w ? '▲' : x.weight < lastW.w ? '▼' : '='} ${fmt(Math.abs(x.weight - lastW.w))} kg vs ${shortDate(lastW.date)}` : lastW ? `Dernier : ${fmt(lastW.w)} kg (${shortDate(lastW.date)})` : 'Entre ton poids du jour'}</div></div>
+    <div class="seg" style="margin-top:10px">${[['fasting', 'À jeun'], ['normal', 'Pas à jeun']].map(([k, l]) => `<button class="${x.wCond === k ? 'on' : ''}" data-act="set" data-k="wCond" data-v="${k}">${l}</button>`).join('')}</div>
+    <div class="sub" style="margin-top:8px">${x.weight != null && lastW ? `${x.weight > lastW.w ? '▲' : x.weight < lastW.w ? '▼' : '='} ${fmt(Math.abs(x.weight - lastW.w))} kg vs ${shortDate(lastW.date)}` : lastW ? `Dernier : ${fmt(lastW.w)} kg (${shortDate(lastW.date)})` : 'Entre ton poids du jour'}</div></div>
   <div class="card c4"><h3>${ic('work')}Travail</h3><div class="seg" data-seg="work">${[['work', 'Travaillé'], ['off', 'Repos'], ['leave', 'Congé']].map(([k, l]) => `<button class="${x.work === k ? 'on' : ''}" data-act="set" data-k="work" data-v="${k}">${l}</button>`).join('')}</div>
     ${x.work === 'work' ? (() => { const t = tpl(c, d) || {}; return `<div class="f2" style="margin-top:12px;grid-template-columns:1fr 1fr 1fr"><div><label class="l">Début</label><input class="field" type="time" data-day="workS" value="${x.workS ?? t.s ?? ''}"></div><div><label class="l">Fin</label><input class="field" type="time" data-day="workE" value="${x.workE ?? t.e ?? ''}"></div><div><label class="l">Pause (min)</label><input class="field" data-day="workB" data-num type="number" inputmode="numeric" placeholder="0" value="${x.workB ?? t.b ?? ''}"></div></div><div class="sub" style="margin-top:8px">= <b>${fmt(workedHours(d, c), 2)} h</b> travaillées${tpl(c, d) && x.workS == null ? ' (horaires types)' : ''}</div>`; })() : ''}</div>
   <div class="card c6"><h3>${ic('sport')}Sport</h3><div class="seg">${[['done', '✅ Séance faite'], ['rest', '😴 Repos']].map(([k, l]) => `<button class="${x.sport === k ? 'on' : ''}" data-act="set" data-k="sport" data-v="${k}">${l}</button>`).join('')}</div>
@@ -439,7 +442,7 @@ function vWeight() {
     <div class="list" style="margin-top:18px"><div class="item"><div class="grow">Actuel</div><b>${fmt(last?.w)} kg</b></div><div class="item"><div class="grow">Départ</div><b>${fmt(startW)} kg</b></div><div class="item"><div class="grow">Objectif</div><b>${fmt(c.goalWeight)} kg</b></div>
     <div class="item"><div class="grow">${lost != null && lost < 0 ? 'Pris' : 'Perdu'}</div><b>${lost != null ? fmt(Math.abs(lost)) + ' kg' : '–'}</b></div><div class="item"><div class="grow">Reste à ${toGo != null && toGo < 0 ? 'prendre' : 'perdre'}</div><b>${toGo != null ? fmt(Math.abs(toGo)) + ' kg' : '–'}</b></div>${bmi ? `<div class="item"><div class="grow">IMC</div><b>${fmt(bmi)}</b></div>` : ''}</div></div>
   <div class="card c12"><h3>🔮 Prévision</h3>${(() => { const f = weightForecast(); return f.ok ? `<div class="val">${f.perWeek > 0 ? '+' : ''}${fmt(f.perWeek, 2)}<small>kg / semaine</small></div><p class="sub">${f.msg}</p>` : `<p class="sub">${f.msg}</p>`; })()}<button class="btn pri sm" data-act="coach" data-m="week">✨ Bilan IA de ma semaine</button></div>
-  <div class="card c12"><h3>Historique</h3>${ws.length ? `<table class="table"><tr><th>Date</th><th>Poids</th><th>Écart</th><th></th></tr>${[...ws].reverse().slice(0, 15).map((w, i, a) => { const p = a[i + 1]; const dl = p ? w.w - p.w : null; return `<tr><td>${longDate(w.date)}</td><td><b>${fmt(w.w)} kg</b></td><td>${dl == null ? '' : `<span class="chip ${dl <= 0 ? 'up' : 'down'}">${dl <= 0 ? '▼' : '▲'} ${fmt(Math.abs(dl))}</span>`}</td><td style="text-align:right"><button class="x" data-act="delweight" data-d="${w.date}" aria-label="Supprimer">${ic('x')}</button></td></tr>`; }).join('')}</table>` : '<div class="empty">Aucune pesée pour l’instant</div>'}</div></div>`;
+  <div class="card c12"><h3>Historique</h3>${ws.length ? `<table class="table"><tr><th>Date</th><th>Poids</th><th>Écart</th><th></th></tr>${[...ws].reverse().slice(0, 15).map((w, i, a) => { const p = a[i + 1]; const dl = p ? w.w - p.w : null; return `<tr><td>${longDate(w.date)}</td><td><b>${fmt(w.w)} kg</b>${day(w.date).wCond ? ` <span class="chip">${day(w.date).wCond === 'fasting' ? 'à jeun' : 'pas à jeun'}</span>` : ''}</td><td>${dl == null ? '' : `<span class="chip ${dl <= 0 ? 'up' : 'down'}">${dl <= 0 ? '▼' : '▲'} ${fmt(Math.abs(dl))}</span>`}</td><td style="text-align:right"><button class="x" data-act="delweight" data-d="${w.date}" aria-label="Supprimer">${ic('x')}</button></td></tr>`; }).join('')}</table>` : '<div class="empty">Aucune pesée pour l’instant</div>'}</div></div>`;
 }
 
 function vSport() {
@@ -555,6 +558,45 @@ function vBudget() {
   <div class="card c5"><h3>Dépenses par jour</h3>${bars('bd', perDay, { unit: ' €' })}${s.proj != null ? `<p class="sub" style="margin-top:10px">À ce rythme : <b>${eur(s.proj)}</b> de dépenses fin de mois ${s.income && s.proj + s.creditM > s.income ? '<span class="chip down">au-dessus de tes revenus</span>' : '<span class="chip up">OK</span>'}</p>` : ''}</div>
   <div class="card c12"><h3>Opérations du mois (${s.tx.length})</h3>${s.tx.length ? `<div class="list">${s.tx.map(t => `<div class="item"><span style="font-size:20px">${t.type === 'inc' ? '💰' : catIcon(t.cat)}</span><div class="grow"><div class="t">${esc(t.note || t.cat || 'Autre')}</div><div class="s">${esc(t.type === 'inc' ? 'Revenu' : t.cat || 'Autre')} · ${longDate(t.date)}</div></div><b style="color:${t.type === 'inc' ? 'var(--ok)' : 'inherit'}">${t.type === 'inc' ? '+' : '−'}${eur(t.amount)}</b><button class="x" data-act="deltx" data-id="${t.id}" aria-label="Supprimer">${ic('x')}</button></div>`).join('')}</div>` : '<div class="empty">Aucune opération ce mois-ci</div>'}${c.netSalary ? '' : '<p class="sub">Astuce : renseigne ton salaire net dans Réglages pour calculer ce qu’il te reste.</p>'}</div></div>`;
 }
+/* ---------- Rappels / notifications push ---------- */
+const WD = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+const REMS = [
+  { k: 'water', i: '💧', t: 'Eau', d: 'Rappels réguliers (arrêtés quand ton objectif du jour est atteint)', def: { start: '09:00', end: '20:00', every: 2 }, f: [['start', 'time', 'Début'], ['end', 'time', 'Fin'], ['every', 'number', 'Toutes les (heures)']] },
+  { k: 'sport', i: '🏋️', t: 'Exercice', d: 'À l’heure de ta séance (pas de rappel si déjà notée)', def: { time: '18:00', days: [0, 2, 4] }, f: [['time', 'time', 'Heure'], ['days', 'days', 'Jours']] },
+  { k: 'meals', i: '🍽️', t: 'Repas', d: 'Pour noter ce que tu manges (pas de rappel si déjà noté)', def: { b: '08:00', l: '12:30', d: '19:30' }, f: [['b', 'time', 'Petit-déj'], ['l', 'time', 'Déjeuner'], ['d', 'time', 'Dîner']] },
+  { k: 'weigh', i: '⚖️', t: 'Pesée', d: 'Pas de rappel si tu t’es déjà pesé', def: { time: '07:00', days: [0, 1, 2, 3, 4, 5, 6], fasting: true }, f: [['time', 'time', 'Heure'], ['fasting', 'fast', 'Conditions'], ['days', 'days', 'Jours']] },
+  { k: 'credit', i: '🏦', t: 'Mensualité de crédit', d: 'Avant la date de prélèvement', def: { day: 5, lead: 1, time: '09:00' }, f: [['day', 'number', 'Jour du mois'], ['lead', 'number', 'Prévenir (jours avant)'], ['time', 'time', 'Heure']] },
+  { k: 'rent', i: '🏠', t: 'Loyer', d: 'Avant l’échéance', def: { day: 1, lead: 2, time: '09:00', amount: null }, f: [['day', 'number', 'Jour du mois'], ['lead', 'number', 'Prévenir (jours avant)'], ['time', 'time', 'Heure'], ['amount', 'number', 'Montant (€)']] },
+  { k: 'bills', i: '🧾', t: 'Autres charges', d: 'Électricité, internet, assurance, abonnements…', def: { time: '09:00', items: [] }, special: 'bills' },
+  { k: 'sleep', i: '😴', t: 'Coucher', d: 'Pour tenir ton objectif de sommeil', def: { time: '22:30' }, f: [['time', 'time', 'Heure']] },
+  { k: 'evening', i: '📝', t: 'Bilan du soir', d: 'Compléter ta journée (sommeil, humeur)', def: { time: '21:00' }, f: [['time', 'time', 'Heure']] },
+  { k: 'budget', i: '💶', t: 'Dépenses du jour', d: 'Noter tes dépenses', def: { time: '20:30' }, f: [['time', 'time', 'Heure']] },
+  { k: 'week', i: '📊', t: 'Bilan de la semaine', d: 'Lancer le bilan IA', def: { day: 6, time: '19:00' }, f: [['day', 'weekday', 'Jour'], ['time', 'time', 'Heure']] }
+];
+function remField(k, r, [fk, type, label]) {
+  const a = `data-rem="${k}" data-rk="${fk}"`, v = r[fk];
+  if (type === 'days') return `<div style="grid-column:1/-1"><label class="l">${label}</label><div class="chips">${WD.map((d, i) => `<button type="button" class="${(v || []).includes(i) ? 'on' : ''}" data-act="remday" data-k="${k}" data-i="${i}">${d}</button>`).join('')}</div></div>`;
+  if (type === 'fast') return `<div style="grid-column:1/-1"><label class="l">${label}</label><div class="seg"><button type="button" class="${v !== false ? 'on' : ''}" data-act="remfast" data-k="${k}" data-v="1">À jeun</button><button type="button" class="${v === false ? 'on' : ''}" data-act="remfast" data-k="${k}" data-v="0">Pas à jeun</button></div></div>`;
+  if (type === 'weekday') return `<div><label class="l">${label}</label><select class="field" ${a}>${WD.map((d, i) => `<option value="${i}" ${Number(v) === i ? 'selected' : ''}>${d}</option>`).join('')}</select></div>`;
+  return `<div><label class="l">${label}</label><input class="field" ${a} type="${type}" ${type === 'number' ? 'inputmode="decimal"' : ''} value="${v ?? ''}"></div>`;
+}
+function vReminders() {
+  const rem = val('rem'), st = ui.push || 'unknown';
+  const msg = { unsupported: 'Ce navigateur ne gère pas les notifications. Sur iPhone : installe d’abord l’app (Partager → Sur l’écran d’accueil) puis ouvre-la depuis l’icône.', denied: 'Notifications bloquées : autorise-les dans les réglages du navigateur pour ce site.', on: 'Activées sur cet appareil ✓', off: 'Désactivées sur cet appareil.', unknown: 'Vérification…' }[st];
+  const cards = REMS.map(R => { const r = { ...R.def, ...(rem[R.k] || {}) }, on = !!(rem[R.k] && rem[R.k].on);
+    const body = !on ? '' : R.special === 'bills' ? `<div class="list" style="margin-top:12px">${(r.items || []).map(b => `<div class="item"><div class="grow"><div class="t">${esc(b.name)}</div><div class="s">le ${b.day} du mois · prévenir ${b.lead} j avant${b.amount ? ' · ' + eur(b.amount) : ''}</div></div><button class="x" data-act="delbill" data-id="${b.id}" aria-label="Supprimer">${ic('x')}</button></div>`).join('') || '<div class="empty">Aucune charge ajoutée</div>'}</div>
+      <form data-form="bill" style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><input class="field" name="name" placeholder="Nom (ex. Internet)" required style="grid-column:1/-1"><input class="field" name="day" type="number" min="1" max="31" placeholder="Jour" required><input class="field" name="lead" type="number" min="0" max="14" placeholder="Jours avant" value="1"><input class="field" name="amount" type="number" step="0.01" placeholder="€"><button class="btn pri sm" style="grid-column:1/-1;justify-content:center">${ic('plus')}Ajouter</button></form><div style="margin-top:10px">${remField(R.k, r, ['time', 'time', 'Heure du rappel'])}</div>`
+      : `<div class="f2" style="margin-top:12px;gap:10px">${R.f.map(f => remField(R.k, r, f)).join('')}</div>`;
+    return `<div class="card c6"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div><h3 style="margin:0">${R.i} ${R.t}</h3><div class="sub">${R.d}</div></div><button class="sw ${on ? 'on' : ''}" data-act="remtoggle" data-k="${R.k}" aria-label="Activer ${R.t}"></button></div>${body}</div>`; }).join('');
+  return head('Rappels', 'Notifications push, même quand l’app est fermée') + `<div class="grid" style="align-items:start"><div class="card c12"><h3>${ic('bell')}Notifications de cet appareil</h3><p style="margin:0 0 12px">${msg}</p><div class="row">${st === 'on' ? '<button class="btn pri" data-act="pushtest">Envoyer un test</button><button class="btn" data-act="pushoff">Désactiver ici</button>' : st === 'off' || st === 'unknown' ? '<button class="btn pri" data-act="pushon">🔔 Activer les notifications</button>' : ''}</div><p class="sub" style="margin-bottom:0">Chaque appareil (PC, téléphone) s’active séparément. Les rappels déjà faits (eau atteinte, pesée saisie…) ne sont pas envoyés.</p></div>${cards}</div>`;
+}
+const b64u = k => { const p = '='.repeat((4 - k.length % 4) % 4), b = atob((k + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+async function pushState() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return 'unsupported';
+  if (Notification.permission === 'denied') return 'denied';
+  try { const reg = await navigator.serviceWorker.ready; return (await reg.pushManager.getSubscription()) ? 'on' : 'off'; } catch { return 'off'; }
+}
+async function refreshPush() { const st = await pushState(); if (ui.push !== st) { ui.push = st; if (ui.tab === 'reminders') render(true); } }
 function vSettings() {
   const c = cfg(), th = theme(), n = (k, l, step = '1', ph = '') => `<div><label class="l">${l}</label><input class="field" data-cfg="${k}" data-num type="number" step="${step}" inputmode="decimal" placeholder="${ph}" value="${c[k] ?? ''}"></div>`;
   return head('Réglages', 'Objectifs, apparence et synchronisation') + `<div class="grid">
@@ -566,7 +608,7 @@ function vSettings() {
     <div class="row" style="margin-top:10px">${installEvt ? `<button class="btn pri" data-act="install">Installer l’application</button>` : ''}<button class="btn" data-act="export">Exporter (JSON)</button><label class="btn" style="cursor:pointer">Importer<input type="file" accept="application/json" id="imp" hidden></label><button class="btn danger" data-act="logout">Se déconnecter</button></div></div></div>`;
 }
 
-const VIEWS = { budget: vBudget, home: vHome, today: vToday, weight: vWeight, sport: vSport, food: vFood, work: vWork, credit: vCredit, settings: vSettings };
+const VIEWS = { reminders: vReminders, budget: vBudget, home: vHome, today: vToday, weight: vWeight, sport: vSport, food: vFood, work: vWork, credit: vCredit, settings: vSettings };
 
 /* ============================== rendu ============================== */
 function vLogin(initialized, err = '') {
@@ -632,6 +674,29 @@ const ACTS = {
   clearsched: () => { if (confirm('Effacer l’emploi du temps type ?')) put('cfg', { sched: null }); },
   bmonth: el => { ui.bmonth = el.dataset.m; render(true); },
   deltx: el => { put('tx:' + el.dataset.id, { del: true }); toast('Opération supprimée'); },
+  remtoggle: el => { const k = el.dataset.k, R = REMS.find(x => x.k === k), cur = val('rem')[k]; put('rem', { [k]: { ...R.def, ...(cur || {}), on: !(cur && cur.on) } }); },
+  remday: el => { const k = el.dataset.k, i = Number(el.dataset.i), R = REMS.find(x => x.k === k), r = { ...R.def, ...(val('rem')[k] || {}) }, d = new Set(r.days || []); d.has(i) ? d.delete(i) : d.add(i); put('rem', { [k]: { ...r, days: [...d].sort() } }); },
+  remfast: el => { const k = el.dataset.k, R = REMS.find(x => x.k === k); put('rem', { [k]: { ...R.def, ...(val('rem')[k] || {}), fasting: el.dataset.v === '1' } }); },
+  delbill: el => { const r = { ...REMS[6].def, ...(val('rem').bills || {}) }; put('rem', { bills: { ...r, items: r.items.filter(b => b.id !== el.dataset.id) } }); },
+  pushon: async () => {
+    try {
+      if ((await pushState()) === 'unsupported') throw new Error('Notifications non supportées ici (sur iPhone : installe d’abord l’app sur l’écran d’accueil).');
+      if ((await Notification.requestPermission()) !== 'granted') throw new Error('Permission refusée');
+      const j = await (await fetch('/api/vapid')).json(); if (!j.key) throw new Error(j.error || 'Clé serveur manquante');
+      const reg = await navigator.serviceWorker.ready;
+      const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(j.key) });
+      const o = sub.toJSON(), { error } = await sb.from('push_subs').upsert({ endpoint: o.endpoint, p256dh: o.keys.p256dh, auth: o.keys.auth, tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' }, { onConflict: 'endpoint' });
+      if (error) throw error;
+      toast('Notifications activées ✓');
+    } catch (e) { toast(e.message || 'Activation impossible'); }
+    refreshPush();
+  },
+  pushoff: async () => { try { const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription(); if (sub) { await sb.from('push_subs').delete().eq('endpoint', sub.endpoint); await sub.unsubscribe(); } toast('Notifications désactivées'); } catch (e) { toast('Erreur : ' + e.message); } refreshPush(); },
+  pushtest: async () => {
+    const { data } = await sb.auth.getSession();
+    const r = await fetch('/api/push-test', { method: 'POST', headers: { Authorization: 'Bearer ' + (data.session?.access_token || '') } }).catch(() => null), j = r ? await r.json().catch(() => ({})) : {};
+    toast(r && r.ok ? `Test envoyé à ${j.sent}/${j.total} appareil(s)` : (j.error || 'Test impossible'));
+  },
   coach: el => coach(el.dataset.m),
   addpay: () => payModal(),
   delpay: el => { if (confirm('Supprimer ce versement ?')) put('pay:' + el.dataset.id, { del: true }); },
@@ -650,6 +715,7 @@ document.addEventListener('change', e => {
   const conv = () => el.hasAttribute('data-num') ? numv(el) : (el.value === '' ? null : el.value);
   if (el.dataset.day) setDay({ [el.dataset.day]: conv() });
   else if (el.dataset.sched !== undefined) { const sc = { ...(cfg().sched || {}) }, i = el.dataset.sched; sc[i] = { ...(sc[i] || {}), [el.dataset.k]: el.dataset.k === 'b' ? numv(el) : (el.value || null) }; put('cfg', { sched: sc }); }
+  else if (el.dataset.rem !== undefined) { const k = el.dataset.rem, R = REMS.find(x => x.k === k), cur = { ...R.def, ...(val('rem')[k] || {}) }, t = el.type; cur[el.dataset.rk] = t === 'number' ? numv(el) : t === 'select-one' ? Number(el.value) : el.value; put('rem', { [k]: cur }); }
   else if (el.dataset.bud !== undefined) put('cfg', { budgets: { ...(cfg().budgets || {}), [el.dataset.bud]: numv(el) } });
   else if (el.dataset.cfg) put('cfg', { [el.dataset.cfg]: conv() });
   else if (el.dataset.cr) put('credit', { [el.dataset.cr]: conv() });
@@ -664,6 +730,9 @@ document.addEventListener('submit', async e => {
     setDay({ meals: [...(day(ui.date).meals || []), meal] });
   } else if (f.dataset.form === 'login') {
     await auth(fd, false);
+  } else if (f.dataset.form === 'bill') {
+    const r = { ...REMS[6].def, ...(val('rem').bills || {}), on: true };
+    put('rem', { bills: { ...r, items: [...(r.items || []), { id: uid(), name: fd.name.trim(), day: Number(fd.day), lead: Number(fd.lead) || 0, amount: Number(fd.amount) || null }] } }); toast('Charge ajoutée ✓');
   } else if (f.dataset.form === 'tx') {
     if (!(Number(fd.amount) > 0)) return;
     put('tx:' + uid(), { date: fd.date || today(), amount: Number(fd.amount), cat: fd.cat, type: fd.type, note: fd.note?.trim() || null }); toast(fd.type === 'inc' ? 'Revenu ajouté ✓' : 'Dépense ajoutée ✓');
@@ -780,7 +849,7 @@ const style = document.createElement('style'); style.textContent = '@keyframes g
 matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', () => render(true));
 window.addEventListener('hashchange', () => { const t = location.hash.slice(2); if (TABS.some(x => x[0] === t) && t !== ui.tab) { ui.tab = t; render(true); } });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => { });
-render(true);
+render(true); refreshPush();
 sb.auth.getSession().then(({ data }) => { if (data.session) { if (!S.token) { S.token = true; LS.set('ld_token', true); render(true); } connect(); pull(); flush(); } else if (S.token && navigator.onLine) localLogout(); });
 window.__life = { S, put, val, ui, go }; // utile pour les tests
 })();

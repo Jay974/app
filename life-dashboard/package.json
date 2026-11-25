@@ -1,7 +1,8 @@
 {
   "name": "life-dashboard",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "Dashboard personnel PWA — Vercel + Supabase",
-  "scripts": { "dev": "npx serve public -l 3000", "icons": "node scripts/gen-icons.js" }
+  "scripts": { "dev": "npx serve public -l 3000", "icons": "node scripts/gen-icons.js" },
+  "dependencies": { "@supabase/supabase-js": "2.45.4", "web-push": "3.6.7" }
 }
