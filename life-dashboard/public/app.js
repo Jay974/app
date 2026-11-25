@@ -596,7 +596,20 @@ async function pushState() {
   if (Notification.permission === 'denied') return 'denied';
   try { const reg = await navigator.serviceWorker.ready; return (await reg.pushManager.getSubscription()) ? 'on' : 'off'; } catch { return 'off'; }
 }
-async function refreshPush() { const st = await pushState(); if (ui.push !== st) { ui.push = st; if (ui.tab === 'reminders') render(true); } }
+async function ensureSub(force) { // (ré)abonne cet appareil et enregistre l'abonnement sur le serveur
+  if ((await pushState()) === 'unsupported') throw new Error('Notifications non supportées ici (sur iPhone : installe d’abord l’app sur l’écran d’accueil).');
+  if ((await Notification.requestPermission()) !== 'granted') throw new Error('Permission refusée');
+  const j = await (await fetch('/api/vapid')).json(); if (!j.key) throw new Error(j.error || 'Clé serveur manquante');
+  const reg = await navigator.serviceWorker.ready; let sub = await reg.pushManager.getSubscription();
+  if (sub && force) { await sub.unsubscribe(); sub = null; }
+  sub = sub || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(j.key) });
+  const o = sub.toJSON(), { error } = await sb.from('push_subs').upsert({ endpoint: o.endpoint, p256dh: o.keys.p256dh, auth: o.keys.auth, tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' }, { onConflict: 'endpoint' });
+  if (error) throw error;
+}
+async function refreshPush() {
+  const st = await pushState(); if (ui.push !== st) { ui.push = st; if (ui.tab === 'reminders') render(true); }
+  if (st === 'on' && S.token) ensureSub(false).catch(() => { }); // remet l'abonnement sur le serveur s'il a disparu
+}
 function vSettings() {
   const c = cfg(), th = theme(), n = (k, l, step = '1', ph = '') => `<div><label class="l">${l}</label><input class="field" data-cfg="${k}" data-num type="number" step="${step}" inputmode="decimal" placeholder="${ph}" value="${c[k] ?? ''}"></div>`;
   return head('Réglages', 'Objectifs, apparence et synchronisation') + `<div class="grid">
@@ -679,6 +692,10 @@ const ACTS = {
   remfast: el => { const k = el.dataset.k, R = REMS.find(x => x.k === k); put('rem', { [k]: { ...R.def, ...(val('rem')[k] || {}), fasting: el.dataset.v === '1' } }); },
   delbill: el => { const r = { ...REMS[6].def, ...(val('rem').bills || {}) }; put('rem', { bills: { ...r, items: r.items.filter(b => b.id !== el.dataset.id) } }); },
   pushon: async () => {
+    try { await ensureSub(false); toast('Notifications activées ✓'); } catch (e) { toast(e.message || 'Activation impossible'); }
+    refreshPush();
+  },
+  pushon_old: async () => {
     try {
       if ((await pushState()) === 'unsupported') throw new Error('Notifications non supportées ici (sur iPhone : installe d’abord l’app sur l’écran d’accueil).');
       if ((await Notification.requestPermission()) !== 'granted') throw new Error('Permission refusée');
@@ -694,8 +711,12 @@ const ACTS = {
   pushoff: async () => { try { const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription(); if (sub) { await sb.from('push_subs').delete().eq('endpoint', sub.endpoint); await sub.unsubscribe(); } toast('Notifications désactivées'); } catch (e) { toast('Erreur : ' + e.message); } refreshPush(); },
   pushtest: async () => {
     const { data } = await sb.auth.getSession();
-    const r = await fetch('/api/push-test', { method: 'POST', headers: { Authorization: 'Bearer ' + (data.session?.access_token || '') } }).catch(() => null), j = r ? await r.json().catch(() => ({})) : {};
-    toast(r && r.ok ? `Test envoyé à ${j.sent}/${j.total} appareil(s)` : (j.error || 'Test impossible'));
+    const call = () => fetch('/api/push-test', { method: 'POST', headers: { Authorization: 'Bearer ' + (data.session?.access_token || '') } }).catch(() => null);
+    let r = await call(), j = r ? await r.json().catch(() => ({})) : {};
+    if (r && (r.status === 404 || (r.ok && !j.sent))) { // abonnement perdu ou refusé : on se réabonne proprement puis on réessaie
+      try { toast('Réabonnement de cet appareil…'); await ensureSub(true); r = await call(); j = r ? await r.json().catch(() => ({})) : {}; } catch (e) { return toast(e.message); }
+    }
+    toast(r && r.ok && j.sent ? `Test envoyé à ${j.sent}/${j.total} appareil(s)` : (j.error || 'Test impossible'));
   },
   coach: el => coach(el.dataset.m),
   addpay: () => payModal(),
