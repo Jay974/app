@@ -6,6 +6,11 @@ const B = { rows: null, loading: false, err: '', tab: 'docs', edit: null, filter
 const nb = n => (Number(n) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/[  ]/g, ' ');
 const eur = n => nb(n) + ' €';
 const fdate = s => s ? s.split('-').reverse().join('/') : '';
+const digits = x => String(x || '').replace(/\D/g, '');
+const group = (x, sizes) => { const d = digits(x); if (!d) return String(x || ''); const out = []; let i = 0; for (const n of sizes) { if (i >= d.length) break; out.push(d.slice(i, i + n)); i += n; } if (i < d.length) out.push(d.slice(i)); return out.join(' '); };
+const fmtSiren = x => group(x, [3, 3, 3]), fmtSiret = x => group(x, [3, 3, 3, 5]);
+const fmtPhone = x => { const v = String(x || '').trim(), d = digits(v); return /^\+/.test(v) || d.length !== 10 ? v : group(d, [2, 2, 2, 2, 2]); };
+const fmtIban = x => String(x || '').replace(/\s+/g, '').toUpperCase().replace(/(.{4})/g, '$1 ').trim();
 const rowsOf = k => (B.rows || []).filter(r => r.kind === k);
 const settings = () => (rowsOf('settings')[0] || {}).data || {};
 const clients = () => rowsOf('client').sort((a, b) => (a.data.name || '').localeCompare(b.data.name || ''));
@@ -34,7 +39,8 @@ const newDoc = kind => ({ id: null, kind, d: { status: 'draft', number: null, cl
 
 /* ---------- PDF ---------- */
 function pdf(r) {
-  const s = settings(), d = r.data, cl = (rowsOf('client').find(c => c.id === d.clientId) || {}).data || {}, isInv = r.kind === 'invoice', t = totals(d, s);
+  const s = settings(), d = { ...r.data }, cl = (rowsOf('client').find(c => c.id === d.clientId) || {}).data || {}, isInv = r.kind === 'invoice', t = totals(d, s);
+  if (!(d.conditions || '').trim() && d.status === 'draft') d.conditions = s.conditions || ''; // brouillon : reprend les conditions de « Mon entreprise »
   const { jsPDF } = window.jspdf, doc = new jsPDF({ unit: 'mm', format: 'a4' }), W = 210, M = 15, ACC = [0, 168, 150], H = 297;
   let y = M, left = M;
   doc.setTextColor(30);
@@ -42,9 +48,9 @@ function pdf(r) {
   const lines = (txt, x, w, size = 9, lh = 4.2, color = 60) => { doc.setFontSize(size).setTextColor(color).setFont('helvetica', 'normal'); const arr = doc.splitTextToSize(String(txt || ''), w); arr.forEach((l, i) => doc.text(l, x, y + i * lh)); y += arr.length * lh; };
   doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(20); doc.text(s.name || 'Mon entreprise', M, y); y += 5;
   if (s.legal) lines(s.legal, M, 85, 9, 4.2, 80);
-  lines(s.address, M, 85); if (s.siren) lines('SIREN ' + s.siren + (s.siret ? '  ·  SIRET ' + s.siret : ''), M, 85);
+  lines(s.address, M, 85); if (s.siren) lines('SIREN ' + fmtSiren(s.siren) + (s.siret ? '  ·  SIRET ' + fmtSiret(s.siret) : ''), M, 85);
   if (s.activityNote) lines(s.activityNote, M, 85, 8.5);
-  if (s.email) lines(s.email, M, 85); if (s.phone) lines(s.phone, M, 85);
+  if (s.email) lines(s.email, M, 85); if (s.phone) lines(fmtPhone(s.phone), M, 85);
   const leftEnd = y;
   // titre + références à droite
   doc.setFont('helvetica', 'bold').setFontSize(22).setTextColor(...ACC); doc.text(isInv ? 'FACTURE' : 'DEVIS', W - M, M + 8, { align: 'right' });
@@ -58,7 +64,7 @@ function pdf(r) {
   doc.setDrawColor(210).setFillColor(247, 250, 250).roundedRect(115, cy, W - M - 115, 32, 2, 2, 'FD');
   doc.setFont('helvetica', 'bold').setFontSize(8).setTextColor(...ACC); doc.text('DESTINATAIRE', 119, cy + 5);
   y = cy + 10; doc.setFont('helvetica', 'bold').setFontSize(10).setTextColor(20); doc.text(cl.name || '—', 119, y); y += 4.8;
-  lines(cl.address, 119, 72, 9, 4.2, 70); if (cl.siret) lines('SIRET ' + cl.siret, 119, 72, 8.5); if (cl.email) lines(cl.email, 119, 72, 8.5);
+  lines(cl.address, 119, 72, 9, 4.2, 70); if (cl.siret) lines('SIRET ' + fmtSiret(cl.siret), 119, 72, 8.5); if (cl.email) lines(cl.email, 119, 72, 8.5);
   y = Math.max(leftEnd, cy + 32) + 8;
   // conditions / mentions (bloc éditable) — au-dessus du cadre principal
   if ((d.conditions || '').trim()) {
@@ -86,10 +92,10 @@ function pdf(r) {
   if (!t.rate && s.vatNote) { doc.setFont('helvetica', 'italic').setFontSize(8.5).setTextColor(90); doc.text(s.vatNote, W - M, y, { align: 'right' }); y += 6; }
   y += 4;
   if (d.notes) { ensure(20); doc.setFont('helvetica', 'bold').setFontSize(8).setTextColor(...ACC); doc.text('NOTES', M, y); y += 4; doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(70); doc.splitTextToSize(d.notes, W - 2 * M).forEach(l => { ensure(5); doc.text(l, M, y); y += 4.2; }); y += 3; }
-  if (isInv && (s.iban || s.bic)) { ensure(20); doc.setFont('helvetica', 'bold').setFontSize(8).setTextColor(...ACC); doc.text('RÈGLEMENT PAR VIREMENT', M, y); y += 4.5; doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(60); if (s.iban) { doc.text('IBAN : ' + s.iban, M, y); y += 4.5; } if (s.bic) { doc.text('BIC : ' + s.bic, M, y); y += 4.5; } }
+  if (isInv && (s.iban || s.bic)) { ensure(20); doc.setFont('helvetica', 'bold').setFontSize(8).setTextColor(...ACC); doc.text('RÈGLEMENT PAR VIREMENT', M, y); y += 4.5; doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(60); if (s.iban) { doc.text('IBAN : ' + fmtIban(s.iban), M, y); y += 4.5; } if (s.bic) { doc.text('BIC : ' + s.bic, M, y); y += 4.5; } }
   if (!isInv) { ensure(30); y += 3; doc.setDrawColor(190).setLineWidth(0.3).roundedRect(115, y, W - M - 115, 24, 2, 2); doc.setFont('helvetica', 'normal').setFontSize(8.5).setTextColor(80); doc.text('Bon pour accord — date et signature', 119, y + 5); }
   // pied de page
-  const n = doc.getNumberOfPages(), foot = [s.name, s.legal, s.siren ? 'SIREN ' + s.siren : '', s.siret ? 'SIRET ' + s.siret : '', (s.address || '').replace(/\n/g, ', ')].filter(Boolean).join(' — ');
+  const n = doc.getNumberOfPages(), foot = [s.name, s.legal, s.siren ? 'SIREN ' + fmtSiren(s.siren) : '', s.siret ? 'SIRET ' + fmtSiret(s.siret) : '', (s.address || '').replace(/\n/g, ', ')].filter(Boolean).join(' — ');
   for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(130); doc.text(doc.splitTextToSize(foot, W - 2 * M - 20), M, H - 12); doc.text(`Page ${i}/${n}`, W - M, H - 12, { align: 'right' }); }
   const safe = x => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.-]+/g, '_');
   doc.save(`${isInv ? 'Facture' : 'Devis'}-${safe(d.number || 'brouillon')}-${safe(cl.name)}.pdf`);
@@ -102,7 +108,7 @@ function viewSettings() {
   const s = settings();
   return `<div class="card c12"><h3>🏢 Mon entreprise (apparaît sur les documents)</h3><form data-bform="settings"><div class="f2" style="gap:12px">
   ${field('Nom (ex. Jean-Chris OULIA)', inp('name', s.name, 'required'))}${field('Forme juridique', inp('legal', s.legal ?? 'Entreprise individuelle (EI)'))}
-  ${field('SIREN', inp('siren', s.siren, 'inputmode="numeric"'))}${field('SIRET (14 chiffres)', inp('siret', s.siret, 'inputmode="numeric"'))}
+  ${field('SIREN', inp('siren', s.siren))}${field('SIRET (14 chiffres)', inp('siret', s.siret))}
   ${field('Adresse du siège', `<textarea class="field" data-bs="address" rows="2">${esc(s.address || '')}</textarea>`, true)}
   ${field('Email', inp('email', s.email, 'type="email"'))}${field('Téléphone', inp('phone', s.phone))}
   ${field('IBAN (pour les virements)', inp('iban', s.iban))}${field('BIC', inp('bic', s.bic))}
@@ -134,7 +140,7 @@ function viewEdit() {
   return `<div class="card c12"><h3>${isInv ? 'Facture' : 'Devis'} ${d.number ? d.number : '(brouillon)'}</h3><div class="f2" style="gap:12px">
   ${field('Client', `<select class="field" data-bd="clientId"><option value="">— choisir —</option>${cs.map(c => `<option value="${c.id}" ${d.clientId === c.id ? 'selected' : ''}>${esc(c.data.name)}</option>`).join('')}</select>${cs.length ? '' : '<span class="sub">Ajoute d\'abord un client (onglet Clients).</span>'}`, true)}
   ${field('Date', `<input class="field" type="date" data-bd="date" value="${d.date}">`)}${field(isInv ? 'Échéance de paiement' : 'Valable jusqu\'au', `<input class="field" type="date" data-bd="due" value="${d.due}">`)}</div>
-  <h3 style="margin-top:18px">Lignes</h3><div class="list" id="b-lines">${d.lines.map((l, i) => `<div class="item" style="flex-wrap:wrap;gap:8px"><input class="field" style="flex:3;min-width:180px" placeholder="Description" data-bl="${i}" data-k="d" value="${esc(l.d)}"><input class="field" style="width:72px" type="number" step="0.01" placeholder="Qté" data-bl="${i}" data-k="q" value="${l.q}"><input class="field" style="width:84px" placeholder="Unité" data-bl="${i}" data-k="u" value="${esc(l.u)}"><input class="field" style="width:110px" type="number" step="0.01" placeholder="Prix unit." data-bl="${i}" data-k="p" value="${l.p}"><button class="x" data-b="rmline" data-i="${i}" aria-label="Supprimer la ligne">${ic('x')}</button></div>`).join('')}</div>
+  <h3 style="margin-top:18px">Lignes</h3><div class="list" id="b-lines">${d.lines.map((l, i) => `<div class="item" style="flex-wrap:wrap;gap:8px"><textarea class="field" style="flex:3;min-width:180px" rows="2" placeholder="Description (les retours à la ligne sont conservés)" data-bl="${i}" data-k="d">${esc(l.d)}</textarea><input class="field" style="width:72px" type="number" step="0.01" placeholder="Qté" data-bl="${i}" data-k="q" value="${l.q}"><input class="field" style="width:84px" placeholder="Unité" data-bl="${i}" data-k="u" value="${esc(l.u)}"><input class="field" style="width:110px" type="number" step="0.01" placeholder="Prix unit." data-bl="${i}" data-k="p" value="${l.p}"><button class="x" data-b="rmline" data-i="${i}" aria-label="Supprimer la ligne">${ic('x')}</button></div>`).join('')}</div>
   <div class="row" style="margin-top:10px;justify-content:space-between"><button class="btn sm" data-b="addline">${ic('plus')}Ajouter une ligne</button><div style="text-align:right"><div class="sub">Total HT <b id="b-ht">${eur(totals(d, s).ht)}</b></div>${totals(d, s).rate ? `<div class="sub">TVA <b>${eur(totals(d, s).tva)}</b></div>` : `<div class="sub">${esc(s.vatNote || '')}</div>`}<div style="font-size:20px;font-weight:800">Total <span id="b-ttc">${eur(totals(d, s).ttc)}</span></div></div></div>
   <div class="f2" style="gap:12px;margin-top:16px">${field('Conditions et mentions (au-dessus du cadre principal) — modifiable', `<textarea class="field" data-bd="conditions" rows="5">${esc(d.conditions)}</textarea>`, true)}${field('Notes (en bas du document)', `<textarea class="field" data-bd="notes" rows="2">${esc(d.notes)}</textarea>`, true)}</div>
   <div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn" data-b="cancel-edit">Fermer</button><button class="btn" data-b="save">Enregistrer le brouillon</button><button class="btn" data-b="pdfdraft">PDF (aperçu)</button><button class="btn pri" data-b="issue">Émettre et numéroter</button></div></div>`;
@@ -152,7 +158,7 @@ const ACT = {
   tab: el => { B.tab = el.dataset.v; B.edit = null; A.render(true); },
   filter: el => { B.filter = el.dataset.v; A.render(true); },
   new: el => { if (!settings().name) { B.tab = 'settings'; toast('Renseigne d\'abord ton entreprise'); return A.render(true); } B.edit = newDoc(el.dataset.k); A.render(true); },
-  edit: el => { const r = byId(el.dataset.id); B.edit = { id: r.id, kind: r.kind, d: JSON.parse(JSON.stringify(r.data)) }; A.render(true); },
+  edit: el => { const r = byId(el.dataset.id); B.edit = { id: r.id, kind: r.kind, d: JSON.parse(JSON.stringify(r.data)) }; if (!(B.edit.d.conditions || '').trim()) B.edit.d.conditions = settings().conditions || ''; A.render(true); },
   'cancel-edit': () => { B.edit = null; A.render(true); },
   addline: () => { B.edit.d.lines.push({ d: '', q: 1, u: '', p: 0 }); A.render(true); },
   rmline: el => { const L = B.edit.d.lines; if (L.length > 1) L.splice(Number(el.dataset.i), 1); A.render(true); },
@@ -199,10 +205,10 @@ document.addEventListener('change', async e => {
 document.addEventListener('submit', async e => {
   const f = e.target, k = f.dataset.bform; if (!k) return; e.preventDefault();
   if (k === 'settings') {
-    const s = { ...settings() }; $$('[data-bs]', f).forEach(i => { s[i.dataset.bs] = i.value.trim(); }); s.vatRate = Number(s.vatRate) || 0;
+    const s = { ...settings() }; $$('[data-bs]', f).forEach(i => { s[i.dataset.bs] = i.dataset.bs === 'conditions' || i.dataset.bs === 'address' ? i.value.replace(/\s+$/, '') : i.value.trim(); }); s.vatRate = Number(s.vatRate) || 0; s.siren = fmtSiren(s.siren); s.siret = fmtSiret(s.siret); s.phone = fmtPhone(s.phone); s.iban = fmtIban(s.iban);
     if (await save('settings', (rowsOf('settings')[0] || {}).id, s)) toast('Entreprise enregistrée ✓'); A.render(true);
   } else if (k === 'client') {
-    const fd = Object.fromEntries(new FormData(f)), id = fd.id || null; delete fd.id;
+    const fd = Object.fromEntries(new FormData(f)), id = fd.id || null; delete fd.id; fd.siret = fmtSiret(fd.siret); fd.phone = fmtPhone(fd.phone);
     if (await save('client', id, fd)) { toast(id ? 'Client mis à jour ✓' : 'Client ajouté ✓'); B.clientEdit = null; A.render(true); }
   }
 });
