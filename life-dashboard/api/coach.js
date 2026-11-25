@@ -1,4 +1,5 @@
 // Fonction Vercel : bilan de semaine et conseils financiers (Claude). Env : ANTHROPIC_API_KEY
+const { ask } = require('./_ai');
 const SB = process.env.SUPABASE_URL || 'https://xfhubsvivbjgvvytbyxa.supabase.co';
 const KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_gBHLEE6rCDSgdrxPBxDSaA_l9yQqjEq';
 const PROMPTS = {
@@ -14,15 +15,8 @@ module.exports = async (req, res) => {
   const { mode, data } = req.body || {};
   if (!PROMPTS[mode] || !data) return res.status(400).json({ error: 'Requête invalide' });
   const payload = JSON.stringify(data).slice(0, 12000);
-  if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'Clé IA non configurée sur Vercel' });
   try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: process.env.COACH_MODEL || 'claude-sonnet-5-5', max_tokens: 2000, system: PROMPTS[mode], messages: [{ role: 'user', content: 'Données (JSON) :\n' + payload }] })
-    });
-    const j = await r.json();
-    if (!r.ok) return res.status(502).json({ error: j.error?.message || 'Erreur IA' });
-    return res.status(200).json({ text: (j.content || []).filter(b => b.type === 'text').map(b => b.text).join(''), truncated: j.stop_reason === 'max_tokens' });
-  } catch (e) { return res.status(502).json({ error: 'Analyse impossible' }); }
+    const r = await ask({ system: PROMPTS[mode], user: 'Données (JSON) :\n' + payload, maxTokens: 2000, model: process.env.COACH_MODEL || 'claude-sonnet-5-5' });
+    return res.status(200).json({ text: r.text, truncated: r.truncated, provider: r.provider });
+  } catch (e) { console.error('coach', e); return res.status(502).json({ error: 'Analyse impossible : ' + (e.message || e).toString().slice(0, 200) }); }
 };
