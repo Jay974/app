@@ -14,7 +14,7 @@ function png(size, maskable) {
       const dx = Math.max(rad - x, 0, x - (size - 1 - rad)), dy = Math.max(rad - y, 0, y - (size - 1 - rad));
       const inside = rad === 0 || dx * dx + dy * dy <= rad * rad;
       const t = (x + y) / (2 * size);
-      let r = 255 * (1 - t) + 120 * t, g = 90 * (1 - t) + 30 * t, b = 80 * (1 - t) + 50 * t; // dégradé corail -> bordeaux
+      let r = 0 * (1 - t) + 4 * t, g = 168 * (1 - t) + 60 * t, b = 150 * (1 - t) + 55 * t; // dégradé corail -> bordeaux
       // anneau de progression (≈ 70 %) blanc
       const d = Math.hypot(x - R, y - R), ring = size * (maskable ? 0.22 : 0.27), th = size * 0.065;
       let a = inside ? 255 : 0;

@@ -40,7 +40,7 @@ const ICONS = {
 };
 const ic = (n, c = 'ic') => `<svg class="${c}" viewBox="0 0 24 24">${ICONS[n] || ''}</svg>`;
 const TABS = [['home', 'Dashboard'], ['today', 'Aujourd’hui'], ['weight', 'Poids'], ['sport', 'Sport'], ['food', 'Repas'], ['work', 'Travail'], ['credit', 'Crédit'], ['settings', 'Réglages']];
-const ACCENTS = { Corail: '255,90,79', Violet: '139,92,246', Océan: '56,189,248', Menthe: '45,212,160', Ambre: '245,158,11', Rose: '244,114,182' };
+const ACCENTS = { Jade: '0,168,150', Corail: '255,90,79', Violet: '139,92,246', Océan: '56,189,248', Menthe: '45,212,160', Ambre: '245,158,11', Rose: '244,114,182' };
 const SPORTS = ['Muscu', 'Cardio', 'Course', 'Marche', 'Vélo', 'Natation', 'Yoga', 'Autre'];
 const SLOTS = ['Petit-déj', 'Déjeuner', 'Dîner', 'Collation'];
 const MOODS = ['😞', '😕', '😐', '🙂', '😄'];
@@ -129,7 +129,7 @@ function localLogout() {
 }
 
 /* ============================== domaine ============================== */
-const DEF = { goalWeight: null, startWeight: null, height: null, kcalGoal: 2200, waterGoal: 8, sportTarget: 3, workTarget: 20, dayRate: 0, name: '', accent: 'Corail' };
+const DEF = { goalWeight: null, startWeight: null, height: null, kcalGoal: 2200, waterGoal: 8, sportTarget: 3, workTarget: 20, dayRate: 0, name: '', accent: 'Jade' };
 const cfg = () => ({ ...DEF, ...val('cfg') });
 const credit = () => ({ name: 'Mon crédit', total: 0, monthly: 0, start: null, ...val('credit') });
 const day = d => val('day:' + d);
@@ -252,7 +252,7 @@ function bars(id, items, { goal, h = 150, unit = '' } = {}) { // items: [{label,
 }
 
 /* ============================== UI state ============================== */
-const ui = { tab: (location.hash.slice(2) || 'home'), date: today(), range: 30, month: today().slice(0, 7), dirty: false };
+const ui = { tab: (location.hash.slice(2) || 'home'), date: today(), range: 30, month: today().slice(0, 7), dirty: false, anim: true };
 if (!TABS.some(t => t[0] === ui.tab)) ui.tab = 'home';
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
@@ -261,17 +261,17 @@ function applyTheme() {
   const c = cfg(), t = theme();
   const light = t === 'light' || (t === 'auto' && matchMedia('(prefers-color-scheme: light)').matches);
   document.documentElement.dataset.theme = light ? 'light' : 'dark';
-  const rgb = ACCENTS[c.accent] || ACCENTS.Corail;
+  const rgb = ACCENTS[c.accent] || ACCENTS.Jade;
   document.documentElement.style.setProperty('--acc-rgb', rgb);
   document.documentElement.style.setProperty('--acc', `rgb(${rgb})`);
-  const tc = light ? '#f6eeeb' : '#140b0b';
+  const tc = light ? '#eef6f4' : '#0a1514';
   $('meta[name=theme-color]').content = tc;
 }
 function toast(msg) {
   const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg;
   $('#toasts').appendChild(el); setTimeout(() => el.remove(), 2200);
 }
-function go(tab) { ui.tab = tab; history.replaceState(null, '', '#/' + tab); render(true); window.scrollTo(0, 0); }
+function go(tab) { ui.anim = true; ui.tab = tab; history.replaceState(null, '', '#/' + tab); render(true); window.scrollTo(0, 0); }
 
 /* ============================== vues ============================== */
 const head = (title, sub, right = '') => `<div class="top"><div><h1>${title}</h1>${sub ? `<p>${sub}</p>` : ''}</div><div class="row">${right}<span class="chip" data-sync>${syncHtml()}</span></div></div>`;
@@ -285,8 +285,8 @@ function mealsCard(d) {
   return `<div class="card c6"><h3>${ic('food')}Repas · ${fmt(tot, 0)} / ${fmt(c.kcalGoal, 0)} kcal</h3>
   <div class="bar" style="margin-bottom:12px"><i style="width:${Math.min(tot / c.kcalGoal * 100, 100)}%"></i></div>
   <div class="list">${meals.length ? meals.map(m => `<div class="item"><div class="grow"><div class="t">${esc(m.name)}</div><div class="s">${esc(m.slot)}${m.kcal ? ' · ' + fmt(m.kcal, 0) + ' kcal' : ''}</div></div><button class="x" data-act="delmeal" data-id="${m.id}" aria-label="Supprimer">${ic('x')}</button></div>`).join('') : '<div class="empty">Rien noté pour ce jour</div>'}</div>
-  <form data-form="meal" style="margin-top:12px;display:grid;grid-template-columns:1fr 90px;gap:8px"><input class="field" name="name" placeholder="Qu’est-ce que tu as mangé ?" required maxlength="60"><input class="field" name="kcal" type="number" inputmode="numeric" min="0" placeholder="kcal">
-  <select class="field" name="slot">${SLOTS.map((s, i) => `<option ${i === defaultSlot() ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn pri" style="justify-content:center">${ic('plus')}Ajouter</button></form>
+  <form data-form="meal" style="margin-top:12px;display:grid;grid-template-columns:1fr 90px;gap:8px"><input class="field" name="name" placeholder="Ex : 2 œufs, 100 g de riz, 1 pomme" required maxlength="60"><input class="field" name="kcal" type="number" inputmode="numeric" min="0" placeholder="kcal ✨ auto">
+  <select class="field" name="slot">${SLOTS.map((s, i) => `<option ${i === defaultSlot() ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn pri" style="justify-content:center" data-ai>${ic('plus')}Ajouter</button></form><p class="sub" style="margin:8px 0 0">Laisse « kcal » vide : l’IA estime les calories pour toi ✨</p>
   ${top.length ? `<div class="chips" style="margin-top:12px">${top.map(t => `<button data-act="quickmeal" data-name="${esc(t.name)}" data-kcal="${t.kcal || ''}" data-slot="${esc(t.slot)}">+ ${esc(t.name)}</button>`).join('')}</div>` : ''}</div>`;
 }
 const defaultSlot = () => { const h = new Date().getHours(); return h < 10 ? 0 : h < 15 ? 1 : h < 17 ? 3 : 2; };
@@ -327,7 +327,7 @@ function vHome() {
   const heatRows = [['Sport', d => day(d).sport === 'done' ? 'on' : day(d).sport === 'rest' ? 'mid' : ''], ['Travail', d => day(d).work === 'work' ? 'on' : day(d).work ? 'mid' : ''], ['Poids', d => day(d).weight != null ? 'on' : ''], ['Repas', d => kcalOf(d) > 0 ? 'on' : ''], ['Eau', d => (day(d).water || 0) >= c.waterGoal ? 'on' : (day(d).water || 0) > 0 ? 'mid' : '']];
   const wdays = Array.from({ length: 7 }, (_, i) => addDays(wkS, i));
   return head(greet(), longDate(t), `<button class="btn" data-act="palette">${ic('search')}<span class="kbd">⌘K</span></button>`) + `<div class="grid">
-  <div class="card c7 hero" style="display:flex;justify-content:space-between;gap:16px;align-items:center"><div><h3>Ta semaine</h3><div class="big">Tu es à <em>${Math.round(avg * 100)} %</em> de suivi cette semaine</div><p>${wk.n}/${c.sportTarget} séances · ${worked} jours travaillés ce mois</p><button class="btn" style="background:rgba(255,255,255,.95);color:#7a1f2e" data-act="go" data-to="today">Remplir aujourd’hui →</button></div>${ring('week', avg, Math.round(avg * 100) + '%', { size: 138, sw: 13 })}</div>
+  <div class="card c7 hero" style="display:flex;justify-content:space-between;gap:16px;align-items:center"><div><h3>Ta semaine</h3><div class="big">Tu es à <em>${Math.round(avg * 100)} %</em> de suivi cette semaine</div><p>${wk.n}/${c.sportTarget} séances · ${worked} jours travaillés ce mois</p><button class="btn" style="background:rgba(255,255,255,.95);color:#0b4a44" data-act="go" data-to="today">Remplir aujourd’hui →</button></div>${ring('week', avg, Math.round(avg * 100) + '%', { size: 138, sw: 13 })}</div>
   <div class="card c5"><h3>${ic('today')}À faire aujourd’hui</h3><div class="chips">${todo.map(([l, ok]) => `<button class="${ok ? 'on' : ''}" data-act="go" data-to="today">${ok ? '✓' : '○'} ${l}</button>`).join('')}</div>
     <div class="row" style="margin-top:14px"><button class="btn pri sm" data-act="set-today" data-k="sport" data-v="done">✅ Sport fait</button><button class="btn sm" data-act="set-today" data-k="work" data-v="work">💼 J’ai travaillé</button><button class="btn sm" data-act="water-today">💧 +1 verre</button></div></div>
   <div class="card c3 kpis"><h3>${ic('weight')}Poids</h3><div class="val">${fmt(lastW?.w)}<small>kg</small></div><div class="sub">${delta != null ? `<span class="chip ${delta <= 0 ? 'up' : 'down'}">${delta <= 0 ? '▼' : '▲'} ${fmt(Math.abs(delta))} kg / 30 j</span>` : 'Entre ton poids'}</div>${lineChart('sp-w', wy, days30.map(shortDate), { spark: true })}</div>
@@ -459,6 +459,7 @@ function render(local = false) {
     $('#app').innerHTML = `<div class="shell"><aside class="side"><div class="brand"><b>${ic('logo')}</b>Ma Vie</div><nav class="nav">${nav}</nav><div class="grow"></div>
       <a class="nav" style="display:flex"><button class="btn ghost" data-act="palette" style="width:100%;justify-content:space-between">${ic('search')}Rechercher<span class="kbd">⌘K</span></button></a><div class="sync" data-sync>${syncHtml()}</div></aside>
       <main>${VIEWS[ui.tab]()}</main></div><nav class="bottom">${nav}</nav>`;
+    $('#app').classList.toggle('still', !ui.anim); ui.anim = false;
     window.scrollTo(0, y); hydrate();
   });
 }
@@ -505,7 +506,12 @@ document.addEventListener('submit', async e => {
   const f = e.target; if (!f.dataset.form) return; e.preventDefault();
   const fd = Object.fromEntries(new FormData(f));
   if (f.dataset.form === 'meal') {
-    setDay({ meals: [...(day(ui.date).meals || []), { id: uid(), name: fd.name.trim(), kcal: Number(fd.kcal) || 0, slot: fd.slot }] });
+    let kcal = Number(fd.kcal) || 0;
+    if (!kcal) {
+      const btn = $('[data-ai]', f); btn.disabled = true; btn.textContent = '✨ Estimation…';
+      try { kcal = await estimate(fd.name); toast(`✨ ≈ ${kcal} kcal`); } catch (err) { toast(err.message || 'Estimation indisponible'); }
+    }
+    setDay({ meals: [...(day(ui.date).meals || []), { id: uid(), name: fd.name.trim(), kcal, slot: fd.slot }] });
   } else if (f.dataset.form === 'login') {
     await auth(fd, false);
   } else if (f.dataset.form === 'pay') {
@@ -513,12 +519,20 @@ document.addEventListener('submit', async e => {
     put('pay:' + uid(), { date: fd.date || today(), amount: Number(fd.amount), note: fd.note || null }); closeModal(); toast('Remboursement ajouté ✓');
   }
 });
+async function estimate(text) {
+  const { data } = await sb.auth.getSession();
+  const r = await fetch('/api/kcal', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (data.session?.access_token || '') }, body: JSON.stringify({ text }) }).catch(() => null);
+  if (!r) throw new Error('Hors-ligne : kcal à saisir à la main');
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Estimation indisponible');
+  return j.total;
+}
 async function auth(fd, signup) {
   const creds = { email: fd.email, password: fd.password };
   const { data, error } = signup ? await sb.auth.signUp(creds) : await sb.auth.signInWithPassword(creds);
   if (error) return renderLogin(error.message);
   if (!data.session) return renderLogin('Compte créé : confirme ton email puis reconnecte-toi.');
-  S.token = true; LS.set('ld_token', true); render(true); connect(); pull(); flush();
+  S.token = true; LS.set('ld_token', true); ui.anim = true; render(true); connect(); pull(); flush();
 }
 async function importFile(file) {
   if (!file) return;
