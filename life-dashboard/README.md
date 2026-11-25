@@ -14,3 +14,9 @@ Suivi : poids (courbe animée), sport, repas, eau/sommeil/humeur, jours de trava
 - Données = champs `{valeur, horodatage}` dans la table `fields` (RLS : chacun ne voit que les siens). Fusion champ par champ, le plus récent gagne.
 - Écriture locale d'abord (hors-ligne OK), envoi via `push_fields`, Realtime prévient les autres appareils.
 - `⌘K` / `Ctrl+K` : palette de commandes. Réglages : export/import JSON.
+
+## Notifications push (rappels)
+Rappels : eau, exercice, repas, pesée (à jeun ou non), mensualité de crédit, loyer, autres charges, coucher, bilan du soir, dépenses du jour, bilan hebdo — paramétrables dans l'onglet **Rappels**.
+1. **Vercel → Settings → Environment Variables** : ajoute `SUPABASE_SERVICE_ROLE_KEY` (la *secret key* de Supabase) et `CRON_SECRET` (un texte aléatoire long de ton choix), puis redéploie.
+2. **Supabase → SQL Editor** : colle `supabase/push.sql` en remplaçant `VOTRE_CRON_SECRET` par la valeur de `CRON_SECRET`, puis Run. (Le serveur est appelé chaque minute par `pg_cron`.)
+3. Dans l'app : **Rappels → Activer les notifications** sur chaque appareil, puis *Envoyer un test*. Sur iPhone, installe d'abord l'app sur l'écran d'accueil (iOS 16.4+).
