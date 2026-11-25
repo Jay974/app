@@ -146,8 +146,19 @@ function macroBars(d) {
   return `<div class="list" style="gap:10px;margin-bottom:14px">${rows.map(([l, k, col]) => { const v = m[k], goal = g[k], r = goal ? v / goal : 0, diff = Math.round(goal - v);
     return `<div><div class="row" style="justify-content:space-between;font-size:13px"><span>${l}</span><span><b>${fmt(v, 0)}</b> / ${goal} g ${r > 1.15 ? `<span class="chip down">+${-diff} g</span>` : diff > 0 ? `<span class="chip">reste ${diff} g</span>` : '<span class="chip up">✓ atteint</span>'}</span></div><div class="bar" style="height:8px"><i style="width:${Math.min(r * 100, 100)}%;background:${col}"></i></div></div>`; }).join('')}${m.missing ? `<button class="btn sm" data-act="fillmacros">✨ Calculer les macros de ${m.missing} repas</button>` : ''}</div>`;
 }
-const monthTarget = c => c.weekHours ? c.weekHours * 52 / 12 : null; // heures théoriques / mois
-const workedHours = (d, c) => day(d).work === 'work' ? (day(d).workH ?? (c.weekHours ? c.weekHours / 5 : 0)) : 0;
+const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+const toMin = t => { if (!t) return null; const [h, m] = t.split(':').map(Number); return isNaN(h) ? null : h * 60 + (m || 0); };
+const spanH = (s, e, b) => { const a = toMin(s); let z = toMin(e); if (a == null || z == null) return null; if (z <= a) z += 1440; return Math.max(0, (z - a - (Number(b) || 0)) / 60); }; // gère le travail de nuit
+const tpl = (c, d) => c.sched?.[(parse(d).getDay() + 6) % 7];
+const weeklyHours = c => c.weekHours ?? (c.sched ? (Object.values(c.sched).reduce((a, x) => a + (spanH(x.s, x.e, x.b) || 0), 0) || null) : null);
+const monthTarget = c => weeklyHours(c) ? weeklyHours(c) * 52 / 12 : null; // heures théoriques / mois
+function workedHours(d, c) { // priorité : horaires du jour > heures saisies > horaires types > heures hebdo / 5
+  const x = day(d); if (x.work !== 'work') return 0;
+  const own = spanH(x.workS, x.workE, x.workB); if (own != null) return own;
+  if (x.workH != null) return x.workH;
+  const t = tpl(c, d), th = t && spanH(t.s, t.e, t.b); if (th != null) return th;
+  return weeklyHours(c) ? weeklyHours(c) / 5 : 0;
+}
 const credit = () => ({ name: 'Mon crédit', total: 0, monthly: 0, start: null, rate: null, ...val('credit') });
 const day = d => val('day:' + d);
 const payments = () => ids('pay:').map(id => ({ id: id.slice(4), ...val(id) })).filter(p => !p.del && p.amount != null).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
@@ -220,7 +231,7 @@ function coachData(mode) {
     return { aujourdhui: days[0], sept_derniers_jours: days, objectifs: { kcal: c.kcalGoal, proteinesG: g.p, glucidesG: g.c, lipidesG: g.f }, poidsActuel: weights().slice(-1)[0]?.w, poidsCible: c.goalWeight, tendancePoidsKgParSemaine: f.ok ? Number(f.perWeek.toFixed(2)) : null, seancesSportSemaine: weekStats(t).n };
   }
   const ms = monthDays(t.slice(0, 7)), worked = ms.filter(d => day(d).work === 'work').length;
-  return { credit: { nom: cr.c.name, total: cr.c.total, mensualite: cr.c.monthly, tauxAnnuelPct: cr.c.rate, rembourse: cr.paid, reste: cr.remaining, mensualitesRestantes: cr.monthsLeft, debut: cr.c.start, derniersVersements: cr.pays.slice(0, 6).map(p => ({ date: p.date, montant: p.amount })) }, salaireNetMensuel: c.netSalary, heuresHebdo: c.weekHours, heuresTravailleesCeMois: Math.round(ms.reduce((a, d) => a + workedHours(d, c), 0)), objectifHeuresMois: monthTarget(c) && Math.round(monthTarget(c)), tauxHoraireNet: c.netSalary && monthTarget(c) ? Number((c.netSalary / monthTarget(c)).toFixed(2)) : null, partMensualiteSurSalairePct: c.netSalary && cr.c.monthly ? Number((cr.c.monthly / c.netSalary * 100).toFixed(1)) : null, depensesMensuelles: c.expenses, epargne: c.savings, joursTravaillesCeMois: worked };
+  return { credit: { nom: cr.c.name, total: cr.c.total, mensualite: cr.c.monthly, tauxAnnuelPct: cr.c.rate, rembourse: cr.paid, reste: cr.remaining, mensualitesRestantes: cr.monthsLeft, debut: cr.c.start, derniersVersements: cr.pays.slice(0, 6).map(p => ({ date: p.date, montant: p.amount })) }, salaireNetMensuel: c.netSalary, heuresHebdo: weeklyHours(c), emploiDuTemps: c.sched || null, heuresTravailleesCeMois: Math.round(ms.reduce((a, d) => a + workedHours(d, c), 0)), objectifHeuresMois: monthTarget(c) && Math.round(monthTarget(c)), tauxHoraireNet: c.netSalary && monthTarget(c) ? Number((c.netSalary / monthTarget(c)).toFixed(2)) : null, partMensualiteSurSalairePct: c.netSalary && cr.c.monthly ? Number((cr.c.monthly / c.netSalary * 100).toFixed(1)) : null, depensesMensuelles: c.expenses, epargne: c.savings, joursTravaillesCeMois: worked };
 }
 
 /* ============================== graphiques ============================== */
@@ -355,7 +366,7 @@ function vToday() {
   <div class="card c4"><h3>${ic('weight')}Poids</h3><div class="big-in"><input data-day="weight" data-num type="number" step="0.1" inputmode="decimal" placeholder="--,-" value="${x.weight ?? ''}"><span>kg</span></div>
     <div class="sub">${x.weight != null && lastW ? `${x.weight > lastW.w ? '▲' : x.weight < lastW.w ? '▼' : '='} ${fmt(Math.abs(x.weight - lastW.w))} kg vs ${shortDate(lastW.date)}` : lastW ? `Dernier : ${fmt(lastW.w)} kg (${shortDate(lastW.date)})` : 'Entre ton poids du jour'}</div></div>
   <div class="card c4"><h3>${ic('work')}Travail</h3><div class="seg" data-seg="work">${[['work', 'Travaillé'], ['off', 'Repos'], ['leave', 'Congé']].map(([k, l]) => `<button class="${x.work === k ? 'on' : ''}" data-act="set" data-k="work" data-v="${k}">${l}</button>`).join('')}</div>
-    ${x.work === 'work' ? `<div style="margin-top:12px"><label class="l">Heures travaillées</label><input class="field" data-day="workH" data-num type="number" step="0.25" inputmode="decimal" placeholder="ex. 7,5" value="${x.workH ?? ''}"></div>` : ''}</div>
+    ${x.work === 'work' ? (() => { const t = tpl(c, d) || {}; return `<div class="f2" style="margin-top:12px;grid-template-columns:1fr 1fr 1fr"><div><label class="l">Début</label><input class="field" type="time" data-day="workS" value="${x.workS ?? t.s ?? ''}"></div><div><label class="l">Fin</label><input class="field" type="time" data-day="workE" value="${x.workE ?? t.e ?? ''}"></div><div><label class="l">Pause (min)</label><input class="field" data-day="workB" data-num type="number" inputmode="numeric" placeholder="0" value="${x.workB ?? t.b ?? ''}"></div></div><div class="sub" style="margin-top:8px">= <b>${fmt(workedHours(d, c), 2)} h</b> travaillées${tpl(c, d) && x.workS == null ? ' (horaires types)' : ''}</div>`; })() : ''}</div>
   <div class="card c6"><h3>${ic('sport')}Sport</h3><div class="seg">${[['done', '✅ Séance faite'], ['rest', '😴 Repos']].map(([k, l]) => `<button class="${x.sport === k ? 'on' : ''}" data-act="set" data-k="sport" data-v="${k}">${l}</button>`).join('')}</div>
     ${x.sport === 'done' ? `<div class="chips" style="margin-top:12px">${SPORTS.map(s => `<button class="${x.sportType === s ? 'on' : ''}" data-act="set" data-k="sportType" data-v="${s}">${s}</button>`).join('')}</div><div style="margin-top:12px"><label class="l">Durée (minutes)</label><input class="field" data-day="sportMin" data-num type="number" inputmode="numeric" placeholder="45" value="${x.sportMin ?? ''}"></div>` : ''}</div>
   <div class="card c3"><h3>💧 Eau</h3><div class="stepper"><button data-act="water" data-n="-1" aria-label="Moins">−</button><b>${x.water || 0}</b><button data-act="water" data-n="1" aria-label="Plus">+</button></div><div class="drops">${Array.from({ length: Math.max(c.waterGoal, x.water || 0) }, (_, i) => `<i class="${i < (x.water || 0) ? 'on' : ''}"></i>`).join('')}</div><div class="sub">objectif ${c.waterGoal} verres</div></div>
@@ -463,10 +474,10 @@ function vWork() {
   const year = dayIds().filter(d => d.startsWith(m.slice(0, 4)) && day(d).work === 'work').length;
   const shift = n => { const d = parse(m + '-01'); d.setMonth(d.getMonth() + n); return ymd(d).slice(0, 7); };
   return head('Travail', 'Touche un jour pour changer : travaillé → repos → congé', `<div class="datebar"><button data-act="month" data-m="${shift(-1)}">${ic('l')}</button><span class="d">${monthName(m)}</span><button data-act="month" data-m="${shift(1)}">${ic('r')}</button></div>`) + `<div class="grid">
-  <div class="card c7"><div class="cal">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(l => `<span class="h">${l}</span>`).join('')}${Array.from({ length: off }, () => '<button class="blank" tabindex="-1"></button>').join('')}${ds.map(d => { const x = day(d); return `<button class="${x.work || ''} ${d === t ? 'today' : ''}" data-act="calcycle" data-d="${d}">${parse(d).getDate()}${x.work === 'work' && x.workH ? `<small>${x.workH}h</small>` : ''}</button>`; }).join('')}</div>
+  <div class="card c7"><div class="cal">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(l => `<span class="h">${l}</span>`).join('')}${Array.from({ length: off }, () => '<button class="blank" tabindex="-1"></button>').join('')}${ds.map(d => { const x = day(d); return `<button class="${x.work || ''} ${d === t ? 'today' : ''}" data-act="calcycle" data-d="${d}">${parse(d).getDate()}${x.work === 'work' && workedHours(d, c) ? `<small>${fmt(workedHours(d, c), 1)}h</small>` : ''}</button>`; }).join('')}</div>
     <div class="legend"><span><i style="background:var(--acc)"></i>Travaillé</span><span><i style="background:rgba(56,189,248,.5)"></i>Repos</span><span><i style="background:rgba(251,191,36,.6)"></i>Congé</span></div></div>
   <div class="card c5"><h3>${monthName(m)}</h3><div class="val">${fmt(hours, 1)}<small>${tg ? '/ ' + fmt(tg, 0) + ' h' : 'h'} · ${cnt('work')} jours</small></div>${tg ? `<div class="bar" style="margin:14px 0"><i style="width:${Math.min(hours / tg * 100, 100)}%"></i></div>` : '<div style="height:14px"></div>'}
-    <div class="list"><div class="item"><div class="grow">Heures hebdo contrat</div><b>${c.weekHours ? fmt(c.weekHours) + ' h' : '–'}</b></div><div class="item"><div class="grow">Repos</div><b>${cnt('off')}</b></div><div class="item"><div class="grow">Congés</div><b>${cnt('leave')}</b></div>${rate ? `<div class="item"><div class="grow">Taux horaire net</div><b>${eur(rate)}</b></div><div class="item"><div class="grow">Gagné à ce jour (heures faites)</div><b>${eur(hours * rate)}</b></div>` : ''}<div class="item"><div class="grow">Jours travaillés en ${m.slice(0, 4)}</div><b>${year}</b></div></div>
+    <div class="list"><div class="item"><div class="grow">Heures hebdo contrat</div><b>${weeklyHours(c) ? fmt(weeklyHours(c)) + ' h' : '–'}</b></div><div class="item"><div class="grow">Repos</div><b>${cnt('off')}</b></div><div class="item"><div class="grow">Congés</div><b>${cnt('leave')}</b></div>${rate ? `<div class="item"><div class="grow">Taux horaire net</div><b>${eur(rate)}</b></div><div class="item"><div class="grow">Gagné à ce jour (heures faites)</div><b>${eur(hours * rate)}</b></div>` : ''}<div class="item"><div class="grow">Jours travaillés en ${m.slice(0, 4)}</div><b>${year}</b></div></div>
     ${rate ? '' : '<p class="sub">Astuce : renseigne tes heures hebdo et ton salaire net dans Réglages pour estimer ton taux horaire et tes revenus.</p>'}</div></div>`;
 }
 
@@ -500,7 +511,10 @@ function vSettings() {
   <div class="card c6"><h3>Apparence</h3><label class="l">Couleur (synchronisée)</label><div class="swatches">${Object.entries(ACCENTS).map(([k, v]) => `<button class="${c.accent === k ? 'on' : ''}" style="background:rgb(${v})" data-act="accent" data-v="${k}" aria-label="${k}"></button>`).join('')}</div>
     <label class="l" style="margin-top:18px">Thème (synchronisé)</label><div class="seg">${[['dark', 'Sombre'], ['light', 'Clair']].map(([k, l]) => `<button class="${th === k ? 'on' : ''}" data-act="theme" data-v="${k}">${l}</button>`).join('')}</div>
     <h3 style="margin-top:24px">Synchronisation</h3><p class="sub" data-sync>${syncHtml()}</p><p class="sub">Tout ce que tu saisis est enregistré sur ton appareil puis envoyé au serveur ; tes autres appareils se mettent à jour en direct.</p>
-    <div class="row" style="margin-top:10px">${installEvt ? `<button class="btn pri" data-act="install">Installer l’application</button>` : ''}<button class="btn" data-act="export">Exporter (JSON)</button><label class="btn" style="cursor:pointer">Importer<input type="file" accept="application/json" id="imp" hidden></label><button class="btn danger" data-act="logout">Se déconnecter</button></div></div></div>`;
+    <div class="row" style="margin-top:10px">${installEvt ? `<button class="btn pri" data-act="install">Installer l’application</button>` : ''}<button class="btn" data-act="export">Exporter (JSON)</button><label class="btn" style="cursor:pointer">Importer<input type="file" accept="application/json" id="imp" hidden></label><button class="btn danger" data-act="logout">Se déconnecter</button></div></div>
+  <div class="card c12"><h3>🗓️ Emploi du temps type</h3><p class="sub" style="margin-top:0">Renseigne tes horaires habituels : quand tu marques « Travaillé », les heures sont calculées automatiquement (modifiables jour par jour). Si la fin est avant le début, c'est compté comme travail de nuit.</p>
+  <table class="table"><tr><th>Jour</th><th>Début</th><th>Fin</th><th>Pause (min)</th><th>Heures</th></tr>${DAYS.map((l, i) => { const t = c.sched?.[i] || {}; return `<tr><td>${l}</td><td><input class="field" type="time" data-sched="${i}" data-k="s" value="${t.s || ''}"></td><td><input class="field" type="time" data-sched="${i}" data-k="e" value="${t.e || ''}"></td><td><input class="field" type="number" inputmode="numeric" style="max-width:90px" data-sched="${i}" data-k="b" value="${t.b ?? ''}"></td><td><b>${spanH(t.s, t.e, t.b) != null ? fmt(spanH(t.s, t.e, t.b), 2) + ' h' : '–'}</b></td></tr>`; }).join('')}</table>
+  <div class="row" style="margin-top:12px"><button class="btn sm" data-act="copymon">Copier le lundi sur lun–ven</button><button class="btn sm danger" data-act="clearsched">Effacer</button><span class="sub">Total : <b>${fmt(Object.values(c.sched || {}).reduce((a, x) => a + (spanH(x.s, x.e, x.b) || 0), 0), 2)} h / semaine</b></span></div></div></div>`;
 }
 
 const VIEWS = { home: vHome, today: vToday, weight: vWeight, sport: vSport, food: vFood, work: vWork, credit: vCredit, settings: vSettings };
@@ -564,6 +578,8 @@ const ACTS = {
     for (const m of meals) if (m.p == null) { try { const r = await estimate(m.name); Object.assign(m, { p: r.p, c: r.c, f: r.f }); if (!m.kcal) m.kcal = r.total; } catch (e) { toast(e.message); break; } }
     put('day:' + d, { meals });
   },
+  copymon: () => { const m = cfg().sched?.[0]; if (!m) return toast('Renseigne d’abord le lundi'); const sc = { ...(cfg().sched) }; for (let i = 1; i < 5; i++) sc[i] = { ...m }; put('cfg', { sched: sc }); toast('Lundi copié sur lun–ven'); },
+  clearsched: () => { if (confirm('Effacer l’emploi du temps type ?')) put('cfg', { sched: null }); },
   coach: el => coach(el.dataset.m),
   addpay: () => payModal(),
   delpay: el => { if (confirm('Supprimer ce versement ?')) put('pay:' + el.dataset.id, { del: true }); },
@@ -581,6 +597,7 @@ document.addEventListener('change', e => {
   if (el.id === 'imp') { importFile(el.files[0]); return; }
   const conv = () => el.hasAttribute('data-num') ? numv(el) : (el.value === '' ? null : el.value);
   if (el.dataset.day) setDay({ [el.dataset.day]: conv() });
+  else if (el.dataset.sched !== undefined) { const sc = { ...(cfg().sched || {}) }, i = el.dataset.sched; sc[i] = { ...(sc[i] || {}), [el.dataset.k]: el.dataset.k === 'b' ? numv(el) : (el.value || null) }; put('cfg', { sched: sc }); }
   else if (el.dataset.cfg) put('cfg', { [el.dataset.cfg]: conv() });
   else if (el.dataset.cr) put('credit', { [el.dataset.cr]: conv() });
 });
