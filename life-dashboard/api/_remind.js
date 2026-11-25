@@ -40,7 +40,7 @@ function computeDue({ rem = {}, cfg = {}, credit = {}, day = {}, local }) {
     const n = monthlyLead(local.date, r.day, r.lead); if (n == null) return;
     push(`${k}:${local.date}`, `${icon} ${label}`, `${label} ${when(n)}${amount ? ' · ' + eur(amount) : ''}.`, k === 'credit' ? '/#/credit' : '/#/budget');
   };
-  monthly('credit', '🏦', 'Mensualité de crédit', credit.monthly);
+  monthly('credit', '🏦', 'Mensualité de crédit', credit.monthly || (credit.months && credit.total ? Math.round(credit.total / credit.months * 100) / 100 : null));
   monthly('rent', '🏠', 'Loyer', rem.rent && rem.rent.amount);
   if (on('bills')) for (const b of rem.bills.items || []) {
     if (!due(rem.bills.time || '09:00', now)) continue;

@@ -162,7 +162,12 @@ function workedHours(d, c) { // priorité : horaires du jour > heures saisies > 
   const t = tpl(c, d), th = t && spanH(t.s, t.e, t.b); if (th != null) return th;
   return weeklyHours(c) ? weeklyHours(c) / 5 : 0;
 }
-const credit = () => ({ name: 'Mon crédit', total: 0, monthly: 0, start: null, rate: null, ...val('credit') });
+const credit = () => { // durée fixe : si la mensualité n'est pas saisie, elle se déduit du total / durée
+  const c = { name: 'Mon crédit', total: 0, monthly: 0, start: null, rate: null, months: null, ...val('credit') };
+  c.monthlyAuto = !c.monthly && c.months > 0 && c.total > 0;
+  if (c.monthlyAuto) c.monthly = Math.round(c.total / c.months * 100) / 100;
+  return c;
+};
 const day = d => val('day:' + d);
 const payments = () => ids('pay:').map(id => ({ id: id.slice(4), ...val(id) })).filter(p => !p.del && p.amount != null).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 const dayIds = () => ids('day:').map(k => k.slice(4)).sort();
@@ -201,10 +206,13 @@ function creditStats() {
   const paid = pays.reduce((s, p) => s + Number(p.amount), 0);
   const remaining = Math.max(c.total - paid, 0);
   const pct = c.total > 0 ? Math.min(paid / c.total, 1) : 0;
-  const monthsLeft = c.monthly > 0 ? Math.ceil(remaining / c.monthly) : null;
-  let end = null;
-  if (monthsLeft != null) { const d = new Date(); d.setMonth(d.getMonth() + monthsLeft); end = d; }
-  return { c, pays, planned, paid, remaining, pct, monthsLeft, end };
+  let monthsLeft = c.monthly > 0 ? Math.ceil(remaining / c.monthly) : null, end = null, fixed = false, elapsed = null;
+  if (c.months > 0 && c.start) { // durée fixe : fin = début + durée
+    fixed = true; const s0 = parse(c.start), n = new Date();
+    elapsed = Math.max(0, (n.getFullYear() - s0.getFullYear()) * 12 + n.getMonth() - s0.getMonth() - (n.getDate() < s0.getDate() ? 1 : 0));
+    monthsLeft = Math.max(0, Number(c.months) - elapsed); end = new Date(s0); end.setMonth(end.getMonth() + Number(c.months));
+  } else if (monthsLeft != null) { const d = new Date(); d.setMonth(d.getMonth() + monthsLeft); end = d; }
+  return { c, pays, planned, paid, remaining, pct, monthsLeft, end, fixed, elapsed };
 }
 
 const frDate = d => d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
@@ -247,7 +255,7 @@ function coachData(mode) {
     return { mois: m, revenuNetMensuel: c.netSalary, revenusDuMois: b.income, mensualiteCredit: b.creditM, depensesDuMois: Math.round(b.spent), soldeRestant: Math.round(b.left), joursEcoules: b.elapsed, joursDuMois: b.dim, projectionDepensesFinDeMois: b.proj && Math.round(b.proj), depensesParCategorie: Object.entries(b.byCat).map(([cat, v]) => ({ cat, depense: Math.round(v), limite: b.bud[cat] || null })), limitesSansDepense: CATS.filter(([n]) => b.bud[n] && !b.byCat[n]).map(x => x[0]), moisPrecedent: { depenses: Math.round(pm.spent), parCategorie: pm.byCat }, epargneDisponible: c.savings, depensesFixesDeclarees: c.expenses };
   }
   const ms = monthDays(t.slice(0, 7)), worked = ms.filter(d => day(d).work === 'work').length;
-  return { credit: { nom: cr.c.name, total: cr.c.total, mensualite: cr.c.monthly, tauxAnnuelPct: cr.c.rate, rembourse: cr.paid, reste: cr.remaining, mensualitesRestantes: cr.monthsLeft, debut: cr.c.start, derniersVersements: cr.pays.slice(0, 6).map(p => ({ date: p.date, montant: p.amount })) }, salaireNetMensuel: c.netSalary, heuresHebdo: weeklyHours(c), emploiDuTemps: c.sched || null, heuresTravailleesCeMois: Math.round(ms.reduce((a, d) => a + workedHours(d, c), 0)), objectifHeuresMois: monthTarget(c) && Math.round(monthTarget(c)), tauxHoraireNet: c.netSalary && monthTarget(c) ? Number((c.netSalary / monthTarget(c)).toFixed(2)) : null, partMensualiteSurSalairePct: c.netSalary && cr.c.monthly ? Number((cr.c.monthly / c.netSalary * 100).toFixed(1)) : null, depensesMensuelles: c.expenses, epargne: c.savings, joursTravaillesCeMois: worked };
+  return { credit: { nom: cr.c.name, total: cr.c.total, mensualite: cr.c.monthly, tauxAnnuelPct: cr.c.rate, rembourse: cr.paid, reste: cr.remaining, mensualitesRestantes: cr.monthsLeft, dureeTotaleMois: cr.c.months, finPrevue: cr.end && cr.end.toISOString().slice(0, 10), debut: cr.c.start, derniersVersements: cr.pays.slice(0, 6).map(p => ({ date: p.date, montant: p.amount })) }, salaireNetMensuel: c.netSalary, heuresHebdo: weeklyHours(c), emploiDuTemps: c.sched || null, heuresTravailleesCeMois: Math.round(ms.reduce((a, d) => a + workedHours(d, c), 0)), objectifHeuresMois: monthTarget(c) && Math.round(monthTarget(c)), tauxHoraireNet: c.netSalary && monthTarget(c) ? Number((c.netSalary / monthTarget(c)).toFixed(2)) : null, partMensualiteSurSalairePct: c.netSalary && cr.c.monthly ? Number((cr.c.monthly / c.netSalary * 100).toFixed(1)) : null, depensesMensuelles: c.expenses, epargne: c.savings, joursTravaillesCeMois: worked };
 }
 
 /* ============================== graphiques ============================== */
@@ -518,9 +526,9 @@ function vCredit() {
   return head('Crédit', 'Suis ton remboursement jusqu’à la dernière mensualité', `<button class="btn pri" data-act="addpay">${ic('plus')}Remboursement</button>`) + `<div class="grid">
   <div class="card c4 hero" style="display:flex;align-items:center;justify-content:space-between"><div><h3>${esc(c.name)}</h3><div class="big">${eur(s.remaining)}</div><p>restant sur ${eur(c.total)}</p></div>${ring('credit-r', s.pct, Math.round(s.pct * 100) + '%', { size: 108 })}</div>
   <div class="card c4"><h3>Déjà remboursé</h3><div class="val">${eur(s.paid)}</div><div class="sub">${s.pays.length} versement(s)</div><div class="bar" style="margin-top:14px"><i style="width:${s.pct * 100}%"></i></div></div>
-  <div class="card c4"><h3>Fin estimée</h3><div class="val">${s.end ? s.end.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '–'}</div><div class="sub">${s.monthsLeft != null ? `${s.monthsLeft} mensualité(s) de ${eur(c.monthly)}` : 'Renseigne ta mensualité ci-dessous'}</div></div>
+  <div class="card c4"><h3>${s.fixed ? 'Fin prévue' : 'Fin estimée'}</h3><div class="val">${s.end ? s.end.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '–'}</div><div class="sub">${s.fixed ? `Durée ${c.months} mois · ${s.elapsed} écoulé(s) · ${s.monthsLeft} restant(s)` : s.monthsLeft != null ? `${s.monthsLeft} mensualité(s) de ${eur(c.monthly)}` : 'Renseigne ta mensualité ou ta durée ci-dessous'}</div></div>
   <div class="card c8"><h3>Solde restant dans le temps</h3>${series || '<div class="empty">Renseigne le montant total pour voir la courbe</div>'}</div>
-  <div class="card c4"><h3>Mon crédit</h3><div class="list" style="gap:10px"><div><label class="l">Nom</label><input class="field" data-cr="name" value="${esc(c.name)}"></div><div><label class="l">Montant total à rembourser (€)</label><input class="field" data-cr="total" data-num type="number" inputmode="decimal" value="${c.total || ''}"></div><div><label class="l">Mensualité (€)</label><input class="field" data-cr="monthly" data-num type="number" inputmode="decimal" value="${c.monthly || ''}"></div><div><label class="l">Taux annuel (%) — optionnel</label><input class="field" data-cr="rate" data-num type="number" step="0.01" inputmode="decimal" value="${c.rate ?? ''}"></div><div><label class="l">Date de début</label><input class="field" data-cr="start" type="date" value="${c.start || ''}"></div></div></div>
+  <div class="card c4"><h3>Mon crédit</h3><div class="list" style="gap:10px"><div><label class="l">Nom</label><input class="field" data-cr="name" value="${esc(c.name)}"></div><div><label class="l">Montant total à rembourser (€)</label><input class="field" data-cr="total" data-num type="number" inputmode="decimal" value="${c.total || ''}"></div><div><label class="l">Mensualité (€)${c.monthlyAuto ? ' — calculée' : ''}</label><input class="field" data-cr="monthly" data-num type="number" inputmode="decimal" placeholder="${c.monthlyAuto ? fmt(c.monthly, 2) + ' (total ÷ durée)' : ''}" value="${val('credit').monthly || ''}"></div><div><label class="l">Durée totale (mois)</label><input class="field" data-cr="months" data-num type="number" inputmode="numeric" min="1" placeholder="ex. 60" value="${c.months || ''}"></div><div><label class="l">Taux annuel (%) — optionnel</label><input class="field" data-cr="rate" data-num type="number" step="0.01" inputmode="decimal" value="${c.rate ?? ''}"></div><div><label class="l">Date de début</label><input class="field" data-cr="start" type="date" value="${c.start || ''}"></div></div></div>
   <div class="card c6"><h3>🔮 Si j’augmente ma mensualité</h3>${creditScenarios().length ? `<table class="table"><tr><th>Mensualité</th><th>Fin</th><th>Gain</th></tr>${creditScenarios().map(r => `<tr><td>${eur(c.monthly + r.extra)}${r.extra ? ` <span class="chip">+${r.extra} €</span>` : ''}</td><td>${frDate(r.end)}</td><td>${r.saved ? `<span class="chip up">−${r.saved} mois</span>` : '—'}</td></tr>`).join('')}</table>` : '<div class="empty">Renseigne total et mensualité</div>'}</div>
   <div class="card c6"><h3>💡 Stratégie financière (IA)</h3><div class="f2" style="gap:10px"><div><label class="l">Salaire net / mois (€)</label><input class="field" data-cfg="netSalary" data-num type="number" inputmode="decimal" value="${cfg().netSalary ?? ''}"></div><div><label class="l">Dépenses / mois (€)</label><input class="field" data-cfg="expenses" data-num type="number" inputmode="decimal" value="${cfg().expenses ?? ''}"></div><div style="grid-column:span 2"><label class="l">Épargne disponible (€)</label><input class="field" data-cfg="savings" data-num type="number" inputmode="decimal" value="${cfg().savings ?? ''}"></div></div><button class="btn pri sm" style="margin-top:12px" data-act="coach" data-m="finance">✨ Me conseiller</button></div>
   ${s.planned.length ? `<div class="card c12"><h3>📅 À venir (${s.planned.length}) · ${eur(s.planned.reduce((a, p) => a + Number(p.amount), 0))}</h3><table class="table"><tr><th>Date</th><th>Nom</th><th>Montant</th><th></th></tr>${s.planned.slice(0, 12).map(p => `<tr><td>${longDate(p.date)} <span class="chip">à venir</span></td><td>${esc(p.name || p.note || '')}</td><td><b>${eur(p.amount)}</b></td><td style="text-align:right"><button class="x" data-act="delpay" data-id="${p.id}" aria-label="Supprimer">${ic('x')}</button></td></tr>`).join('')}</table>${s.planned.length > 12 ? `<p class="sub">+ ${s.planned.length - 12} autres…</p>` : ''}</div>` : ''}
