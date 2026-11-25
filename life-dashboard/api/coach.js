@@ -1,0 +1,26 @@
+// Fonction Vercel : bilan de semaine et conseils financiers (Claude). Env : ANTHROPIC_API_KEY
+const SB = process.env.SUPABASE_URL || 'https://xfhubsvivbjgvvytbyxa.supabase.co';
+const KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_gBHLEE6rCDSgdrxPBxDSaA_l9yQqjEq';
+const PROMPTS = {
+  week: 'Tu es un coach santé bienveillant et concret. À partir des données des 14 derniers jours (poids, sport, calories, eau, sommeil, humeur) et des objectifs, réponds en français, 180 mots max : 1) un bilan en 2 phrases, 2) ce qui va bien / ce qui peut progresser (3 puces), 3) 2 actions précises pour la semaine. Appuie-toi sur les chiffres. Aucun diagnostic médical.',
+  finance: 'Tu es un conseiller en gestion financière personnelle, pragmatique. À partir des données (crédit : total, mensualité, taux annuel, remboursé, reste ; revenus, dépenses, épargne ; jours travaillés), propose en français, 230 mots max, 3 stratégies classées par impact (ex : remboursement anticipé partiel, fonds d\'urgence avant surpaiement, renégociation ou rachat de crédit, budget/épargne automatique), chiffrées quand c\'est possible (mois gagnés, intérêts économisés estimés). Si des données manquent (taux, revenus…), dis lesquelles et fais des hypothèses prudentes. Termine par : « Conseils indicatifs, pas un avis financier personnalisé. »'
+};
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'POST uniquement' });
+  const who = await fetch(`${SB}/auth/v1/user`, { headers: { apikey: KEY, Authorization: req.headers.authorization || '' } }).catch(() => null);
+  if (!who || !who.ok) return res.status(401).json({ error: 'Non connecté' });
+  const { mode, data } = req.body || {};
+  if (!PROMPTS[mode] || !data) return res.status(400).json({ error: 'Requête invalide' });
+  const payload = JSON.stringify(data).slice(0, 12000);
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'Clé IA non configurée sur Vercel' });
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+      body: JSON.stringify({ model: process.env.COACH_MODEL || 'claude-sonnet-5-5', max_tokens: 800, system: PROMPTS[mode], messages: [{ role: 'user', content: 'Données (JSON) :\n' + payload }] })
+    });
+    const j = await r.json();
+    if (!r.ok) return res.status(502).json({ error: j.error?.message || 'Erreur IA' });
+    return res.status(200).json({ text: j.content?.[0]?.text || '' });
+  } catch (e) { return res.status(502).json({ error: 'Analyse impossible' }); }
+};

@@ -129,9 +129,9 @@ function localLogout() {
 }
 
 /* ============================== domaine ============================== */
-const DEF = { goalWeight: null, startWeight: null, height: null, kcalGoal: 2200, waterGoal: 8, sportTarget: 3, workTarget: 20, dayRate: 0, name: '', accent: 'Jade' };
+const DEF = { goalWeight: null, startWeight: null, height: null, kcalGoal: 2200, waterGoal: 8, sportTarget: 3, workTarget: 20, dayRate: 0, name: '', accent: 'Jade', income: null, expenses: null, savings: null };
 const cfg = () => ({ ...DEF, ...val('cfg') });
-const credit = () => ({ name: 'Mon crédit', total: 0, monthly: 0, start: null, ...val('credit') });
+const credit = () => ({ name: 'Mon crédit', total: 0, monthly: 0, start: null, rate: null, ...val('credit') });
 const day = d => val('day:' + d);
 const payments = () => ids('pay:').map(id => ({ id: id.slice(4), ...val(id) })).filter(p => !p.del && p.amount != null).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 const dayIds = () => ids('day:').map(k => k.slice(4)).sort();
@@ -165,6 +165,40 @@ function creditStats() {
   let end = null;
   if (monthsLeft != null) { const d = new Date(); d.setMonth(d.getMonth() + monthsLeft); end = d; }
   return { c, pays, paid, remaining, pct, monthsLeft, end };
+}
+
+const frDate = d => d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+function weightForecast() {
+  const c = cfg(), t = today(), ws = weights().filter(w => diffDays(w.date, t) <= 45);
+  if (ws.length < 3 || diffDays(ws[0].date, ws[ws.length - 1].date) < 7) return { ok: false, msg: 'Entre au moins 3 pesées sur 7 jours pour obtenir une prévision.' };
+  const xs = ws.map(w => diffDays(ws[0].date, w.date)), ys = ws.map(w => w.w), n = xs.length;
+  const mx = xs.reduce((a, b) => a + b, 0) / n, my = ys.reduce((a, b) => a + b, 0) / n;
+  const slope = xs.reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0) / xs.reduce((a, x) => a + (x - mx) ** 2, 0);
+  const last = ws[n - 1], perWeek = slope * 7;
+  let eta = null, msg;
+  if (c.goalWeight == null) msg = 'Définis un poids objectif dans Réglages pour voir ta date d’arrivée.';
+  else {
+    const diff = c.goalWeight - last.w;
+    if (Math.abs(diff) < 0.2) msg = 'Objectif atteint 🎉';
+    else if (slope * diff > 0 && Math.abs(perWeek) >= 0.03) { eta = addDays(last.date, Math.ceil(diff / slope)); msg = `À ce rythme, tu atteins ${fmt(c.goalWeight)} kg vers ${frDate(parse(eta))}.`; }
+    else msg = 'À ce rythme, tu ne te rapproches pas de ton objectif.';
+  }
+  return { ok: true, perWeek, eta, msg };
+}
+function creditScenarios() {
+  const s = creditStats(); if (!(s.c.monthly > 0) || !(s.remaining > 0)) return [];
+  const base = Math.ceil(s.remaining / s.c.monthly);
+  return [0, 50, 100, 200].map(e => { const m = Math.ceil(s.remaining / (s.c.monthly + e)), d = new Date(); d.setMonth(d.getMonth() + m); return { extra: e, months: m, end: d, saved: base - m }; });
+}
+function coachData(mode) {
+  const c = cfg(), t = today(), cr = creditStats();
+  if (mode === 'week') {
+    const days = Array.from({ length: 14 }, (_, i) => addDays(t, i - 13)).map(d => { const x = day(d); return { date: d, poids: x.weight, sport: x.sport, sportType: x.sportType, minutes: x.sportMin, travail: x.work, kcal: kcalOf(d) || undefined, eau: x.water, sommeil: x.sleep, humeur: x.mood }; });
+    const f = weightForecast();
+    return { jours: days, objectifs: { poidsCible: c.goalWeight, kcal: c.kcalGoal, eau: c.waterGoal, seancesParSemaine: c.sportTarget, tailleCm: c.height }, tendancePoidsKgParSemaine: f.ok ? Number(f.perWeek.toFixed(2)) : null };
+  }
+  const ms = monthDays(t.slice(0, 7)), worked = ms.filter(d => day(d).work === 'work').length;
+  return { credit: { nom: cr.c.name, total: cr.c.total, mensualite: cr.c.monthly, tauxAnnuelPct: cr.c.rate, rembourse: cr.paid, reste: cr.remaining, mensualitesRestantes: cr.monthsLeft, debut: cr.c.start, derniersVersements: cr.pays.slice(0, 6).map(p => ({ date: p.date, montant: p.amount })) }, revenuMensuelNet: c.income, depensesMensuelles: c.expenses, epargne: c.savings, joursTravaillesCeMois: worked, tarifJournalier: c.dayRate || null };
 }
 
 /* ============================== graphiques ============================== */
@@ -326,7 +360,7 @@ function vHome() {
   const todo = [['Poids', x.weight != null], ['Sport', !!x.sport], ['Travail', !!x.work], ['Eau', (x.water || 0) >= c.waterGoal], ['Repas', (x.meals || []).length > 0], ['Sommeil', x.sleep != null], ['Humeur', x.mood != null]];
   const heatRows = [['Sport', d => day(d).sport === 'done' ? 'on' : day(d).sport === 'rest' ? 'mid' : ''], ['Travail', d => day(d).work === 'work' ? 'on' : day(d).work ? 'mid' : ''], ['Poids', d => day(d).weight != null ? 'on' : ''], ['Repas', d => kcalOf(d) > 0 ? 'on' : ''], ['Eau', d => (day(d).water || 0) >= c.waterGoal ? 'on' : (day(d).water || 0) > 0 ? 'mid' : '']];
   const wdays = Array.from({ length: 7 }, (_, i) => addDays(wkS, i));
-  return head(greet(), longDate(t), `<button class="btn" data-act="palette">${ic('search')}<span class="kbd">⌘K</span></button>`) + `<div class="grid">
+  return head(greet(), longDate(t), `<button class="btn pri" data-act="coach" data-m="week">✨ Bilan IA</button><button class="btn" data-act="palette">${ic('search')}<span class="kbd">⌘K</span></button>`) + `<div class="grid">
   <div class="card c7 hero" style="display:flex;justify-content:space-between;gap:16px;align-items:center"><div><h3>Ta semaine</h3><div class="big">Tu es à <em>${Math.round(avg * 100)} %</em> de suivi cette semaine</div><p>${wk.n}/${c.sportTarget} séances · ${worked} jours travaillés ce mois</p><button class="btn" style="background:rgba(255,255,255,.95);color:#0b4a44" data-act="go" data-to="today">Remplir aujourd’hui →</button></div>${ring('week', avg, Math.round(avg * 100) + '%', { size: 138, sw: 13 })}</div>
   <div class="card c5"><h3>${ic('today')}À faire aujourd’hui</h3><div class="chips">${todo.map(([l, ok]) => `<button class="${ok ? 'on' : ''}" data-act="go" data-to="today">${ok ? '✓' : '○'} ${l}</button>`).join('')}</div>
     <div class="row" style="margin-top:14px"><button class="btn pri sm" data-act="set-today" data-k="sport" data-v="done">✅ Sport fait</button><button class="btn sm" data-act="set-today" data-k="work" data-v="work">💼 J’ai travaillé</button><button class="btn sm" data-act="water-today">💧 +1 verre</button></div></div>
@@ -357,6 +391,7 @@ function vWeight() {
   <div class="card c4"><h3>Pesée du ${shortDate(ui.date)}</h3><div class="big-in"><input data-day="weight" data-num type="number" step="0.1" inputmode="decimal" placeholder="--,-" value="${x.weight ?? ''}"><span>kg</span></div>
     <div class="list" style="margin-top:18px"><div class="item"><div class="grow">Actuel</div><b>${fmt(last?.w)} kg</b></div><div class="item"><div class="grow">Départ</div><b>${fmt(startW)} kg</b></div><div class="item"><div class="grow">Objectif</div><b>${fmt(c.goalWeight)} kg</b></div>
     <div class="item"><div class="grow">${lost != null && lost < 0 ? 'Pris' : 'Perdu'}</div><b>${lost != null ? fmt(Math.abs(lost)) + ' kg' : '–'}</b></div><div class="item"><div class="grow">Reste à ${toGo != null && toGo < 0 ? 'prendre' : 'perdre'}</div><b>${toGo != null ? fmt(Math.abs(toGo)) + ' kg' : '–'}</b></div>${bmi ? `<div class="item"><div class="grow">IMC</div><b>${fmt(bmi)}</b></div>` : ''}</div></div>
+  <div class="card c12"><h3>🔮 Prévision</h3>${(() => { const f = weightForecast(); return f.ok ? `<div class="val">${f.perWeek > 0 ? '+' : ''}${fmt(f.perWeek, 2)}<small>kg / semaine</small></div><p class="sub">${f.msg}</p>` : `<p class="sub">${f.msg}</p>`; })()}<button class="btn pri sm" data-act="coach" data-m="week">✨ Bilan IA de ma semaine</button></div>
   <div class="card c12"><h3>Historique</h3>${ws.length ? `<table class="table"><tr><th>Date</th><th>Poids</th><th>Écart</th><th></th></tr>${[...ws].reverse().slice(0, 15).map((w, i, a) => { const p = a[i + 1]; const dl = p ? w.w - p.w : null; return `<tr><td>${longDate(w.date)}</td><td><b>${fmt(w.w)} kg</b></td><td>${dl == null ? '' : `<span class="chip ${dl <= 0 ? 'up' : 'down'}">${dl <= 0 ? '▼' : '▲'} ${fmt(Math.abs(dl))}</span>`}</td><td style="text-align:right"><button class="x" data-act="delweight" data-d="${w.date}" aria-label="Supprimer">${ic('x')}</button></td></tr>`; }).join('')}</table>` : '<div class="empty">Aucune pesée pour l’instant</div>'}</div></div>`;
 }
 
@@ -419,7 +454,9 @@ function vCredit() {
   <div class="card c4"><h3>Déjà remboursé</h3><div class="val">${eur(s.paid)}</div><div class="sub">${s.pays.length} versement(s)</div><div class="bar" style="margin-top:14px"><i style="width:${s.pct * 100}%"></i></div></div>
   <div class="card c4"><h3>Fin estimée</h3><div class="val">${s.end ? s.end.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '–'}</div><div class="sub">${s.monthsLeft != null ? `${s.monthsLeft} mensualité(s) de ${eur(c.monthly)}` : 'Renseigne ta mensualité ci-dessous'}</div></div>
   <div class="card c8"><h3>Solde restant dans le temps</h3>${series || '<div class="empty">Renseigne le montant total pour voir la courbe</div>'}</div>
-  <div class="card c4"><h3>Mon crédit</h3><div class="list" style="gap:10px"><div><label class="l">Nom</label><input class="field" data-cr="name" value="${esc(c.name)}"></div><div><label class="l">Montant total à rembourser (€)</label><input class="field" data-cr="total" data-num type="number" inputmode="decimal" value="${c.total || ''}"></div><div><label class="l">Mensualité (€)</label><input class="field" data-cr="monthly" data-num type="number" inputmode="decimal" value="${c.monthly || ''}"></div><div><label class="l">Date de début</label><input class="field" data-cr="start" type="date" value="${c.start || ''}"></div></div></div>
+  <div class="card c4"><h3>Mon crédit</h3><div class="list" style="gap:10px"><div><label class="l">Nom</label><input class="field" data-cr="name" value="${esc(c.name)}"></div><div><label class="l">Montant total à rembourser (€)</label><input class="field" data-cr="total" data-num type="number" inputmode="decimal" value="${c.total || ''}"></div><div><label class="l">Mensualité (€)</label><input class="field" data-cr="monthly" data-num type="number" inputmode="decimal" value="${c.monthly || ''}"></div><div><label class="l">Taux annuel (%) — optionnel</label><input class="field" data-cr="rate" data-num type="number" step="0.01" inputmode="decimal" value="${c.rate ?? ''}"></div><div><label class="l">Date de début</label><input class="field" data-cr="start" type="date" value="${c.start || ''}"></div></div></div>
+  <div class="card c6"><h3>🔮 Si j’augmente ma mensualité</h3>${creditScenarios().length ? `<table class="table"><tr><th>Mensualité</th><th>Fin</th><th>Gain</th></tr>${creditScenarios().map(r => `<tr><td>${eur(c.monthly + r.extra)}${r.extra ? ` <span class="chip">+${r.extra} €</span>` : ''}</td><td>${frDate(r.end)}</td><td>${r.saved ? `<span class="chip up">−${r.saved} mois</span>` : '—'}</td></tr>`).join('')}</table>` : '<div class="empty">Renseigne total et mensualité</div>'}</div>
+  <div class="card c6"><h3>💡 Stratégie financière (IA)</h3><div class="f2" style="gap:10px"><div><label class="l">Revenu net / mois (€)</label><input class="field" data-cfg="income" data-num type="number" inputmode="decimal" value="${cfg().income ?? ''}"></div><div><label class="l">Dépenses / mois (€)</label><input class="field" data-cfg="expenses" data-num type="number" inputmode="decimal" value="${cfg().expenses ?? ''}"></div><div style="grid-column:span 2"><label class="l">Épargne disponible (€)</label><input class="field" data-cfg="savings" data-num type="number" inputmode="decimal" value="${cfg().savings ?? ''}"></div></div><button class="btn pri sm" style="margin-top:12px" data-act="coach" data-m="finance">✨ Me conseiller</button></div>
   <div class="card c12"><h3>Versements</h3>${s.pays.length ? `<table class="table"><tr><th>Date</th><th>Montant</th><th>Note</th><th></th></tr>${s.pays.map(p => `<tr><td>${longDate(p.date)}</td><td><b>${eur(p.amount)}</b></td><td>${esc(p.note || '')}</td><td style="text-align:right"><button class="x" data-act="delpay" data-id="${p.id}" aria-label="Supprimer">${ic('x')}</button></td></tr>`).join('')}</table>` : '<div class="empty">Aucun remboursement enregistré</div>'}</div></div>`;
 }
 
@@ -483,6 +520,7 @@ const ACTS = {
   quickmeal: el => setDay({ meals: [...(day(ui.date).meals || []), { id: uid(), name: el.dataset.name, kcal: Number(el.dataset.kcal) || 0, slot: el.dataset.slot }] }),
   delweight: el => put('day:' + el.dataset.d, { weight: null }),
   calcycle: el => { const d = el.dataset.d, order = [undefined, 'work', 'off', 'leave'], cur = day(d).work; put('day:' + d, { work: order[(order.indexOf(cur) + 1) % 4] }); },
+  coach: el => coach(el.dataset.m),
   addpay: () => payModal(),
   delpay: el => { if (confirm('Supprimer ce versement ?')) put('pay:' + el.dataset.id, { del: true }); },
   accent: el => { put('cfg', { accent: el.dataset.v }); },
@@ -526,6 +564,17 @@ async function estimate(text) {
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || 'Estimation indisponible');
   return j.total;
+}
+async function coach(mode) {
+  const o = openModal(`<h2>${mode === 'week' ? '✨ Bilan de ma semaine' : '✨ Conseils financiers'}</h2><div id="coach" class="sub" style="white-space:pre-wrap;margin-top:12px;max-height:60vh;overflow:auto;line-height:1.55;font-size:15px;color:var(--text)">Analyse en cours…</div><div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('ov').remove()">Fermer</button></div>`);
+  const box = $('#coach', o);
+  try {
+    const { data } = await sb.auth.getSession();
+    const r = await fetch('/api/coach', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (data.session?.access_token || '') }, body: JSON.stringify({ mode, data: coachData(mode) }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'Analyse indisponible');
+    box.innerHTML = esc(j.text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  } catch (e) { box.textContent = e.message === 'Failed to fetch' ? 'Hors-ligne : réessaie avec du réseau.' : e.message; }
 }
 async function auth(fd, signup) {
   const creds = { email: fd.email, password: fd.password };
