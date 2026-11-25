@@ -13,6 +13,7 @@ create table if not exists public.fields (
 create index if not exists fields_seq_idx on public.fields (uid, seq);
 
 alter table public.fields enable row level security;
+drop policy if exists "own rows" on public.fields;
 create policy "own rows" on public.fields for all
   using (uid = auth.uid()) with check (uid = auth.uid());
 
@@ -26,5 +27,13 @@ language sql security invoker as $$
     where excluded.t > public.fields.t;
 $$;
 
+-- Droits d'accès pour les utilisateurs connectés (sans eux : « permission denied for table fields »)
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on public.fields to authenticated;
+grant usage, select on sequence public.fields_seq to authenticated;
+grant execute on function public.push_fields(jsonb) to authenticated;
+
 -- Synchro en direct
-alter publication supabase_realtime add table public.fields;
+do $$ begin
+  alter publication supabase_realtime add table public.fields;
+exception when duplicate_object then null; end $$;
