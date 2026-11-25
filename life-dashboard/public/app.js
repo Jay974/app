@@ -33,13 +33,14 @@ const ICONS = {
   food: '<path d="M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M17 3c-2 2-3 5-3 8h3v10"/>',
   work: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/>',
   credit: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
+  budget: '<path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zM3 7l2-3h12M16 13.5h2"/>',
   settings: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
   plus: '<path d="M12 5v14M5 12h14"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>',
   l: '<path d="M15 6l-6 6 6 6"/>', r: '<path d="M9 6l6 6-6 6"/>', logo: '<circle cx="12" cy="12" r="7"/><path d="M12 5a7 7 0 0 1 7 7"/>'
 };
 const ic = (n, c = 'ic') => `<svg class="${c}" viewBox="0 0 24 24">${ICONS[n] || ''}</svg>`;
-const TABS = [['home', 'Dashboard'], ['today', 'Aujourd’hui'], ['weight', 'Poids'], ['sport', 'Sport'], ['food', 'Repas'], ['work', 'Travail'], ['credit', 'Crédit'], ['settings', 'Réglages']];
+const TABS = [['home', 'Dashboard'], ['today', 'Aujourd’hui'], ['weight', 'Poids'], ['sport', 'Sport'], ['food', 'Repas'], ['work', 'Travail'], ['credit', 'Crédit'], ['budget', 'Budget'], ['settings', 'Réglages']];
 const ACCENTS = { Jade: '0,168,150', Corail: '255,90,79', Violet: '139,92,246', Océan: '56,189,248', Menthe: '45,212,160', Ambre: '245,158,11', Rose: '244,114,182' };
 const SPORTS = ['Muscu', 'Cardio', 'Course', 'Marche', 'Vélo', 'Natation', 'Yoga', 'Autre'];
 const SLOTS = ['Petit-déj', 'Déjeuner', 'Dîner', 'Collation'];
@@ -131,7 +132,7 @@ function localLogout() {
 }
 
 /* ============================== domaine ============================== */
-const DEF = { goalWeight: null, startWeight: null, height: null, kcalGoal: 2200, waterGoal: 8, sportTarget: 3, weekHours: null, netSalary: null, name: '', accent: 'Jade', income: null, expenses: null, savings: null, protGoal: null, carbGoal: null, fatGoal: null };
+const DEF = { goalWeight: null, startWeight: null, height: null, kcalGoal: 2200, waterGoal: 8, sportTarget: 3, weekHours: null, netSalary: null, name: '', accent: 'Jade', income: null, expenses: null, savings: null, budgets: null, protGoal: null, carbGoal: null, fatGoal: null };
 const cfg = () => { const c = { ...DEF, ...val('cfg') }; if (c.netSalary == null && c.income != null) c.netSalary = c.income; return c; };
 function macroGoals() { // objectifs perso, sinon calculés : prot 1,8 g/kg, lipides 30 % des kcal, glucides = le reste
   const c = cfg(), w = weights().slice(-1)[0]?.w;
@@ -238,6 +239,10 @@ function coachData(mode) {
     const f = weightForecast();
     return { aujourdhui: days[0], sept_derniers_jours: days, objectifs: { kcal: c.kcalGoal, proteinesG: g.p, glucidesG: g.c, lipidesG: g.f }, poidsActuel: weights().slice(-1)[0]?.w, poidsCible: c.goalWeight, tendancePoidsKgParSemaine: f.ok ? Number(f.perWeek.toFixed(2)) : null, seancesSportSemaine: weekStats(t).n };
   }
+  if (mode === 'budget') {
+    const m = ui.bmonth, b = budgetStats(m), pm = (() => { const d = parse(m + '-01'); d.setMonth(d.getMonth() - 1); return budgetStats(ymd(d).slice(0, 7)); })();
+    return { mois: m, revenuNetMensuel: c.netSalary, revenusDuMois: b.income, mensualiteCredit: b.creditM, depensesDuMois: Math.round(b.spent), soldeRestant: Math.round(b.left), joursEcoules: b.elapsed, joursDuMois: b.dim, projectionDepensesFinDeMois: b.proj && Math.round(b.proj), depensesParCategorie: Object.entries(b.byCat).map(([cat, v]) => ({ cat, depense: Math.round(v), limite: b.bud[cat] || null })), limitesSansDepense: CATS.filter(([n]) => b.bud[n] && !b.byCat[n]).map(x => x[0]), moisPrecedent: { depenses: Math.round(pm.spent), parCategorie: pm.byCat }, epargneDisponible: c.savings, depensesFixesDeclarees: c.expenses };
+  }
   const ms = monthDays(t.slice(0, 7)), worked = ms.filter(d => day(d).work === 'work').length;
   return { credit: { nom: cr.c.name, total: cr.c.total, mensualite: cr.c.monthly, tauxAnnuelPct: cr.c.rate, rembourse: cr.paid, reste: cr.remaining, mensualitesRestantes: cr.monthsLeft, debut: cr.c.start, derniersVersements: cr.pays.slice(0, 6).map(p => ({ date: p.date, montant: p.amount })) }, salaireNetMensuel: c.netSalary, heuresHebdo: weeklyHours(c), emploiDuTemps: c.sched || null, heuresTravailleesCeMois: Math.round(ms.reduce((a, d) => a + workedHours(d, c), 0)), objectifHeuresMois: monthTarget(c) && Math.round(monthTarget(c)), tauxHoraireNet: c.netSalary && monthTarget(c) ? Number((c.netSalary / monthTarget(c)).toFixed(2)) : null, partMensualiteSurSalairePct: c.netSalary && cr.c.monthly ? Number((cr.c.monthly / c.netSalary * 100).toFixed(1)) : null, depensesMensuelles: c.expenses, epargne: c.savings, joursTravaillesCeMois: worked };
 }
@@ -327,7 +332,7 @@ function bars(id, items, { goal, h = 150, unit = '' } = {}) { // items: [{label,
 }
 
 /* ============================== UI state ============================== */
-const ui = { tab: (location.hash.slice(2) || 'home'), date: today(), range: 30, month: today().slice(0, 7), dirty: false, anim: true };
+const ui = { bmonth: today().slice(0, 7), tab: (location.hash.slice(2) || 'home'), date: today(), range: 30, month: today().slice(0, 7), dirty: false, anim: true };
 if (!TABS.some(t => t[0] === ui.tab)) ui.tab = 'home';
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
@@ -517,6 +522,37 @@ function vCredit() {
   <div class="card c12"><h3>Versements</h3>${s.pays.length ? `<table class="table"><tr><th>Date</th><th>Montant</th><th>Note</th><th></th></tr>${s.pays.map(p => `<tr><td>${longDate(p.date)}</td><td><b>${eur(p.amount)}</b></td><td>${esc(p.note || '')}</td><td style="text-align:right"><button class="x" data-act="delpay" data-id="${p.id}" aria-label="Supprimer">${ic('x')}</button></td></tr>`).join('')}</table>` : '<div class="empty">Aucun remboursement enregistré</div>'}</div></div>`;
 }
 
+const CATS = [['Logement', '🏠'], ['Courses', '🛒'], ['Transport', '🚗'], ['Restaurants', '🍽️'], ['Loisirs', '🎬'], ['Santé', '💊'], ['Abonnements', '📱'], ['Shopping', '🛍️'], ['Épargne', '🏦'], ['Autre', '📦']];
+const catIcon = c => (CATS.find(x => x[0] === c) || [0, '📦'])[1];
+const txs = () => ids('tx:').map(id => ({ id: id.slice(3), ...val(id) })).filter(t => !t.del && t.amount != null);
+const sumA = a => a.reduce((s, t) => s + Number(t.amount || 0), 0);
+function budgetStats(m) {
+  const c = cfg(), cr = credit(), tx = txs().filter(t => (t.date || '').startsWith(m)).sort((a, b) => b.date.localeCompare(a.date));
+  const exp = tx.filter(t => t.type !== 'inc'), inc = tx.filter(t => t.type === 'inc');
+  const paid = cr.total ? payments().filter(p => (p.date || '').startsWith(m)) : [];
+  const creditM = paid.length ? sumA(paid) : (cr.monthly || 0); // versement réel du mois, sinon la mensualité
+  const income = (c.netSalary || 0) + sumA(inc), spent = sumA(exp), byCat = {};
+  exp.forEach(t => { byCat[t.cat || 'Autre'] = (byCat[t.cat || 'Autre'] || 0) + Number(t.amount); });
+  const bud = c.budgets || {}, limit = Object.values(bud).reduce((a, v) => a + (Number(v) || 0), 0);
+  const [y, mo] = m.split('-').map(Number), dim = new Date(y, mo, 0).getDate(), cur = today().slice(0, 7);
+  const elapsed = m === cur ? new Date().getDate() : m < cur ? dim : 0;
+  return { tx, income, spent, byCat, bud, limit, creditM, dim, elapsed, proj: m === cur && elapsed ? spent / elapsed * dim : null, left: income - creditM - spent };
+}
+function vBudget() {
+  const m = ui.bmonth, s = budgetStats(m), c = cfg(), cur = today().slice(0, 7);
+  const shift = n => { const d = parse(m + '-01'); d.setMonth(d.getMonth() + n); return ymd(d).slice(0, 7); };
+  const days = monthDays(m), pct = s.income ? (s.spent + s.creditM) / s.income : 0;
+  const perDay = days.map(d => ({ label: parse(d).getDate(), v: sumA(s.tx.filter(t => t.date === d && t.type !== 'inc')) }));
+  return head('Budget', 'Revenus, dépenses et limites par catégorie', `<div class="datebar"><button data-act="bmonth" data-m="${shift(-1)}">${ic('l')}</button><span class="d">${monthName(m)}</span><button data-act="bmonth" data-m="${shift(1)}">${ic('r')}</button></div>`) + `<div class="grid">
+  <div class="card c5 hero" style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div><h3>Reste du mois</h3><div class="big">${eur(s.left)}</div><p>Revenus ${eur(s.income)}<br>Crédit ${eur(s.creditM)} · Dépenses ${eur(s.spent)}</p></div>${ring('bud', pct, Math.round(pct * 100) + '%', { size: 112 })}</div>
+  <div class="card c7"><h3>${ic('plus')}Ajouter</h3><form data-form="tx"><div class="f2" style="gap:10px"><div><label class="l">Montant (€)</label><input class="field" name="amount" type="number" step="0.01" inputmode="decimal" required></div><div><label class="l">Type</label><select class="field" name="type"><option value="exp">Dépense</option><option value="inc">Revenu</option></select></div>
+  <div><label class="l">Catégorie</label><select class="field" name="cat">${CATS.map(([n, e]) => `<option>${n}</option>`).join('')}</select></div><div><label class="l">Date</label><input class="field" name="date" type="date" value="${m === cur ? today() : m + '-01'}"></div></div>
+  <div class="row" style="margin-top:10px;flex-wrap:nowrap"><input class="field" name="note" placeholder="Note (ex. Carrefour)" maxlength="60"><button class="btn pri">${ic('plus')}Ajouter</button></div></form></div>
+  <div class="card c7"><h3>Budget par catégorie</h3><div class="list" style="gap:12px">${CATS.map(([n, e]) => { const sp = s.byCat[n] || 0, lim = Number(s.bud[n]) || 0, over = lim && sp > lim; return `<div><div class="row" style="justify-content:space-between;flex-wrap:nowrap;font-size:13px"><span>${e} ${n}${over ? ' <span class="chip down">dépassé</span>' : ''}</span><span style="white-space:nowrap"><b>${eur(sp)}</b> / <input class="field" style="width:88px;padding:4px 8px;display:inline-block" data-bud="${n}" data-num type="number" inputmode="decimal" placeholder="limite" value="${lim || ''}"></span></div><div class="bar" style="height:8px;margin-top:6px"><i style="width:${lim ? Math.min(sp / lim * 100, 100) : sp ? 100 : 0}%;${over ? 'background:var(--bad)' : lim ? '' : 'background:var(--faint)'}"></i></div></div>`; }).join('')}</div>
+  <div class="row" style="margin-top:14px;justify-content:space-between"><span class="sub">Total des limites : <b>${eur(s.limit)}</b></span><button class="btn pri sm" data-act="coach" data-m="budget">✨ Conseils budget IA</button></div></div>
+  <div class="card c5"><h3>Dépenses par jour</h3>${bars('bd', perDay, { unit: ' €' })}${s.proj != null ? `<p class="sub" style="margin-top:10px">À ce rythme : <b>${eur(s.proj)}</b> de dépenses fin de mois ${s.income && s.proj + s.creditM > s.income ? '<span class="chip down">au-dessus de tes revenus</span>' : '<span class="chip up">OK</span>'}</p>` : ''}</div>
+  <div class="card c12"><h3>Opérations du mois (${s.tx.length})</h3>${s.tx.length ? `<div class="list">${s.tx.map(t => `<div class="item"><span style="font-size:20px">${t.type === 'inc' ? '💰' : catIcon(t.cat)}</span><div class="grow"><div class="t">${esc(t.note || t.cat || 'Autre')}</div><div class="s">${esc(t.type === 'inc' ? 'Revenu' : t.cat || 'Autre')} · ${longDate(t.date)}</div></div><b style="color:${t.type === 'inc' ? 'var(--ok)' : 'inherit'}">${t.type === 'inc' ? '+' : '−'}${eur(t.amount)}</b><button class="x" data-act="deltx" data-id="${t.id}" aria-label="Supprimer">${ic('x')}</button></div>`).join('')}</div>` : '<div class="empty">Aucune opération ce mois-ci</div>'}${c.netSalary ? '' : '<p class="sub">Astuce : renseigne ton salaire net dans Réglages pour calculer ce qu’il te reste.</p>'}</div></div>`;
+}
 function vSettings() {
   const c = cfg(), th = theme(), n = (k, l, step = '1', ph = '') => `<div><label class="l">${l}</label><input class="field" data-cfg="${k}" data-num type="number" step="${step}" inputmode="decimal" placeholder="${ph}" value="${c[k] ?? ''}"></div>`;
   return head('Réglages', 'Objectifs, apparence et synchronisation') + `<div class="grid">
@@ -528,7 +564,7 @@ function vSettings() {
     <div class="row" style="margin-top:10px">${installEvt ? `<button class="btn pri" data-act="install">Installer l’application</button>` : ''}<button class="btn" data-act="export">Exporter (JSON)</button><label class="btn" style="cursor:pointer">Importer<input type="file" accept="application/json" id="imp" hidden></label><button class="btn danger" data-act="logout">Se déconnecter</button></div></div></div>`;
 }
 
-const VIEWS = { home: vHome, today: vToday, weight: vWeight, sport: vSport, food: vFood, work: vWork, credit: vCredit, settings: vSettings };
+const VIEWS = { budget: vBudget, home: vHome, today: vToday, weight: vWeight, sport: vSport, food: vFood, work: vWork, credit: vCredit, settings: vSettings };
 
 /* ============================== rendu ============================== */
 function vLogin(initialized, err = '') {
@@ -592,6 +628,8 @@ const ACTS = {
   },
   copymon: () => { const m = cfg().sched?.[0]; if (!m) return toast('Renseigne d’abord le lundi'); const sc = { ...(cfg().sched) }; for (let i = 1; i < 5; i++) sc[i] = { ...m }; put('cfg', { sched: sc }); toast('Lundi copié sur lun–ven'); },
   clearsched: () => { if (confirm('Effacer l’emploi du temps type ?')) put('cfg', { sched: null }); },
+  bmonth: el => { ui.bmonth = el.dataset.m; render(true); },
+  deltx: el => { put('tx:' + el.dataset.id, { del: true }); toast('Opération supprimée'); },
   coach: el => coach(el.dataset.m),
   addpay: () => payModal(),
   delpay: el => { if (confirm('Supprimer ce versement ?')) put('pay:' + el.dataset.id, { del: true }); },
@@ -610,6 +648,7 @@ document.addEventListener('change', e => {
   const conv = () => el.hasAttribute('data-num') ? numv(el) : (el.value === '' ? null : el.value);
   if (el.dataset.day) setDay({ [el.dataset.day]: conv() });
   else if (el.dataset.sched !== undefined) { const sc = { ...(cfg().sched || {}) }, i = el.dataset.sched; sc[i] = { ...(sc[i] || {}), [el.dataset.k]: el.dataset.k === 'b' ? numv(el) : (el.value || null) }; put('cfg', { sched: sc }); }
+  else if (el.dataset.bud !== undefined) put('cfg', { budgets: { ...(cfg().budgets || {}), [el.dataset.bud]: numv(el) } });
   else if (el.dataset.cfg) put('cfg', { [el.dataset.cfg]: conv() });
   else if (el.dataset.cr) put('credit', { [el.dataset.cr]: conv() });
 });
@@ -623,6 +662,9 @@ document.addEventListener('submit', async e => {
     setDay({ meals: [...(day(ui.date).meals || []), meal] });
   } else if (f.dataset.form === 'login') {
     await auth(fd, false);
+  } else if (f.dataset.form === 'tx') {
+    if (!(Number(fd.amount) > 0)) return;
+    put('tx:' + uid(), { date: fd.date || today(), amount: Number(fd.amount), cat: fd.cat, type: fd.type, note: fd.note?.trim() || null }); toast(fd.type === 'inc' ? 'Revenu ajouté ✓' : 'Dépense ajoutée ✓');
   } else if (f.dataset.form === 'pay') {
     if (!fd.amount || Number(fd.amount) <= 0) return;
     put('pay:' + uid(), { date: fd.date || today(), amount: Number(fd.amount), note: fd.note || null }); closeModal(); toast('Remboursement ajouté ✓');
@@ -637,7 +679,7 @@ async function estimate(text) {
   return j;
 }
 async function coach(mode) {
-  const o = openModal(`<h2>${{ week: '✨ Bilan de ma semaine', finance: '✨ Conseils financiers', nutrition: '✨ Conseils nutrition' }[mode]}</h2><div id="coach" class="sub" style="white-space:pre-wrap;margin-top:12px;max-height:60vh;overflow:auto;line-height:1.55;font-size:15px;color:var(--text)">Analyse en cours…</div><div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('ov').remove()">Fermer</button></div>`);
+  const o = openModal(`<h2>${{ week: '✨ Bilan de ma semaine', finance: '✨ Conseils financiers', nutrition: '✨ Conseils nutrition', budget: '✨ Conseils budget' }[mode]}</h2><div id="coach" class="sub" style="white-space:pre-wrap;margin-top:12px;max-height:60vh;overflow:auto;line-height:1.55;font-size:15px;color:var(--text)">Analyse en cours…</div><div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('ov').remove()">Fermer</button></div>`);
   const box = $('#coach', o);
   try {
     const { data } = await sb.auth.getSession();
@@ -684,6 +726,7 @@ function palette() {
     { l: 'J’ai travaillé aujourd’hui', h: 'action', i: 'work', f: () => ACTS['set-today']({ dataset: { k: 'work', v: 'work' } }) },
     { l: 'Ajouter un verre d’eau', h: 'action', i: 'today', f: () => ACTS['water-today']() },
     { l: 'Entrer mon poids', h: 'action', i: 'weight', f: () => { ui.date = today(); go('weight'); setTimeout(() => $('[data-day=weight]')?.focus(), 150); } },
+    { l: 'Ajouter une dépense', h: 'action', i: 'budget', f: () => { go('budget'); setTimeout(() => $('form[data-form=tx] [name=amount]')?.focus(), 200); } },
     { l: 'Ajouter un remboursement', h: 'action', i: 'credit', f: payModal },
     { l: 'Thème clair / sombre', h: 'action', i: 'settings', f: () => { const v = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; LS.set('ld_theme', v); put('cfg', { theme: v }); } },
     { l: 'Exporter mes données', h: 'action', i: 'settings', f: ACTS.export }
