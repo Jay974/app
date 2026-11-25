@@ -48,7 +48,7 @@ const MOODS = ['😞', '😕', '😐', '🙂', '😄'];
 /* ============================== store + sync ============================== */
 // Chaque document est { champ: {v, t} } : la fusion se fait champ par champ, le plus récent gagne.
 const S = { docs: LS.get('ld_docs', {}), pending: LS.get('ld_pending', {}), seq: LS.get('ld_seq', 0), token: LS.get('ld_token', null), offset: LS.get('ld_off', 0) };
-let status = 'off'; // ok | off | busy
+let status = 'busy'; // ok | off | busy
 const persist = () => { LS.set('ld_docs', S.docs); LS.set('ld_pending', S.pending); LS.set('ld_seq', S.seq); LS.set('ld_off', S.offset); };
 const nowT = () => Date.now();
 
@@ -109,17 +109,18 @@ function connect() {
   if (!S.token) return;
   if (chan) sb.removeChannel(chan);
   chan = sb.channel('fields-sync').on('postgres_changes', { event: '*', schema: 'public', table: 'fields' }, () => pull())
-    .subscribe(st => { if (st === 'SUBSCRIBED') { setStatus('ok'); flush(); pull(); } else if (st === 'CLOSED' || st === 'CHANNEL_ERROR') setStatus('off'); });
+    .subscribe(st => { if (st === 'SUBSCRIBED') { setStatus('ok'); flush(); pull(); }  }); // si le temps réel échoue, la synchro continue par interrogation régulière (ci-dessous)
 }
 function setStatus(s) {
   if (status === s) return;
   status = s;
   $$('[data-sync]').forEach(el => { el.innerHTML = syncHtml(); });
 }
-const syncHtml = () => `<i class="dot ${status === 'ok' ? 'ok' : 'off'}"></i>${status === 'ok' ? (Object.keys(S.pending).length ? 'Envoi…' : 'Synchronisé') : 'Hors-ligne — sera synchronisé'}`;
+const syncHtml = () => `<i class="dot ${status === 'ok' ? 'ok' : status === 'off' ? 'off' : ''}"></i>${status === 'ok' ? (Object.keys(S.pending).length ? 'Envoi…' : 'Synchronisé') : status === 'busy' ? 'Synchronisation…' : 'Hors-ligne — sera synchronisé'}`;
 window.addEventListener('online', () => { flush(); pull(); connect(); });
 sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT' && S.token) localLogout(); });
 window.addEventListener('offline', () => setStatus('off'));
+setInterval(() => { if (S.token && !document.hidden) { pull(); flush(); } }, 20000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { pull(); flush(); } });
 
 function localLogout() {
@@ -310,7 +311,7 @@ const ui = { tab: (location.hash.slice(2) || 'home'), date: today(), range: 30, 
 if (!TABS.some(t => t[0] === ui.tab)) ui.tab = 'home';
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
-const theme = () => LS.get('ld_theme', 'auto');
+const theme = () => cfg().theme || LS.get('ld_theme', 'dark'); // sombre par défaut ; réglage synchronisé
 function applyTheme() {
   const c = cfg(), t = theme();
   const light = t === 'light' || (t === 'auto' && matchMedia('(prefers-color-scheme: light)').matches);
@@ -496,7 +497,7 @@ function vSettings() {
   <div class="card c6"><h3>Profil & objectifs</h3><div class="f2" style="gap:12px"><div style="grid-column:span 2"><label class="l">Prénom</label><input class="field" data-cfg="name" value="${esc(c.name)}"></div>
     ${n('goalWeight', 'Poids objectif (kg)', '0.1')}${n('startWeight', 'Poids de départ (kg)', '0.1', 'auto')}${n('height', 'Taille (cm)')}${n('kcalGoal', 'Objectif calories / jour')}${n('waterGoal', 'Verres d’eau / jour')}${n('sportTarget', 'Séances / semaine')}${n('protGoal', 'Protéines (g/jour)', '1', 'auto')}${n('carbGoal', 'Glucides (g/jour)', '1', 'auto')}${n('fatGoal', 'Lipides (g/jour)', '1', 'auto')}${n('weekHours', 'Horaires hebdomadaires (h)', '0.25', 'ex. 35')}${n('netSalary', 'Salaire net / mois (€)', '1')}</div><button class="btn pri" style="margin-top:16px;width:100%;justify-content:center" data-act="savecfg">💾 Enregistrer et synchroniser</button></div>
   <div class="card c6"><h3>Apparence</h3><label class="l">Couleur (synchronisée)</label><div class="swatches">${Object.entries(ACCENTS).map(([k, v]) => `<button class="${c.accent === k ? 'on' : ''}" style="background:rgb(${v})" data-act="accent" data-v="${k}" aria-label="${k}"></button>`).join('')}</div>
-    <label class="l" style="margin-top:18px">Thème (cet appareil)</label><div class="seg">${[['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']].map(([k, l]) => `<button class="${th === k ? 'on' : ''}" data-act="theme" data-v="${k}">${l}</button>`).join('')}</div>
+    <label class="l" style="margin-top:18px">Thème (synchronisé)</label><div class="seg">${[['dark', 'Sombre'], ['light', 'Clair'], ['auto', 'Auto']].map(([k, l]) => `<button class="${th === k ? 'on' : ''}" data-act="theme" data-v="${k}">${l}</button>`).join('')}</div>
     <h3 style="margin-top:24px">Synchronisation</h3><p class="sub" data-sync>${syncHtml()}</p><p class="sub">Tout ce que tu saisis est enregistré sur ton appareil puis envoyé au serveur ; tes autres appareils se mettent à jour en direct.</p>
     <div class="row" style="margin-top:10px">${installEvt ? `<button class="btn pri" data-act="install">Installer l’application</button>` : ''}<button class="btn" data-act="export">Exporter (JSON)</button><label class="btn" style="cursor:pointer">Importer<input type="file" accept="application/json" id="imp" hidden></label><button class="btn danger" data-act="logout">Se déconnecter</button></div></div></div>`;
 }
@@ -566,7 +567,7 @@ const ACTS = {
   addpay: () => payModal(),
   delpay: el => { if (confirm('Supprimer ce versement ?')) put('pay:' + el.dataset.id, { del: true }); },
   accent: el => { put('cfg', { accent: el.dataset.v }); },
-  theme: el => { LS.set('ld_theme', el.dataset.v); render(true); },
+  theme: el => { LS.set('ld_theme', el.dataset.v); put('cfg', { theme: el.dataset.v }); },
   install: async () => { if (installEvt) { installEvt.prompt(); installEvt = null; render(true); } },
   export: () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(S.docs, null, 1)], { type: 'application/json' })); a.download = `ma-vie-${today()}.json`; a.click(); },
   signup: () => { const f = $('form[data-form=login]'); if (f.reportValidity()) auth(Object.fromEntries(new FormData(f)), true); },
@@ -654,7 +655,7 @@ function palette() {
     { l: 'Ajouter un verre d’eau', h: 'action', i: 'today', f: () => ACTS['water-today']() },
     { l: 'Entrer mon poids', h: 'action', i: 'weight', f: () => { ui.date = today(); go('weight'); setTimeout(() => $('[data-day=weight]')?.focus(), 150); } },
     { l: 'Ajouter un remboursement', h: 'action', i: 'credit', f: payModal },
-    { l: 'Thème clair / sombre', h: 'action', i: 'settings', f: () => { LS.set('ld_theme', document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'); render(true); } },
+    { l: 'Thème clair / sombre', h: 'action', i: 'settings', f: () => { const v = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; LS.set('ld_theme', v); put('cfg', { theme: v }); } },
     { l: 'Exporter mes données', h: 'action', i: 'settings', f: ACTS.export }
   ];
   const o = openModal(`<input placeholder="Que veux-tu faire ?" id="pq" autocomplete="off"><div id="pl"></div>`, 'pal');
