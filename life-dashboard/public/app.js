@@ -134,17 +134,20 @@ function localLogout() {
 }
 
 /* ============================== domaine ============================== */
-const DEF = { goalWeight: null, startWeight: null, height: null, kcalGoal: 2200, waterGoal: 8, waterGoalL: null, sportTarget: 3, weekHours: null, netSalary: null, salaryMode: 'fixed', name: '', accent: 'Jade', income: null, expenses: null, savings: null, budgets: null, protGoal: null, carbGoal: null, fatGoal: null };
+const DEF = { goalWeight: null, startWeight: null, height: null, kcalGoal: 2200, burnShare: 50, waterGoal: 8, waterGoalL: null, sportTarget: 3, weekHours: null, netSalary: null, salaryMode: 'fixed', name: '', accent: 'Jade', income: null, expenses: null, savings: null, budgets: null, protGoal: null, carbGoal: null, fatGoal: null };
 const cfg = () => { const c = { ...DEF, ...val('cfg') }; if (c.netSalary == null && c.income != null) c.netSalary = c.income; return c; };
-function macroGoals() { // objectifs perso, sinon calculés : prot 1,8 g/kg, lipides 30 % des kcal, glucides = le reste
+const goalBonus = (d, c = cfg()) => Math.round((c.burnShare ?? 50) / 100 * burned(d)); // part des kcal brûlées ajoutée à l'objectif du jour
+const goalKcal = (d, c = cfg()) => c.kcalGoal + goalBonus(d, c);
+function macroGoals(d) { // objectifs perso, sinon calculés : prot 1,8 g/kg, lipides 30 % des kcal, glucides = le reste
   const c = cfg(), w = weights().slice(-1)[0]?.w;
-  const p = c.protGoal ?? (w ? Math.round(1.8 * w) : Math.round(c.kcalGoal * .25 / 4));
-  const f = c.fatGoal ?? Math.round(c.kcalGoal * .30 / 9);
-  return { p, f, c: c.carbGoal ?? Math.max(0, Math.round((c.kcalGoal - p * 4 - f * 9) / 4)) };
+  const k = d ? goalKcal(d, c) : c.kcalGoal;
+  const p = c.protGoal ?? (w ? Math.round(1.8 * w) : Math.round(k * .25 / 4));
+  const f = c.fatGoal ?? Math.round(k * .30 / 9);
+  return { p, f, c: c.carbGoal ?? Math.max(0, Math.round((k - p * 4 - f * 9) / 4)) };
 }
 const macrosOf = d => (day(d).meals || []).reduce((a, m) => ({ p: a.p + (Number(m.p) || 0), c: a.c + (Number(m.c) || 0), f: a.f + (Number(m.f) || 0), missing: a.missing + (m.p == null ? 1 : 0) }), { p: 0, c: 0, f: 0, missing: 0 });
 function macroBars(d) {
-  const m = macrosOf(d), g = macroGoals();
+  const m = macrosOf(d), g = macroGoals(d);
   const rows = [['Protéines', 'p', 'var(--acc)'], ['Glucides', 'c', '#38bdf8'], ['Lipides', 'f', '#fbbf24']];
   return `<div class="list" style="gap:10px;margin-bottom:14px">${rows.map(([l, k, col]) => { const v = m[k], goal = g[k], r = goal ? v / goal : 0, diff = Math.round(goal - v);
     return `<div><div class="row" style="justify-content:space-between;font-size:13px"><span>${l}</span><span><b>${fmt(v, 0)}</b> / ${goal} g ${r > 1.15 ? `<span class="chip down">+${-diff} g</span>` : diff > 0 ? `<span class="chip">reste ${diff} g</span>` : '<span class="chip up">✓ atteint</span>'}</span></div><div class="bar" style="height:8px"><i style="width:${Math.min(r * 100, 100)}%;background:${col}"></i></div></div>`; }).join('')}${m.missing ? `<button class="btn sm" data-act="fillmacros">✨ Calculer les macros de ${m.missing} repas</button>` : ''}</div>`;
@@ -263,9 +266,9 @@ function coachData(mode) {
     return { jours: days, objectifs: { poidsCible: c.goalWeight, kcal: c.kcalGoal, eauLitres: waterGoal(c), seancesParSemaine: c.sportTarget, tailleCm: c.height }, tendancePoidsKgParSemaine: f.ok ? Number(f.perWeek.toFixed(2)) : null };
   }
   if (mode === 'nutrition') {
-    const g = macroGoals(), days = Array.from({ length: 7 }, (_, i) => addDays(t, -i)).map(d => { const m = macrosOf(d); return { date: d, kcal: kcalOf(d), kcalBruleesSport: burned(d), proteinesG: Math.round(m.p), glucidesG: Math.round(m.c), lipidesG: Math.round(m.f), repas: (day(d).meals || []).map(x => x.name) }; });
+    const g = macroGoals(), days = Array.from({ length: 7 }, (_, i) => addDays(t, -i)).map(d => { const m = macrosOf(d); return { date: d, kcal: kcalOf(d), objectifKcalDuJour: goalKcal(d), kcalBruleesSport: burned(d), proteinesG: Math.round(m.p), glucidesG: Math.round(m.c), lipidesG: Math.round(m.f), repas: (day(d).meals || []).map(x => x.name) }; });
     const f = weightForecast();
-    return { aujourdhui: days[0], sept_derniers_jours: days, objectifs: { kcal: c.kcalGoal, proteinesG: g.p, glucidesG: g.c, lipidesG: g.f }, poidsActuel: weights().slice(-1)[0]?.w, poidsCible: c.goalWeight, tendancePoidsKgParSemaine: f.ok ? Number(f.perWeek.toFixed(2)) : null, seancesSportSemaine: weekStats(t).n };
+    return { aujourdhui: days[0], sept_derniers_jours: days, objectifs: { kcalDeBase: c.kcalGoal, partKcalSportAjouteeAuObjectifPct: c.burnShare ?? 50, proteinesG: g.p, glucidesG: g.c, lipidesG: g.f }, poidsActuel: weights().slice(-1)[0]?.w, poidsCible: c.goalWeight, tendancePoidsKgParSemaine: f.ok ? Number(f.perWeek.toFixed(2)) : null, seancesSportSemaine: weekStats(t).n };
   }
   if (mode === 'budget') {
     const m = ui.bmonth, b = budgetStats(m), pm = (() => { const d = parse(m + '-01'); d.setMonth(d.getMonth() - 1); return budgetStats(ymd(d).slice(0, 7)); })();
@@ -390,8 +393,8 @@ function mealsCard(d) {
   const x = day(d), meals = x.meals || [], c = cfg(), tot = kcalOf(d);
   const freq = {}; dayIds().forEach(k => (day(k).meals || []).forEach(m => { const f = freq[m.name.toLowerCase()] = freq[m.name.toLowerCase()] || { n: 0, name: m.name, kcal: m.kcal, slot: m.slot }; f.n++; f.kcal = m.kcal; f.p = m.p; f.c = m.c; f.f = m.f; }));
   const top = Object.values(freq).sort((a, b) => b.n - a.n).slice(0, 6);
-  return `<div class="card c6"><h3>${ic('food')}Repas · ${fmt(tot, 0)} / ${fmt(c.kcalGoal, 0)} kcal</h3>
-  <div class="bar" style="margin-bottom:12px"><i style="width:${Math.min(tot / c.kcalGoal * 100, 100)}%"></i></div>${meals.length ? macroBars(d) : ''}
+  return `<div class="card c6"><h3>${ic('food')}Repas · ${fmt(tot, 0)} / ${fmt(goalKcal(d, c), 0)} kcal${goalBonus(d, c) ? ` (🔥 +${goalBonus(d, c)})` : ''}</h3>
+  <div class="bar" style="margin-bottom:12px"><i style="width:${Math.min(tot / goalKcal(d, c) * 100, 100)}%"></i></div>${meals.length ? macroBars(d) : ''}
   <div class="list">${meals.length ? meals.map(m => `<div class="item"><div class="grow"><div class="t">${esc(m.name)}</div><div class="s">${esc(m.slot)}${m.kcal ? ' · ' + fmt(m.kcal, 0) + ' kcal' : ''}${m.p != null ? ` · P ${fmt(m.p, 0)} · G ${fmt(m.c, 0)} · L ${fmt(m.f, 0)}` : ''}</div></div><button class="x" data-act="delmeal" data-id="${m.id}" aria-label="Supprimer">${ic('x')}</button></div>`).join('') : '<div class="empty">Rien noté pour ce jour</div>'}</div>
   <form data-form="meal" style="margin-top:12px;display:grid;grid-template-columns:1fr 90px;gap:8px"><input class="field" name="name" placeholder="Ex : 2 œufs, 100 g de riz, 1 pomme" required maxlength="60"><input class="field" name="kcal" type="number" inputmode="numeric" min="0" placeholder="kcal ✨ auto">
   <select class="field" name="slot">${SLOTS.map((s, i) => `<option ${i === defaultSlot() ? 'selected' : ''}>${s}</option>`).join('')}</select><button class="btn pri" style="justify-content:center" data-ai>${ic('plus')}Ajouter</button></form><p class="sub" style="margin:8px 0 0">Laisse « kcal » vide : l’IA estime les calories pour toi ✨</p>
@@ -490,12 +493,14 @@ function vSport() {
 }
 
 function nutritionCard() {
-  const t = today(), g = macroGoals(), c = cfg();
+  const t = today(), c = cfg();
   const ds = Array.from({ length: 6 }, (_, i) => addDays(t, -i - 1)).filter(d => (day(d).meals || []).some(m => m.p != null)); // jours complets (hors aujourd’hui)
   const avg = k => ds.length ? ds.reduce((a, d) => a + macrosOf(d)[k], 0) / ds.length : null;
   const st = (v, goal) => v == null ? '' : v / goal < .85 ? '<span class="chip down">Insuffisant</span>' : v / goal > 1.15 ? '<span class="chip down">Excès</span>' : '<span class="chip up">OK</span>';
+  const gAvg = k => ds.length ? ds.reduce((a, d) => a + macroGoals(d)[k], 0) / ds.length : macroGoals()[k];
+  const kAvg = ds.length ? ds.reduce((a, d) => a + goalKcal(d, c), 0) / ds.length : c.kcalGoal;
   const kc = ds.length ? ds.reduce((a, d) => a + kcalOf(d), 0) / ds.length : null;
-  return `<div class="card c6"><h3>🥗 Macros · moyenne des ${ds.length} derniers jours</h3><div class="list">${[['Protéines', 'p'], ['Glucides', 'c'], ['Lipides', 'f']].map(([l, k]) => `<div class="item"><div class="grow">${l}</div><b>${fmt(avg(k), 0)} g</b><span class="sub">/ ${g[k]} g</span>${st(avg(k), g[k])}</div>`).join('')}<div class="item"><div class="grow">Calories</div><b>${fmt(kc, 0)}</b><span class="sub">/ ${c.kcalGoal}</span>${st(kc, c.kcalGoal)}</div></div>
+  return `<div class="card c6"><h3>🥗 Macros · moyenne des ${ds.length} derniers jours</h3><div class="list">${[['Protéines', 'p'], ['Glucides', 'c'], ['Lipides', 'f']].map(([l, k]) => `<div class="item"><div class="grow">${l}</div><b>${fmt(avg(k), 0)} g</b><span class="sub">/ ${Math.round(gAvg(k))} g</span>${st(avg(k), gAvg(k))}</div>`).join('')}<div class="item"><div class="grow">Calories</div><b>${fmt(kc, 0)}</b><span class="sub">/ ${Math.round(kAvg)}</span>${st(kc, kAvg)}</div></div>
   <p class="sub">Objectifs ${c.protGoal != null ? 'personnalisés' : 'calculés (protéines 1,8 g/kg, lipides 30 %)'} — modifiables dans Réglages.</p><button class="btn pri sm" data-act="coach" data-m="nutrition">✨ Conseils nutrition IA</button></div>`;
 }
 function vFood() {
@@ -503,7 +508,7 @@ function vFood() {
   const days = Array.from({ length: 14 }, (_, i) => addDays(t, i - 13));
   const k = days.map(d => kcalOf(d)), logged = k.filter(v => v > 0), avg = logged.length ? logged.reduce((s, v) => s + v, 0) / logged.length : null;
   return head('Repas', 'Note ce que tu manges, suis tes calories', dateBar()) + `<div class="grid">
-  <div class="card c4 hero" style="display:flex;align-items:center;justify-content:space-between"><div><h3>${ui.date === t ? 'Aujourd’hui' : shortDate(ui.date)}</h3><div class="big">${fmt(kcalOf(ui.date), 0)} <em>kcal</em></div><p>sur ${fmt(c.kcalGoal, 0)} visées${burned(ui.date) ? ` · 🔥 ${fmt(burned(ui.date), 0)} brûlées · net ${fmt(kcalOf(ui.date) - burned(ui.date), 0)}` : ''}</p></div>${ring('kcal', kcalOf(ui.date) / c.kcalGoal, Math.round(kcalOf(ui.date) / c.kcalGoal * 100) + '%', { size: 108 })}</div>
+  <div class="card c4 hero" style="display:flex;align-items:center;justify-content:space-between"><div><h3>${ui.date === t ? 'Aujourd’hui' : shortDate(ui.date)}</h3><div class="big">${fmt(kcalOf(ui.date), 0)} <em>kcal</em></div><p>sur ${fmt(goalKcal(ui.date, c), 0)} visées${goalBonus(ui.date, c) ? ` (${fmt(c.kcalGoal, 0)} + ${goalBonus(ui.date, c)} 🔥 sport)` : ''}</p></div>${ring('kcal', kcalOf(ui.date) / goalKcal(ui.date, c), Math.round(kcalOf(ui.date) / goalKcal(ui.date, c) * 100) + '%', { size: 108 })}</div>
   <div class="card c8"><h3>14 derniers jours · moyenne ${fmt(avg, 0)} kcal</h3>${bars('kc', days.map((d, i) => ({ label: parse(d).getDate(), v: k[i] })), { goal: c.kcalGoal, unit: ' kcal' })}</div>
   ${mealsCard(ui.date)}
   ${nutritionCard()}
@@ -641,7 +646,7 @@ function vSettings() {
   const c = cfg(), th = theme(), n = (k, l, step = '1', ph = '') => `<div><label class="l">${l}</label><input class="field" data-cfg="${k}" data-num type="number" step="${step}" inputmode="decimal" placeholder="${ph}" value="${c[k] ?? ''}"></div>`;
   return head('Réglages', 'Objectifs, apparence et synchronisation') + `<div class="grid">
   <div class="card c6"><h3>Profil & objectifs</h3><div class="f2" style="gap:12px"><div style="grid-column:span 2"><label class="l">Prénom</label><input class="field" data-cfg="name" value="${esc(c.name)}"></div>
-    ${n('goalWeight', 'Poids objectif (kg)', '0.1')}${n('startWeight', 'Poids de départ (kg)', '0.1', 'auto')}${n('height', 'Taille (cm)')}${n('kcalGoal', 'Objectif calories / jour')}${n('waterGoalL', 'Eau (litres / jour)', '0.1', '2')}${n('sportTarget', 'Séances / semaine')}${n('protGoal', 'Protéines (g/jour)', '1', 'auto')}${n('carbGoal', 'Glucides (g/jour)', '1', 'auto')}${n('fatGoal', 'Lipides (g/jour)', '1', 'auto')}${n('weekHours', 'Horaires hebdomadaires (h)', '0.25', 'ex. 35')}<div style="grid-column:span 2"><label class="l">Salaire</label><div class="seg"><button class="${c.salaryMode !== 'monthly' ? 'on' : ''}" data-act="salmode" data-v="fixed">Fixe</button><button class="${c.salaryMode === 'monthly' ? 'on' : ''}" data-act="salmode" data-v="monthly">Variable (chaque mois)</button></div><p class="sub" style="margin:6px 0 0">${c.salaryMode === 'monthly' ? 'Saisis ton salaire du mois dans Budget ou Travail. Si tu l\'oublies, le dernier mois renseigné est repris.' : 'Le même salaire chaque mois.'}</p></div>${n('netSalary', c.salaryMode === 'monthly' ? 'Salaire par défaut (€)' : 'Salaire net / mois (€)', '1')}</div><button class="btn pri" style="margin-top:16px;width:100%;justify-content:center" data-act="savecfg">💾 Enregistrer et synchroniser</button></div>
+    ${n('goalWeight', 'Poids objectif (kg)', '0.1')}${n('startWeight', 'Poids de départ (kg)', '0.1', 'auto')}${n('height', 'Taille (cm)')}${n('kcalGoal', 'Objectif calories / jour (de base)')}${n('burnShare', 'Part des kcal sport ajoutée (%)', '5', '50')}${n('waterGoalL', 'Eau (litres / jour)', '0.1', '2')}${n('sportTarget', 'Séances / semaine')}${n('protGoal', 'Protéines (g/jour)', '1', 'auto')}${n('carbGoal', 'Glucides (g/jour)', '1', 'auto')}${n('fatGoal', 'Lipides (g/jour)', '1', 'auto')}${n('weekHours', 'Horaires hebdomadaires (h)', '0.25', 'ex. 35')}<div style="grid-column:span 2"><label class="l">Salaire</label><div class="seg"><button class="${c.salaryMode !== 'monthly' ? 'on' : ''}" data-act="salmode" data-v="fixed">Fixe</button><button class="${c.salaryMode === 'monthly' ? 'on' : ''}" data-act="salmode" data-v="monthly">Variable (chaque mois)</button></div><p class="sub" style="margin:6px 0 0">${c.salaryMode === 'monthly' ? 'Saisis ton salaire du mois dans Budget ou Travail. Si tu l\'oublies, le dernier mois renseigné est repris.' : 'Le même salaire chaque mois.'}</p></div>${n('netSalary', c.salaryMode === 'monthly' ? 'Salaire par défaut (€)' : 'Salaire net / mois (€)', '1')}</div><button class="btn pri" style="margin-top:16px;width:100%;justify-content:center" data-act="savecfg">💾 Enregistrer et synchroniser</button></div>
   <div class="card c6"><h3>Apparence</h3><label class="l">Couleur (synchronisée)</label><div class="swatches">${Object.entries(ACCENTS).map(([k, v]) => `<button class="${c.accent === k ? 'on' : ''}" style="background:rgb(${v})" data-act="accent" data-v="${k}" aria-label="${k}"></button>`).join('')}</div>
     <label class="l" style="margin-top:18px">Thème (synchronisé)</label><div class="seg">${[['dark', 'Sombre'], ['light', 'Clair']].map(([k, l]) => `<button class="${th === k ? 'on' : ''}" data-act="theme" data-v="${k}">${l}</button>`).join('')}</div>
     <h3 style="margin-top:24px">Synchronisation</h3><p class="sub" data-sync>${syncHtml()}</p><p class="sub">Tout ce que tu saisis est enregistré sur ton appareil puis envoyé au serveur ; tes autres appareils se mettent à jour en direct.</p>
