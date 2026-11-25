@@ -35,6 +35,7 @@ const ICONS = {
   credit: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/>',
   budget: '<path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7zM3 7l2-3h12M16 13.5h2"/>',
   bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>',
+  billing: '<path d="M6 3h9l4 4v14H6zM14 3v5h5M9 13h7M9 17h7"/>',
   settings: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M14 4v4M8 10v4M16 16v4"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
   plus: '<path d="M12 5v14M5 12h14"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>',
@@ -42,7 +43,7 @@ const ICONS = {
 };
 ICONS.reminders = ICONS.bell;
 const ic = (n, c = 'ic') => `<svg class="${c}" viewBox="0 0 24 24">${ICONS[n] || ''}</svg>`;
-const TABS = [['home', 'Dashboard'], ['today', 'Aujourd’hui'], ['weight', 'Poids'], ['sport', 'Sport'], ['food', 'Repas'], ['work', 'Travail'], ['credit', 'Crédit'], ['budget', 'Budget'], ['reminders', 'Rappels'], ['settings', 'Réglages']];
+const TABS = [['home', 'Dashboard'], ['today', 'Aujourd’hui'], ['weight', 'Poids'], ['sport', 'Sport'], ['food', 'Repas'], ['work', 'Travail'], ['credit', 'Crédit'], ['budget', 'Budget'], ['reminders', 'Rappels'], ['billing', 'Facturation'], ['settings', 'Réglages']];
 const ACCENTS = { Jade: '0,168,150', Corail: '255,90,79', Violet: '139,92,246', Océan: '56,189,248', Menthe: '45,212,160', Ambre: '245,158,11', Rose: '244,114,182' };
 const SPORTS = ['Muscu', 'Cardio', 'Course', 'Marche', 'Vélo', 'Natation', 'Yoga', 'Autre'];
 const SLOTS = ['Petit-déj', 'Déjeuner', 'Dîner', 'Collation'];
@@ -129,7 +130,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { pu
 
 function localLogout() {
   if (chan) sb.removeChannel(chan);
-  S.token = null; LS.del('ld_token');
+  S.token = null; LS.del('ld_token'); LS.del('ld_owner'); ui.owner = false;
   render();
 }
 
@@ -292,7 +293,7 @@ function coachData(mode) {
   }
   if (mode === 'budget') {
     const m = ui.bmonth, b = budgetStats(m), pm = (() => { const d = parse(m + '-01'); d.setMonth(d.getMonth() - 1); return budgetStats(ymd(d).slice(0, 7)); })();
-    return { mois: m, revenuNetMensuel: salaryFor(m, c), revenusDuMois: b.income, mensualiteCredit: b.creditM, depensesDuMois: Math.round(b.spent), soldeRestant: Math.round(b.left), joursEcoules: b.elapsed, joursDuMois: b.dim, projectionDepensesFinDeMois: b.proj && Math.round(b.proj), depensesParCategorie: Object.entries(b.byCat).map(([cat, v]) => ({ cat, depense: Math.round(v), limite: b.bud[cat] || null })), limitesSansDepense: CATS.filter(([n]) => b.bud[n] && !b.byCat[n]).map(x => x[0]), moisPrecedent: { depenses: Math.round(pm.spent), parCategorie: pm.byCat }, epargneDisponible: c.savings, depensesFixesDeclarees: c.expenses };
+    return { mois: m, revenuNetMensuel: salaryFor(m, c), revenusSupplementaires: [...b.rec.map(r => ({ nom: r.name, montant: r.amount, recurrent: true })), ...b.inc.map(t => ({ nom: t.note, montant: t.amount, date: t.date }))], revenusDuMois: b.income, mensualiteCredit: b.creditM, depensesDuMois: Math.round(b.spent), soldeRestant: Math.round(b.left), joursEcoules: b.elapsed, joursDuMois: b.dim, projectionDepensesFinDeMois: b.proj && Math.round(b.proj), depensesParCategorie: Object.entries(b.byCat).map(([cat, v]) => ({ cat, depense: Math.round(v), limite: b.bud[cat] || null })), limitesSansDepense: CATS.filter(([n]) => b.bud[n] && !b.byCat[n]).map(x => x[0]), moisPrecedent: { depenses: Math.round(pm.spent), parCategorie: pm.byCat }, epargneDisponible: c.savings, depensesFixesDeclarees: c.expenses };
   }
   const ms = monthDays(t.slice(0, 7)), worked = ms.filter(d => day(d).work === 'work').length;
   return { credit: { nom: cr.c.name, total: cr.c.total, mensualite: cr.c.monthly, tauxAnnuelPct: cr.c.rate, rembourse: cr.paid, reste: cr.remaining, mensualitesRestantes: cr.monthsLeft, dureeTotaleMois: cr.c.months, finPrevue: cr.end && cr.end.toISOString().slice(0, 10), debut: cr.c.start, derniersVersements: cr.pays.slice(0, 6).map(p => ({ date: p.date, montant: p.amount })) }, salaireNetMensuel: salaryFor(t.slice(0, 7), c), heuresHebdo: weeklyHours(c), emploiDuTemps: c.sched || null, heuresTravailleesCeMois: Math.round(ms.reduce((a, d) => a + workedHours(d, c), 0)), objectifHeuresMois: monthTarget(c) && Math.round(monthTarget(c)), tauxHoraireNet: salaryFor(t.slice(0, 7), c) && monthTarget(c) ? Number((salaryFor(t.slice(0, 7), c) / monthTarget(c)).toFixed(2)) : null, partMensualiteSurSalairePct: salaryFor(t.slice(0, 7), c) && cr.c.monthly ? Number((cr.c.monthly / salaryFor(t.slice(0, 7), c) * 100).toFixed(1)) : null, depensesMensuelles: c.expenses, epargne: c.savings, joursTravaillesCeMois: worked };
@@ -383,7 +384,7 @@ function bars(id, items, { goal, h = 150, unit = '' } = {}) { // items: [{label,
 }
 
 /* ============================== UI state ============================== */
-const ui = { bmonth: today().slice(0, 7), tab: (location.hash.slice(2) || 'home'), date: today(), range: 30, month: today().slice(0, 7), dirty: false, anim: true };
+const ui = { owner: LS.get('ld_owner', false), bmonth: today().slice(0, 7), tab: (location.hash.slice(2) || 'home'), date: today(), range: 30, month: today().slice(0, 7), dirty: false, anim: true };
 if (!TABS.some(t => t[0] === ui.tab)) ui.tab = 'home';
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
@@ -649,18 +650,20 @@ function vCredit() {
 const CATS = [['Logement', '🏠'], ['Courses', '🛒'], ['Transport', '🚗'], ['Restaurants', '🍽️'], ['Loisirs', '🎬'], ['Santé', '💊'], ['Abonnements', '📱'], ['Shopping', '🛍️'], ['Épargne', '🏦'], ['Autre', '📦']];
 const catIcon = c => (CATS.find(x => x[0] === c) || [0, '📦'])[1];
 const txs = () => ids('tx:').map(id => ({ id: id.slice(3), ...val(id) })).filter(t => !t.del && t.amount != null);
+const recurring = () => ids('rinc:').map(id => ({ id: id.slice(5), ...val(id) })).filter(r => !r.del && r.amount != null); // revenus récurrents (chaque mois)
 const sumA = a => a.reduce((s, t) => s + Number(t.amount || 0), 0);
 function budgetStats(m) {
   const c = cfg(), cr = credit(), tx = txs().filter(t => (t.date || '').startsWith(m)).sort((a, b) => b.date.localeCompare(a.date));
   const exp = tx.filter(t => t.type !== 'inc'), inc = tx.filter(t => t.type === 'inc');
   const paid = cr.total ? payments().filter(p => (p.date || '').startsWith(m)) : [];
   const creditM = paid.length ? sumA(paid) : (cr.monthly || 0); // versement réel du mois, sinon la mensualité
-  const income = (salaryFor(m, c) || 0) + sumA(inc), spent = sumA(exp), byCat = {};
+  const rec = recurring().filter(r => (r.from || '') <= m), salary = salaryFor(m, c) || 0, extra = sumA(inc) + sumA(rec);
+  const income = salary + extra, spent = sumA(exp), byCat = {};
   exp.forEach(t => { byCat[t.cat || 'Autre'] = (byCat[t.cat || 'Autre'] || 0) + Number(t.amount); });
   const bud = c.budgets || {}, limit = Object.values(bud).reduce((a, v) => a + (Number(v) || 0), 0);
   const [y, mo] = m.split('-').map(Number), dim = new Date(y, mo, 0).getDate(), cur = today().slice(0, 7);
   const elapsed = m === cur ? new Date().getDate() : m < cur ? dim : 0;
-  return { tx, income, spent, byCat, bud, limit, creditM, dim, elapsed, proj: m === cur && elapsed ? spent / elapsed * dim : null, left: income - creditM - spent };
+  return { tx, inc, rec, salary, extra, income, spent, byCat, bud, limit, creditM, dim, elapsed, proj: m === cur && elapsed ? spent / elapsed * dim : null, left: income - creditM - spent };
 }
 function vBudget() {
   const m = ui.bmonth, s = budgetStats(m), c = cfg(), cur = today().slice(0, 7);
@@ -672,7 +675,12 @@ function vBudget() {
   <div class="card c7"><h3>${ic('plus')}Ajouter</h3><form data-form="tx"><div class="f2" style="gap:10px"><div><label class="l">Montant (€)</label><input class="field" name="amount" type="number" step="0.01" inputmode="decimal" required></div><div><label class="l">Type</label><select class="field" name="type"><option value="exp">Dépense</option><option value="inc">Revenu</option></select></div>
   <div><label class="l">Catégorie</label><select class="field" name="cat">${CATS.map(([n, e]) => `<option>${n}</option>`).join('')}</select></div><div><label class="l">Date</label><input class="field" name="date" type="date" value="${m === cur ? today() : m + '-01'}"></div></div>
   <div class="row" style="margin-top:10px;flex-wrap:nowrap"><input class="field" name="note" placeholder="Note (ex. Carrefour)" maxlength="60"><button class="btn pri">${ic('plus')}Ajouter</button></div></form></div>
-  <div class="card c12" style="padding:14px 18px">${salaryInput(m)}</div>
+  <div class="card c12"><h3>💰 Revenus de ${monthName(m)} · ${eur(s.income)}</h3>
+    <div class="grid" style="gap:14px"><div class="c6"><div style="margin-bottom:14px">${salaryInput(m)}</div><div class="list"><div class="item"><div class="grow">💼 Salaire net</div><b>${eur(s.salary)}</b></div>
+    ${s.rec.map(r => `<div class="item"><div class="grow"><div class="t">🔁 ${esc(r.name || 'Revenu mensuel')}</div><div class="s">chaque mois depuis ${monthName(r.from)}</div></div><b style="color:var(--ok)">+${eur(r.amount)}</b><button class="x" data-act="delrinc" data-id="${r.id}" aria-label="Arrêter">${ic('x')}</button></div>`).join('')}
+    ${s.inc.map(t => `<div class="item"><div class="grow"><div class="t">💰 ${esc(t.note || 'Revenu')}</div><div class="s">${longDate(t.date)}</div></div><b style="color:var(--ok)">+${eur(t.amount)}</b><button class="x" data-act="deltx" data-id="${t.id}" aria-label="Supprimer">${ic('x')}</button></div>`).join('')}
+    <div class="item" style="background:rgba(var(--acc-rgb),.14)"><div class="grow"><b>Total des revenus</b></div><b>${eur(s.income)}</b></div></div></div>
+    <form class="c6" data-form="inc"><label class="l">Ajouter un revenu supplémentaire</label><div class="f2" style="gap:10px"><div style="grid-column:span 2"><input class="field" name="name" placeholder="Nom (ex. Prime, Freelance, Aide…)" maxlength="60"></div><div><input class="field" name="amount" type="number" step="0.01" inputmode="decimal" placeholder="Montant (€)" required></div><div><input class="field" name="date" type="date" value="${m === cur ? today() : m + '-01'}"></div><div style="grid-column:span 2"><select class="field" name="freq"><option value="once">Ponctuel (ce mois uniquement)</option><option value="monthly">Chaque mois (récurrent)</option></select></div></div><button class="btn pri" style="margin-top:10px;width:100%;justify-content:center">${ic('plus')}Ajouter au revenu mensuel</button></form></div></div>
   <div class="card c7"><h3>Budget par catégorie</h3><div class="list" style="gap:12px">${CATS.map(([n, e]) => { const sp = s.byCat[n] || 0, lim = Number(s.bud[n]) || 0, over = lim && sp > lim; return `<div><div class="row" style="justify-content:space-between;flex-wrap:nowrap;font-size:13px"><span>${e} ${n}${over ? ' <span class="chip down">dépassé</span>' : ''}</span><span style="white-space:nowrap"><b>${eur(sp)}</b> / <input class="field" style="width:88px;padding:4px 8px;display:inline-block" data-bud="${n}" data-num type="number" inputmode="decimal" placeholder="limite" value="${lim || ''}"></span></div><div class="bar" style="height:8px;margin-top:6px"><i style="width:${lim ? Math.min(sp / lim * 100, 100) : sp ? 100 : 0}%;${over ? 'background:var(--bad)' : lim ? '' : 'background:var(--faint)'}"></i></div></div>`; }).join('')}</div>
   <div class="row" style="margin-top:14px;justify-content:space-between"><span class="sub">Total des limites : <b>${eur(s.limit)}</b></span><button class="btn pri sm" data-act="coach" data-m="budget">✨ Conseils budget IA</button></div></div>
   <div class="card c5"><h3>Dépenses par jour</h3>${bars('bd', perDay, { unit: ' €' })}${s.proj != null ? `<p class="sub" style="margin-top:10px">À ce rythme : <b>${eur(s.proj)}</b> de dépenses fin de mois ${s.income && s.proj + s.creditM > s.income ? '<span class="chip down">au-dessus de tes revenus</span>' : '<span class="chip up">OK</span>'}</p>` : ''}</div>
@@ -741,7 +749,15 @@ function vSettings() {
     <div class="row" style="margin-top:10px">${installEvt ? `<button class="btn pri" data-act="install">Installer l’application</button>` : ''}<button class="btn" data-act="export">Exporter (JSON)</button><label class="btn" style="cursor:pointer">Importer<input type="file" accept="application/json" id="imp" hidden></label><button class="btn danger" data-act="logout">Se déconnecter</button></div></div></div>`;
 }
 
-const VIEWS = { reminders: vReminders, budget: vBudget, home: vHome, today: vToday, weight: vWeight, sport: vSport, food: vFood, work: vWork, credit: vCredit, settings: vSettings };
+function vBilling() { // module chargé à la demande, uniquement pour le propriétaire
+  if (window.Billing) return window.Billing.view();
+  if (!ui.billingLoading) {
+    ui.billingLoading = true;
+    (async () => { try { for (const f of ['/vendor/jspdf.min.js', '/vendor/jspdf-autotable.min.js', '/billing.js']) await new Promise((ok, ko) => { const el = document.createElement('script'); el.src = f; el.onload = ok; el.onerror = () => ko(new Error(f)); document.head.appendChild(el); }); } catch (e) { toast('Chargement impossible : ' + e.message); ui.billingLoading = false; return; } render(true); })();
+  }
+  return head('Facturation', 'Réservé au propriétaire') + '<div class="card c12">Chargement…</div>';
+}
+const VIEWS = { billing: vBilling, reminders: vReminders, budget: vBudget, home: vHome, today: vToday, weight: vWeight, sport: vSport, food: vFood, work: vWork, credit: vCredit, settings: vSettings };
 
 /* ============================== rendu ============================== */
 function vLogin(initialized, err = '') {
@@ -761,8 +777,8 @@ function render(local = false) {
   if (renderQ) return; renderQ = true;
   requestAnimationFrame(() => {
     renderQ = false; ui.dirty = false;
-    const y = window.scrollY;
-    const nav = TABS.map(([k, l]) => `<a data-act="go" data-to="${k}" class="${ui.tab === k ? 'on' : ''}">${ic(k)}<span>${l}</span></a>`).join('');
+    const y = window.scrollY; if (ui.tab === 'billing' && !ui.owner) ui.tab = 'home';
+    const nav = TABS.filter(t => t[0] !== 'billing' || ui.owner).map(([k, l]) => `<a data-act="go" data-to="${k}" class="${ui.tab === k ? 'on' : ''}">${ic(k)}<span>${l}</span></a>`).join('');
     $('#app').innerHTML = `<div class="shell"><aside class="side"><div class="brand"><b>${ic('logo')}</b>Ma Vie</div><nav class="nav">${nav}</nav><div class="grow"></div>
       <a class="nav" style="display:flex"><button class="btn ghost" data-act="palette" style="width:100%;justify-content:space-between">${ic('search')}Rechercher<span class="kbd">⌘K</span></button></a><div class="sync" data-sync>${syncHtml()}</div></aside>
       <main>${VIEWS[ui.tab]()}</main></div><nav class="bottom">${nav}</nav>`;
@@ -806,6 +822,7 @@ const ACTS = {
   copymon: () => { const m = cfg().sched?.[0]; if (!m) return toast('Renseigne d’abord le lundi'); const sc = { ...(cfg().sched) }; for (let i = 1; i < 5; i++) sc[i] = { ...m }; put('cfg', { sched: sc }); toast('Lundi copié sur lun–ven'); },
   clearsched: () => { if (confirm('Effacer l’emploi du temps type ?')) put('cfg', { sched: null }); },
   bmonth: el => { ui.bmonth = el.dataset.m; render(true); },
+  delrinc: el => { put('rinc:' + el.dataset.id, { del: true }); toast('Revenu récurrent arrêté'); },
   deltx: el => { put('tx:' + el.dataset.id, { del: true }); toast('Opération supprimée'); },
   remtoggle: el => { const k = el.dataset.k, R = REMS.find(x => x.k === k), cur = val('rem')[k]; put('rem', { [k]: { ...R.def, ...(cur || {}), on: !(cur && cur.on) } }); },
   remday: el => { const k = el.dataset.k, i = Number(el.dataset.i), R = REMS.find(x => x.k === k), r = { ...R.def, ...(val('rem')[k] || {}) }, d = new Set(r.days || []); d.has(i) ? d.delete(i) : d.add(i); put('rem', { [k]: { ...r, days: [...d].sort() } }); },
@@ -879,6 +896,12 @@ document.addEventListener('submit', async e => {
   } else if (f.dataset.form === 'bill') {
     const r = { ...REMS[6].def, ...(val('rem').bills || {}), on: true };
     put('rem', { bills: { ...r, items: [...(r.items || []), { id: uid(), name: fd.name.trim(), day: Number(fd.day), lead: Number(fd.lead) || 0, amount: Number(fd.amount) || null }] } }); toast('Charge ajoutée ✓');
+  } else if (f.dataset.form === 'inc') {
+    if (!(Number(fd.amount) > 0)) return;
+    const d = fd.date || today();
+    if (fd.freq === 'monthly') put('rinc:' + uid(), { name: fd.name?.trim() || null, amount: Number(fd.amount), from: d.slice(0, 7) });
+    else put('tx:' + uid(), { date: d, amount: Number(fd.amount), cat: 'Autre', type: 'inc', note: fd.name?.trim() || 'Revenu' });
+    toast(fd.freq === 'monthly' ? 'Revenu mensuel ajouté ✓' : 'Revenu ajouté ✓');
   } else if (f.dataset.form === 'tx') {
     if (!(Number(fd.amount) > 0)) return;
     put('tx:' + uid(), { date: fd.date || today(), amount: Number(fd.amount), cat: fd.cat, type: fd.type, note: fd.note?.trim() || null }); toast(fd.type === 'inc' ? 'Revenu ajouté ✓' : 'Dépense ajoutée ✓');
@@ -996,6 +1019,6 @@ matchMedia('(prefers-color-scheme: light)').addEventListener?.('change', () => r
 window.addEventListener('hashchange', () => { const t = location.hash.slice(2); if (TABS.some(x => x[0] === t) && t !== ui.tab) { ui.tab = t; render(true); } });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => { });
 render(true); refreshPush();
-sb.auth.getSession().then(({ data }) => { if (data.session) { if (!S.token) { S.token = true; LS.set('ld_token', true); render(true); } connect(); pull(); flush(); } else if (S.token && navigator.onLine) localLogout(); });
-window.__life = { S, put, val, ui, go }; // utile pour les tests
+sb.auth.getSession().then(({ data }) => { if (data.session) { const own = data.session.user?.app_metadata?.owner === true; if (own !== ui.owner) { ui.owner = own; LS.set('ld_owner', own); render(true); } if (!S.token) { S.token = true; LS.set('ld_token', true); render(true); } connect(); pull(); flush(); } else if (S.token && navigator.onLine) localLogout(); });
+window.__life = { S, put, val, ui, go, api: { sb, toast, render, esc, ic, head, today, addDays, uid, put } }; // utile pour les tests
 })();

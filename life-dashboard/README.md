@@ -24,3 +24,8 @@ Rappels : eau, exercice, repas, pesée (à jeun ou non), mensualité de crédit,
 ## IA : Claude + secours Gemini (gratuit)
 Les fonctions `api/kcal.js` (calories/macros) et `api/coach.js` (bilans, conseils) passent par `api/_ai.js` : Claude d'abord, puis **Gemini** si Claude échoue (crédit épuisé, panne) ou n'est pas configuré.
 Variables Vercel : `ANTHROPIC_API_KEY` (optionnelle), `GEMINI_API_KEY` (gratuite sur https://aistudio.google.com/apikey), `AI_PROVIDER` = `auto` (défaut) | `claude` | `gemini`, `GEMINI_MODEL` (optionnelle).
+
+## Facturation (devis / factures PDF) — réservée au propriétaire
+1. Supabase → SQL Editor : colle `supabase/billing.sql` (remplace `VOTRE_EMAIL` par l'email de ton compte), Run.
+2. Déconnecte-toi puis reconnecte-toi dans l'app : l'onglet **Facturation** apparaît (uniquement pour le compte marqué propriétaire ; la base refuse aussi tout accès aux autres comptes).
+3. Renseigne « Mon entreprise » (nom, SIREN/SIRET, adresse, IBAN, mentions). Aucune donnée personnelle n'est écrite dans le code du dépôt : tout est stocké dans Supabase.
