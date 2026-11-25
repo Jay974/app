@@ -275,10 +275,10 @@ function hydrate() {
     const from = prev ? resample(prev, target.length) : target.map(() => c.base);
     chartMem[id] = target;
     if (from.every((v, i) => Math.abs(v - target[i]) < .3)) continue;
-    const line = $('.line', svg), area = $('.area', svg), dots = $$('circle[data-i]', svg), t0 = performance.now(), dur = 750;
+    const line = $('.line', svg), area = $('.area', svg), dots = $$('circle[data-i]', svg), t0 = performance.now() + (prev ? 0 : 280), dur = 800; // 1ère apparition : attend la fin de l'entrée des cartes
     const step = now => {
       if (!svg.isConnected) return;
-      const k = Math.min((now - t0) / dur, 1), e = 1 - Math.pow(1 - k, 3);
+      const k = Math.max(0, Math.min((now - t0) / dur, 1)), e = 1 - Math.pow(1 - k, 4);
       const ys = target.map((v, i) => from[i] + (v - from[i]) * e), d = pathD(c.xs, ys);
       line.setAttribute('d', d); area.setAttribute('d', `${d}L${c.xs[c.xs.length - 1]} ${c.base}L${c.xs[0]} ${c.base}Z`);
       dots.forEach(dt => dt.setAttribute('cy', ys[dt.dataset.i]));
