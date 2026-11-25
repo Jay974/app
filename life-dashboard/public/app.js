@@ -134,7 +134,7 @@ function localLogout() {
 }
 
 /* ============================== domaine ============================== */
-const DEF = { goalWeight: null, startWeight: null, height: null, kcalGoal: 2200, waterGoal: 8, sportTarget: 3, weekHours: null, netSalary: null, name: '', accent: 'Jade', income: null, expenses: null, savings: null, budgets: null, protGoal: null, carbGoal: null, fatGoal: null };
+const DEF = { goalWeight: null, startWeight: null, height: null, kcalGoal: 2200, waterGoal: 8, waterGoalL: null, sportTarget: 3, weekHours: null, netSalary: null, name: '', accent: 'Jade', income: null, expenses: null, savings: null, budgets: null, protGoal: null, carbGoal: null, fatGoal: null };
 const cfg = () => { const c = { ...DEF, ...val('cfg') }; if (c.netSalary == null && c.income != null) c.netSalary = c.income; return c; };
 function macroGoals() { // objectifs perso, sinon calculés : prot 1,8 g/kg, lipides 30 % des kcal, glucides = le reste
   const c = cfg(), w = weights().slice(-1)[0]?.w;
@@ -162,8 +162,16 @@ function workedHours(d, c) { // priorité : horaires du jour > heures saisies > 
   const t = tpl(c, d), th = t && spanH(t.s, t.e, t.b); if (th != null) return th;
   return weeklyHours(c) ? weeklyHours(c) / 5 : 0;
 }
-const credit = () => ({ name: 'Mon crédit', total: 0, monthly: 0, start: null, rate: null, ...val('credit') });
+const credit = () => { // durée fixe : si la mensualité n'est pas saisie, elle se déduit du total / durée
+  const c = { name: 'Mon crédit', total: 0, monthly: 0, start: null, rate: null, months: null, ...val('credit') };
+  c.monthlyAuto = !c.monthly && c.months > 0 && c.total > 0;
+  if (c.monthlyAuto) c.monthly = Math.round(c.total / c.months * 100) / 100;
+  return c;
+};
 const day = d => val('day:' + d);
+const r2 = n => Math.round(n * 100) / 100;
+const waterOf = d => { const x = day(d); return x.waterL ?? (x.water != null ? x.water * 0.25 : null); }; // anciens « verres » = 0,25 L
+const waterGoal = c => c.waterGoalL ?? (c.waterGoal ? c.waterGoal * 0.25 : 2);
 const payments = () => ids('pay:').map(id => ({ id: id.slice(4), ...val(id) })).filter(p => !p.del && p.amount != null).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 const dayIds = () => ids('day:').map(k => k.slice(4)).sort();
 
@@ -172,7 +180,7 @@ function weights() { // [{date, w}] triés
 }
 function score(d) {
   const x = day(d), c = cfg();
-  const items = [x.weight != null, !!x.sport, !!x.work, (x.water || 0) >= c.waterGoal, (x.meals || []).length > 0, x.sleep != null, x.mood != null];
+  const items = [x.weight != null, !!x.sport, !!x.work, (waterOf(d) || 0) >= waterGoal(c), (x.meals || []).length > 0, x.sleep != null, x.mood != null];
   return items.filter(Boolean).length / items.length;
 }
 const MET = { Muscu: 5, Cardio: 7, Course: 9.8, Marche: 3.8, Vélo: 7.5, Natation: 7, Yoga: 2.5, Autre: 5 }; // équivalents métaboliques (MET)
@@ -201,10 +209,13 @@ function creditStats() {
   const paid = pays.reduce((s, p) => s + Number(p.amount), 0);
   const remaining = Math.max(c.total - paid, 0);
   const pct = c.total > 0 ? Math.min(paid / c.total, 1) : 0;
-  const monthsLeft = c.monthly > 0 ? Math.ceil(remaining / c.monthly) : null;
-  let end = null;
-  if (monthsLeft != null) { const d = new Date(); d.setMonth(d.getMonth() + monthsLeft); end = d; }
-  return { c, pays, planned, paid, remaining, pct, monthsLeft, end };
+  let monthsLeft = c.monthly > 0 ? Math.ceil(remaining / c.monthly) : null, end = null, fixed = false, elapsed = null;
+  if (c.months > 0 && c.start) { // durée fixe : fin = début + durée
+    fixed = true; const s0 = parse(c.start), n = new Date();
+    elapsed = Math.max(0, (n.getFullYear() - s0.getFullYear()) * 12 + n.getMonth() - s0.getMonth() - (n.getDate() < s0.getDate() ? 1 : 0));
+    monthsLeft = Math.max(0, Number(c.months) - elapsed); end = new Date(s0); end.setMonth(end.getMonth() + Number(c.months));
+  } else if (monthsLeft != null) { const d = new Date(); d.setMonth(d.getMonth() + monthsLeft); end = d; }
+  return { c, pays, planned, paid, remaining, pct, monthsLeft, end, fixed, elapsed };
 }
 
 const frDate = d => d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
@@ -233,9 +244,9 @@ function creditScenarios() {
 function coachData(mode) {
   const c = cfg(), t = today(), cr = creditStats();
   if (mode === 'week') {
-    const days = Array.from({ length: 14 }, (_, i) => addDays(t, i - 13)).map(d => { const x = day(d); return { date: d, poids: x.weight, sport: x.sport, sportType: x.sportType, minutes: x.sportMin, travail: x.work, kcal: kcalOf(d) || undefined, eau: x.water, sommeil: x.sleep, humeur: x.mood, kcalBrulees: burned(d) || undefined }; });
+    const days = Array.from({ length: 14 }, (_, i) => addDays(t, i - 13)).map(d => { const x = day(d); return { date: d, poids: x.weight, sport: x.sport, sportType: x.sportType, minutes: x.sportMin, travail: x.work, kcal: kcalOf(d) || undefined, eauLitres: waterOf(d), sommeil: x.sleep, humeur: x.mood, kcalBrulees: burned(d) || undefined }; });
     const f = weightForecast();
-    return { jours: days, objectifs: { poidsCible: c.goalWeight, kcal: c.kcalGoal, eau: c.waterGoal, seancesParSemaine: c.sportTarget, tailleCm: c.height }, tendancePoidsKgParSemaine: f.ok ? Number(f.perWeek.toFixed(2)) : null };
+    return { jours: days, objectifs: { poidsCible: c.goalWeight, kcal: c.kcalGoal, eauLitres: waterGoal(c), seancesParSemaine: c.sportTarget, tailleCm: c.height }, tendancePoidsKgParSemaine: f.ok ? Number(f.perWeek.toFixed(2)) : null };
   }
   if (mode === 'nutrition') {
     const g = macroGoals(), days = Array.from({ length: 7 }, (_, i) => addDays(t, -i)).map(d => { const m = macrosOf(d); return { date: d, kcal: kcalOf(d), kcalBruleesSport: burned(d), proteinesG: Math.round(m.p), glucidesG: Math.round(m.c), lipidesG: Math.round(m.f), repas: (day(d).meals || []).map(x => x.name) }; });
@@ -247,7 +258,7 @@ function coachData(mode) {
     return { mois: m, revenuNetMensuel: c.netSalary, revenusDuMois: b.income, mensualiteCredit: b.creditM, depensesDuMois: Math.round(b.spent), soldeRestant: Math.round(b.left), joursEcoules: b.elapsed, joursDuMois: b.dim, projectionDepensesFinDeMois: b.proj && Math.round(b.proj), depensesParCategorie: Object.entries(b.byCat).map(([cat, v]) => ({ cat, depense: Math.round(v), limite: b.bud[cat] || null })), limitesSansDepense: CATS.filter(([n]) => b.bud[n] && !b.byCat[n]).map(x => x[0]), moisPrecedent: { depenses: Math.round(pm.spent), parCategorie: pm.byCat }, epargneDisponible: c.savings, depensesFixesDeclarees: c.expenses };
   }
   const ms = monthDays(t.slice(0, 7)), worked = ms.filter(d => day(d).work === 'work').length;
-  return { credit: { nom: cr.c.name, total: cr.c.total, mensualite: cr.c.monthly, tauxAnnuelPct: cr.c.rate, rembourse: cr.paid, reste: cr.remaining, mensualitesRestantes: cr.monthsLeft, debut: cr.c.start, derniersVersements: cr.pays.slice(0, 6).map(p => ({ date: p.date, montant: p.amount })) }, salaireNetMensuel: c.netSalary, heuresHebdo: weeklyHours(c), emploiDuTemps: c.sched || null, heuresTravailleesCeMois: Math.round(ms.reduce((a, d) => a + workedHours(d, c), 0)), objectifHeuresMois: monthTarget(c) && Math.round(monthTarget(c)), tauxHoraireNet: c.netSalary && monthTarget(c) ? Number((c.netSalary / monthTarget(c)).toFixed(2)) : null, partMensualiteSurSalairePct: c.netSalary && cr.c.monthly ? Number((cr.c.monthly / c.netSalary * 100).toFixed(1)) : null, depensesMensuelles: c.expenses, epargne: c.savings, joursTravaillesCeMois: worked };
+  return { credit: { nom: cr.c.name, total: cr.c.total, mensualite: cr.c.monthly, tauxAnnuelPct: cr.c.rate, rembourse: cr.paid, reste: cr.remaining, mensualitesRestantes: cr.monthsLeft, dureeTotaleMois: cr.c.months, finPrevue: cr.end && cr.end.toISOString().slice(0, 10), debut: cr.c.start, derniersVersements: cr.pays.slice(0, 6).map(p => ({ date: p.date, montant: p.amount })) }, salaireNetMensuel: c.netSalary, heuresHebdo: weeklyHours(c), emploiDuTemps: c.sched || null, heuresTravailleesCeMois: Math.round(ms.reduce((a, d) => a + workedHours(d, c), 0)), objectifHeuresMois: monthTarget(c) && Math.round(monthTarget(c)), tauxHoraireNet: c.netSalary && monthTarget(c) ? Number((c.netSalary / monthTarget(c)).toFixed(2)) : null, partMensualiteSurSalairePct: c.netSalary && cr.c.monthly ? Number((cr.c.monthly / c.netSalary * 100).toFixed(1)) : null, depensesMensuelles: c.expenses, epargne: c.savings, joursTravaillesCeMois: worked };
 }
 
 /* ============================== graphiques ============================== */
@@ -386,7 +397,7 @@ function vToday() {
     ${x.work === 'work' ? (() => { const t = tpl(c, d) || {}; return `<div class="f2" style="margin-top:12px;grid-template-columns:1fr 1fr 1fr"><div><label class="l">Début</label><input class="field" type="time" data-day="workS" value="${x.workS ?? t.s ?? ''}"></div><div><label class="l">Fin</label><input class="field" type="time" data-day="workE" value="${x.workE ?? t.e ?? ''}"></div><div><label class="l">Pause (min)</label><input class="field" data-day="workB" data-num type="number" inputmode="numeric" placeholder="0" value="${x.workB ?? t.b ?? ''}"></div></div><div class="sub" style="margin-top:8px">= <b>${fmt(workedHours(d, c), 2)} h</b> travaillées${tpl(c, d) && x.workS == null ? ' (horaires types)' : ''}</div>`; })() : ''}</div>
   <div class="card c6"><h3>${ic('sport')}Sport</h3><div class="seg">${[['done', '✅ Séance faite'], ['rest', '😴 Repos']].map(([k, l]) => `<button class="${x.sport === k ? 'on' : ''}" data-act="set" data-k="sport" data-v="${k}">${l}</button>`).join('')}</div>
     ${x.sport === 'done' ? `<div class="chips" style="margin-top:12px">${SPORTS.map(s => `<button class="${x.sportType === s ? 'on' : ''}" data-act="set" data-k="sportType" data-v="${s}">${s}</button>`).join('')}</div><div style="margin-top:12px"><label class="l">Durée (minutes)</label><input class="field" data-day="sportMin" data-num type="number" inputmode="numeric" placeholder="45" value="${x.sportMin ?? ''}"></div>${burnLine(d)}` : ''}</div>
-  <div class="card c3"><h3>💧 Eau</h3><div class="stepper"><button data-act="water" data-n="-1" aria-label="Moins">−</button><b>${x.water || 0}</b><button data-act="water" data-n="1" aria-label="Plus">+</button></div><div class="drops">${Array.from({ length: Math.max(c.waterGoal, x.water || 0) }, (_, i) => `<i class="${i < (x.water || 0) ? 'on' : ''}"></i>`).join('')}</div><div class="sub">objectif ${c.waterGoal} verres</div></div>
+  <div class="card c3"><h3>💧 Eau</h3>${(() => { const w = r2(waterOf(d) || 0), g = r2(waterGoal(c)); return `<div class="val">${fmt(w, 2)}<small>/ ${fmt(g, 2)} L</small></div><div class="bar" style="margin:12px 0"><i style="width:${Math.min(w / g * 100, 100)}%;background:#38bdf8"></i></div><div class="chips">${[0.2, 0.3, 0.5, 0.75, 1, 1.5].map(v => `<button data-act="water" data-n="${v}">+${fmt(v, 2)} L</button>`).join('')}</div><div class="row" style="margin-top:12px;flex-wrap:nowrap"><input class="field" data-day="waterL" data-num type="number" step="0.05" min="0" inputmode="decimal" placeholder="Total (L)" value="${w || ''}"><button class="btn sm" data-act="water" data-n="-0.2" aria-label="Retirer 0,2 litre">−0,2</button></div>`; })()}</div>
   <div class="card c3"><h3>🌙 Sommeil</h3><div class="big-in"><input data-day="sleep" data-num type="number" step="0.25" inputmode="decimal" placeholder="--" style="width:90px" value="${x.sleep ?? ''}"><span>h</span></div><h3 style="margin-top:14px">Humeur</h3><div class="moods">${MOODS.map((m, i) => `<button class="${x.mood === i + 1 ? 'on' : ''}" data-act="set" data-k="mood" data-v="${i + 1}" data-num aria-label="Humeur ${i + 1}">${m}</button>`).join('')}</div></div>
   ${mealsCard(d)}
   <div class="card c6"><h3>📝 Notes du jour</h3><textarea class="field" data-day="notes" rows="5" placeholder="Comment s’est passée ta journée ?">${esc(x.notes || '')}</textarea></div>
@@ -404,22 +415,22 @@ function vHome() {
   const delta = lastW && first30 && first30 !== lastW ? lastW.w - first30.w : null;
   const sleepArr = Array.from({ length: 7 }, (_, i) => day(addDays(t, -i)).sleep).filter(v => v != null);
   const kcalArr = Array.from({ length: 7 }, (_, i) => kcalOf(addDays(t, -i))).filter(v => v > 0);
-  const waterArr = Array.from({ length: 7 }, (_, i) => day(addDays(t, -i)).water).filter(v => v != null);
+  const waterArr = Array.from({ length: 7 }, (_, i) => waterOf(addDays(t, -i))).filter(v => v != null);
   const mean = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null;
   const x = day(t);
-  const todo = [['Poids', x.weight != null], ['Sport', !!x.sport], ['Travail', !!x.work], ['Eau', (x.water || 0) >= c.waterGoal], ['Repas', (x.meals || []).length > 0], ['Sommeil', x.sleep != null], ['Humeur', x.mood != null]];
-  const heatRows = [['Sport', d => day(d).sport === 'done' ? 'on' : day(d).sport === 'rest' ? 'mid' : ''], ['Travail', d => day(d).work === 'work' ? 'on' : day(d).work ? 'mid' : ''], ['Poids', d => day(d).weight != null ? 'on' : ''], ['Repas', d => kcalOf(d) > 0 ? 'on' : ''], ['Eau', d => (day(d).water || 0) >= c.waterGoal ? 'on' : (day(d).water || 0) > 0 ? 'mid' : '']];
+  const todo = [['Poids', x.weight != null], ['Sport', !!x.sport], ['Travail', !!x.work], ['Eau', (waterOf(t) || 0) >= waterGoal(c)], ['Repas', (x.meals || []).length > 0], ['Sommeil', x.sleep != null], ['Humeur', x.mood != null]];
+  const heatRows = [['Sport', d => day(d).sport === 'done' ? 'on' : day(d).sport === 'rest' ? 'mid' : ''], ['Travail', d => day(d).work === 'work' ? 'on' : day(d).work ? 'mid' : ''], ['Poids', d => day(d).weight != null ? 'on' : ''], ['Repas', d => kcalOf(d) > 0 ? 'on' : ''], ['Eau', d => (waterOf(d) || 0) >= waterGoal(c) ? 'on' : (waterOf(d) || 0) > 0 ? 'mid' : '']];
   const wdays = Array.from({ length: 7 }, (_, i) => addDays(wkS, i));
   return head(greet(), longDate(t), `<button class="btn pri" data-act="coach" data-m="week">✨ Bilan IA</button><button class="btn" data-act="palette">${ic('search')}<span class="kbd">⌘K</span></button>`) + `<div class="grid">
   <div class="card c7 hero" style="display:flex;justify-content:space-between;gap:16px;align-items:center"><div><h3>Ta semaine</h3><div class="big">Tu es à <em>${Math.round(avg * 100)} %</em> de suivi cette semaine</div><p>${wk.n}/${c.sportTarget} séances · ${worked} jour${worked > 1 ? 's' : ''} travaillé${worked > 1 ? 's' : ''} ce mois</p><button class="btn" style="background:rgba(255,255,255,.95);color:#0b4a44" data-act="go" data-to="today">Remplir aujourd’hui →</button></div>${ring('week', avg, Math.round(avg * 100) + '%', { size: 138, sw: 13 })}</div>
   <div class="card c5"><h3>${ic('today')}À faire aujourd’hui</h3><div class="chips">${todo.map(([l, ok]) => `<button class="${ok ? 'on' : ''}" data-act="go" data-to="today">${ok ? '✓' : '○'} ${l}</button>`).join('')}</div>
-    <div class="row" style="margin-top:14px"><button class="btn pri sm" data-act="set-today" data-k="sport" data-v="done">✅ Sport fait</button><button class="btn sm" data-act="set-today" data-k="work" data-v="work">💼 J’ai travaillé</button><button class="btn sm" data-act="water-today">💧 +1 verre</button></div></div>
+    <div class="row" style="margin-top:14px"><button class="btn pri sm" data-act="set-today" data-k="sport" data-v="done">✅ Sport fait</button><button class="btn sm" data-act="set-today" data-k="work" data-v="work">💼 J’ai travaillé</button><button class="btn sm" data-act="water-today">💧 +0,25 L</button></div></div>
   <div class="card c3 kpis"><h3>${ic('weight')}Poids</h3><div class="val">${fmt(lastW?.w)}<small>kg</small></div><div class="sub">${delta != null ? `<span class="chip ${delta <= 0 ? 'up' : 'down'}">${delta <= 0 ? '▼' : '▲'} ${fmt(Math.abs(delta))} kg / 30 j</span>` : 'Entre ton poids'}</div>${lineChart('sp-w', wy, days30.map(shortDate), { spark: true })}</div>
   <div class="card c3 kpis"><h3>${ic('credit')}Crédit</h3><div class="val">${Math.round(cs.pct * 100)}<small>% remboursé</small></div><div class="sub">${cs.c.total ? `Reste ${eur(cs.remaining)}` : 'À configurer'}</div><div class="bar" style="margin-top:16px"><i style="width:${cs.pct * 100}%"></i></div><div class="sub" style="margin-top:8px">${cs.end ? 'Fin estimée ' + cs.end.toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' }) : ''}</div></div>
   <div class="card c3 kpis"><h3>${ic('work')}Travail</h3>${(() => { const tg = monthTarget(c), h = ms.reduce((a, d) => a + workedHours(d, c), 0); return tg ? `<div class="val">${fmt(h, 0)}<small>/ ${fmt(tg, 0)} h ce mois</small></div><div class="bar" style="margin-top:16px"><i style="width:${Math.min(h / tg * 100, 100)}%"></i></div><div class="sub" style="margin-top:8px">${c.netSalary ? 'Salaire net ' + eur(c.netSalary) : worked + ' jours travaillés'}</div>` : `<div class="val">${worked}<small>jour${worked > 1 ? 's' : ''} ce mois</small></div><div class="sub" style="margin-top:16px">Renseigne tes heures hebdo dans Réglages</div>`; })()}</div>
   <div class="card c3 kpis"><h3>${ic('sport')}Sport</h3><div class="val">${wk.n}<small>/ ${c.sportTarget} séances</small></div><div class="bar" style="margin-top:16px"><i style="width:${Math.min(wk.n / c.sportTarget * 100, 100)}%"></i></div><div class="sub" style="margin-top:8px">${wk.min} min · 🔥 ${fmt(wk.kcal, 0)} kcal cette semaine</div></div>
   <div class="card c8"><h3>${ic('weight')}Évolution du poids · 30 jours</h3>${lineChart('home-w', wy, days30.map(shortDate), { goal: c.goalWeight, unit: ' kg', empty: 'Entre ton poids pour voir la courbe bouger 📈' })}</div>
-  <div class="card c4"><h3>Moyennes · 7 jours</h3><div class="list"><div class="item"><div class="grow t">🌙 Sommeil</div><b>${fmt(mean(sleepArr))} h</b></div><div class="item"><div class="grow t">🍽️ Calories</div><b>${fmt(mean(kcalArr), 0)} kcal</b></div><div class="item"><div class="grow t">💧 Eau</div><b>${fmt(mean(waterArr))} verres</b></div><div class="item"><div class="grow t">😊 Humeur</div><b>${fmt(mean(Array.from({ length: 7 }, (_, i) => day(addDays(t, -i)).mood).filter(v => v != null)))} / 5</b></div></div></div>
+  <div class="card c4"><h3>Moyennes · 7 jours</h3><div class="list"><div class="item"><div class="grow t">🌙 Sommeil</div><b>${fmt(mean(sleepArr))} h</b></div><div class="item"><div class="grow t">🍽️ Calories</div><b>${fmt(mean(kcalArr), 0)} kcal</b></div><div class="item"><div class="grow t">💧 Eau</div><b>${fmt(mean(waterArr), 2)} L</b></div><div class="item"><div class="grow t">😊 Humeur</div><b>${fmt(mean(Array.from({ length: 7 }, (_, i) => day(addDays(t, -i)).mood).filter(v => v != null)))} / 5</b></div></div></div>
   <div class="card c12"><h3>Cette semaine</h3><div class="heat"><span></span>${wdays.map(d => `<span class="hd">${parse(d).toLocaleDateString('fr-FR', { weekday: 'short' })}</span>`).join('')}${heatRows.map(([l, fn]) => `<span>${l}</span>${wdays.map(d => `<span class="c ${fn(d)}" data-act="goday" data-d="${d}" style="cursor:pointer">${fn(d) === 'on' ? '✓' : fn(d) === 'mid' ? '·' : ''}</span>`).join('')}`).join('')}</div></div>
   </div>`;
 }
@@ -518,9 +529,9 @@ function vCredit() {
   return head('Crédit', 'Suis ton remboursement jusqu’à la dernière mensualité', `<button class="btn pri" data-act="addpay">${ic('plus')}Remboursement</button>`) + `<div class="grid">
   <div class="card c4 hero" style="display:flex;align-items:center;justify-content:space-between"><div><h3>${esc(c.name)}</h3><div class="big">${eur(s.remaining)}</div><p>restant sur ${eur(c.total)}</p></div>${ring('credit-r', s.pct, Math.round(s.pct * 100) + '%', { size: 108 })}</div>
   <div class="card c4"><h3>Déjà remboursé</h3><div class="val">${eur(s.paid)}</div><div class="sub">${s.pays.length} versement(s)</div><div class="bar" style="margin-top:14px"><i style="width:${s.pct * 100}%"></i></div></div>
-  <div class="card c4"><h3>Fin estimée</h3><div class="val">${s.end ? s.end.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '–'}</div><div class="sub">${s.monthsLeft != null ? `${s.monthsLeft} mensualité(s) de ${eur(c.monthly)}` : 'Renseigne ta mensualité ci-dessous'}</div></div>
+  <div class="card c4"><h3>${s.fixed ? 'Fin prévue' : 'Fin estimée'}</h3><div class="val">${s.end ? s.end.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '–'}</div><div class="sub">${s.fixed ? `Durée ${c.months} mois · ${s.elapsed} écoulé(s) · ${s.monthsLeft} restant(s)` : s.monthsLeft != null ? `${s.monthsLeft} mensualité(s) de ${eur(c.monthly)}` : 'Renseigne ta mensualité ou ta durée ci-dessous'}</div></div>
   <div class="card c8"><h3>Solde restant dans le temps</h3>${series || '<div class="empty">Renseigne le montant total pour voir la courbe</div>'}</div>
-  <div class="card c4"><h3>Mon crédit</h3><div class="list" style="gap:10px"><div><label class="l">Nom</label><input class="field" data-cr="name" value="${esc(c.name)}"></div><div><label class="l">Montant total à rembourser (€)</label><input class="field" data-cr="total" data-num type="number" inputmode="decimal" value="${c.total || ''}"></div><div><label class="l">Mensualité (€)</label><input class="field" data-cr="monthly" data-num type="number" inputmode="decimal" value="${c.monthly || ''}"></div><div><label class="l">Taux annuel (%) — optionnel</label><input class="field" data-cr="rate" data-num type="number" step="0.01" inputmode="decimal" value="${c.rate ?? ''}"></div><div><label class="l">Date de début</label><input class="field" data-cr="start" type="date" value="${c.start || ''}"></div></div></div>
+  <div class="card c4"><h3>Mon crédit</h3><div class="list" style="gap:10px"><div><label class="l">Nom</label><input class="field" data-cr="name" value="${esc(c.name)}"></div><div><label class="l">Montant total à rembourser (€)</label><input class="field" data-cr="total" data-num type="number" inputmode="decimal" value="${c.total || ''}"></div><div><label class="l">Mensualité (€)${c.monthlyAuto ? ' — calculée' : ''}</label><input class="field" data-cr="monthly" data-num type="number" inputmode="decimal" placeholder="${c.monthlyAuto ? fmt(c.monthly, 2) + ' (total ÷ durée)' : ''}" value="${val('credit').monthly || ''}"></div><div><label class="l">Durée totale (mois)</label><input class="field" data-cr="months" data-num type="number" inputmode="numeric" min="1" placeholder="ex. 60" value="${c.months || ''}"></div><div><label class="l">Taux annuel (%) — optionnel</label><input class="field" data-cr="rate" data-num type="number" step="0.01" inputmode="decimal" value="${c.rate ?? ''}"></div><div><label class="l">Date de début</label><input class="field" data-cr="start" type="date" value="${c.start || ''}"></div></div></div>
   <div class="card c6"><h3>🔮 Si j’augmente ma mensualité</h3>${creditScenarios().length ? `<table class="table"><tr><th>Mensualité</th><th>Fin</th><th>Gain</th></tr>${creditScenarios().map(r => `<tr><td>${eur(c.monthly + r.extra)}${r.extra ? ` <span class="chip">+${r.extra} €</span>` : ''}</td><td>${frDate(r.end)}</td><td>${r.saved ? `<span class="chip up">−${r.saved} mois</span>` : '—'}</td></tr>`).join('')}</table>` : '<div class="empty">Renseigne total et mensualité</div>'}</div>
   <div class="card c6"><h3>💡 Stratégie financière (IA)</h3><div class="f2" style="gap:10px"><div><label class="l">Salaire net / mois (€)</label><input class="field" data-cfg="netSalary" data-num type="number" inputmode="decimal" value="${cfg().netSalary ?? ''}"></div><div><label class="l">Dépenses / mois (€)</label><input class="field" data-cfg="expenses" data-num type="number" inputmode="decimal" value="${cfg().expenses ?? ''}"></div><div style="grid-column:span 2"><label class="l">Épargne disponible (€)</label><input class="field" data-cfg="savings" data-num type="number" inputmode="decimal" value="${cfg().savings ?? ''}"></div></div><button class="btn pri sm" style="margin-top:12px" data-act="coach" data-m="finance">✨ Me conseiller</button></div>
   ${s.planned.length ? `<div class="card c12"><h3>📅 À venir (${s.planned.length}) · ${eur(s.planned.reduce((a, p) => a + Number(p.amount), 0))}</h3><table class="table"><tr><th>Date</th><th>Nom</th><th>Montant</th><th></th></tr>${s.planned.slice(0, 12).map(p => `<tr><td>${longDate(p.date)} <span class="chip">à venir</span></td><td>${esc(p.name || p.note || '')}</td><td><b>${eur(p.amount)}</b></td><td style="text-align:right"><button class="x" data-act="delpay" data-id="${p.id}" aria-label="Supprimer">${ic('x')}</button></td></tr>`).join('')}</table>${s.planned.length > 12 ? `<p class="sub">+ ${s.planned.length - 12} autres…</p>` : ''}</div>` : ''}
@@ -614,7 +625,7 @@ function vSettings() {
   const c = cfg(), th = theme(), n = (k, l, step = '1', ph = '') => `<div><label class="l">${l}</label><input class="field" data-cfg="${k}" data-num type="number" step="${step}" inputmode="decimal" placeholder="${ph}" value="${c[k] ?? ''}"></div>`;
   return head('Réglages', 'Objectifs, apparence et synchronisation') + `<div class="grid">
   <div class="card c6"><h3>Profil & objectifs</h3><div class="f2" style="gap:12px"><div style="grid-column:span 2"><label class="l">Prénom</label><input class="field" data-cfg="name" value="${esc(c.name)}"></div>
-    ${n('goalWeight', 'Poids objectif (kg)', '0.1')}${n('startWeight', 'Poids de départ (kg)', '0.1', 'auto')}${n('height', 'Taille (cm)')}${n('kcalGoal', 'Objectif calories / jour')}${n('waterGoal', 'Verres d’eau / jour')}${n('sportTarget', 'Séances / semaine')}${n('protGoal', 'Protéines (g/jour)', '1', 'auto')}${n('carbGoal', 'Glucides (g/jour)', '1', 'auto')}${n('fatGoal', 'Lipides (g/jour)', '1', 'auto')}${n('weekHours', 'Horaires hebdomadaires (h)', '0.25', 'ex. 35')}${n('netSalary', 'Salaire net / mois (€)', '1')}</div><button class="btn pri" style="margin-top:16px;width:100%;justify-content:center" data-act="savecfg">💾 Enregistrer et synchroniser</button></div>
+    ${n('goalWeight', 'Poids objectif (kg)', '0.1')}${n('startWeight', 'Poids de départ (kg)', '0.1', 'auto')}${n('height', 'Taille (cm)')}${n('kcalGoal', 'Objectif calories / jour')}${n('waterGoalL', 'Eau (litres / jour)', '0.1', '2')}${n('sportTarget', 'Séances / semaine')}${n('protGoal', 'Protéines (g/jour)', '1', 'auto')}${n('carbGoal', 'Glucides (g/jour)', '1', 'auto')}${n('fatGoal', 'Lipides (g/jour)', '1', 'auto')}${n('weekHours', 'Horaires hebdomadaires (h)', '0.25', 'ex. 35')}${n('netSalary', 'Salaire net / mois (€)', '1')}</div><button class="btn pri" style="margin-top:16px;width:100%;justify-content:center" data-act="savecfg">💾 Enregistrer et synchroniser</button></div>
   <div class="card c6"><h3>Apparence</h3><label class="l">Couleur (synchronisée)</label><div class="swatches">${Object.entries(ACCENTS).map(([k, v]) => `<button class="${c.accent === k ? 'on' : ''}" style="background:rgb(${v})" data-act="accent" data-v="${k}" aria-label="${k}"></button>`).join('')}</div>
     <label class="l" style="margin-top:18px">Thème (synchronisé)</label><div class="seg">${[['dark', 'Sombre'], ['light', 'Clair']].map(([k, l]) => `<button class="${th === k ? 'on' : ''}" data-act="theme" data-v="${k}">${l}</button>`).join('')}</div>
     <h3 style="margin-top:24px">Synchronisation</h3><p class="sub" data-sync>${syncHtml()}</p><p class="sub">Tout ce que tu saisis est enregistré sur ton appareil puis envoyé au serveur ; tes autres appareils se mettent à jour en direct.</p>
@@ -665,8 +676,8 @@ const ACTS = {
   month: el => { ui.month = el.dataset.m; render(true); },
   set: el => { const k = el.dataset.k, cur = day(ui.date)[k]; let v = el.hasAttribute('data-num') ? Number(el.dataset.v) : el.dataset.v; if (cur === v && k !== 'work') v = undefined; setDay({ [k]: v }); },
   'set-today': el => { put('day:' + today(), { [el.dataset.k]: el.dataset.v }); toast('Enregistré ✓'); },
-  'water-today': () => { put('day:' + today(), { water: (day(today()).water || 0) + 1 }); toast('💧 +1 verre'); },
-  water: el => setDay({ water: Math.max(0, (day(ui.date).water || 0) + Number(el.dataset.n)) }),
+  'water-today': () => { put('day:' + today(), { waterL: r2((waterOf(today()) || 0) + 0.25) }); toast('💧 +0,25 L'); },
+  water: el => setDay({ waterL: r2(Math.max(0, (waterOf(ui.date) || 0) + Number(el.dataset.n))) }),
   delmeal: el => setDay({ meals: (day(ui.date).meals || []).filter(m => m.id !== el.dataset.id) }),
   quickmeal: el => setDay({ meals: [...(day(ui.date).meals || []), { id: uid(), name: el.dataset.name, kcal: Number(el.dataset.kcal) || 0, ...(el.dataset.p !== '' ? { p: Number(el.dataset.p), c: Number(el.dataset.c), f: Number(el.dataset.f) } : {}), slot: el.dataset.slot }] }),
   delweight: el => put('day:' + el.dataset.d, { weight: null }),
@@ -826,7 +837,7 @@ function palette() {
     ...TABS.map(([k, l]) => ({ l: 'Aller à ' + l, h: 'navigation', f: () => go(k), i: k })),
     { l: 'Sport fait aujourd’hui', h: 'action', i: 'sport', f: () => ACTS['set-today']({ dataset: { k: 'sport', v: 'done' } }) },
     { l: 'J’ai travaillé aujourd’hui', h: 'action', i: 'work', f: () => ACTS['set-today']({ dataset: { k: 'work', v: 'work' } }) },
-    { l: 'Ajouter un verre d’eau', h: 'action', i: 'today', f: () => ACTS['water-today']() },
+    { l: 'Ajouter 0,25 L d’eau', h: 'action', i: 'today', f: () => ACTS['water-today']() },
     { l: 'Entrer mon poids', h: 'action', i: 'weight', f: () => { ui.date = today(); go('weight'); setTimeout(() => $('[data-day=weight]')?.focus(), 150); } },
     { l: 'Ajouter une dépense', h: 'action', i: 'budget', f: () => { go('budget'); setTimeout(() => $('form[data-form=tx] [name=amount]')?.focus(), 200); } },
     { l: 'Ajouter un remboursement', h: 'action', i: 'credit', f: payModal },
