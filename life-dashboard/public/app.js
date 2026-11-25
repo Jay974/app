@@ -43,7 +43,7 @@ const ICONS = {
 };
 ICONS.reminders = ICONS.bell;
 const ic = (n, c = 'ic') => `<svg class="${c}" viewBox="0 0 24 24">${ICONS[n] || ''}</svg>`;
-const TABS = [['home', 'Dashboard'], ['today', 'Aujourd’hui'], ['weight', 'Poids'], ['sport', 'Sport'], ['food', 'Repas'], ['work', 'Travail'], ['credit', 'Crédit'], ['budget', 'Budget'], ['reminders', 'Rappels'], ['billing', 'Facturation'], ['settings', 'Réglages']];
+const TABS = [['home', 'Dashboard'], ['today', 'Aujourd’hui'], ['weight', 'Poids'], ['sport', 'Sport'], ['food', 'Repas'], ['work', 'Travail'], ['credit', 'Crédit'], ['budget', 'Budget'], ['reminders', 'Rappels'], ['billing', 'Facturation'], ['report', 'Rapport'], ['settings', 'Réglages']];
 const ACCENTS = { Jade: '0,168,150', Corail: '255,90,79', Violet: '139,92,246', Océan: '56,189,248', Menthe: '45,212,160', Ambre: '245,158,11', Rose: '244,114,182' };
 const SPORTS = ['Muscu', 'Cardio', 'Course', 'Marche', 'Vélo', 'Natation', 'Yoga', 'Autre'];
 const SLOTS = ['Petit-déj', 'Déjeuner', 'Dîner', 'Collation'];
@@ -291,6 +291,7 @@ function coachData(mode) {
     const f = weightForecast();
     return { aujourdhui: days[0], sept_derniers_jours: days, objectif: profileData(), objectifs: { kcalDeBase: kcalBase(c), partKcalSportAjouteeAuObjectifPct: c.burnShare ?? 50, proteinesG: g.p, glucidesG: g.c, lipidesG: g.f }, poidsActuel: weights().slice(-1)[0]?.w, poidsCible: c.goalWeight, tendancePoidsKgParSemaine: f.ok ? Number(f.perWeek.toFixed(2)) : null, seancesSportSemaine: weekStats(t).n };
   }
+  if (mode === 'report') { const r = weeklyReport(ui.repWeek || lastWeek()); return { semaineDu: r.w, scorePct: r.score, objectif: profileData(), reussites: r.items.filter(i => i.state === 'ok').map(i => ({ indicateur: i.label, valeur: i.value })), aAmeliorer: r.items.filter(i => i.state === 'bad').map(i => ({ indicateur: i.label, valeur: i.value })) }; }
   if (mode === 'budget') {
     const m = ui.bmonth, b = budgetStats(m), pm = (() => { const d = parse(m + '-01'); d.setMonth(d.getMonth() - 1); return budgetStats(ymd(d).slice(0, 7)); })();
     return { mois: m, revenuNetMensuel: salaryFor(m, c), revenusSupplementaires: [...b.rec.map(r => ({ nom: r.name, montant: r.amount, recurrent: true })), ...b.inc.map(t => ({ nom: t.note, montant: t.amount, date: t.date }))], revenusDuMois: b.income, mensualiteCredit: b.creditM, depensesDuMois: Math.round(b.spent), soldeRestant: Math.round(b.left), joursEcoules: b.elapsed, joursDuMois: b.dim, projectionDepensesFinDeMois: b.proj && Math.round(b.proj), depensesParCategorie: Object.entries(b.byCat).map(([cat, v]) => ({ cat, depense: Math.round(v), limite: b.bud[cat] || null })), limitesSansDepense: CATS.filter(([n]) => b.bud[n] && !b.byCat[n]).map(x => x[0]), moisPrecedent: { depenses: Math.round(pm.spent), parCategorie: pm.byCat }, epargneDisponible: c.savings, depensesFixesDeclarees: c.expenses };
@@ -460,6 +461,7 @@ function vHome() {
   const heatRows = [['Sport', d => day(d).sport === 'done' ? 'on' : day(d).sport === 'rest' ? 'mid' : ''], ['Travail', d => day(d).work === 'work' ? 'on' : day(d).work ? 'mid' : ''], ['Poids', d => day(d).weight != null ? 'on' : ''], ['Repas', d => kcalOf(d) > 0 ? 'on' : ''], ['Eau', d => (waterOf(d) || 0) >= waterGoal(c) ? 'on' : (waterOf(d) || 0) > 0 ? 'mid' : '']];
   const wdays = Array.from({ length: 7 }, (_, i) => addDays(wkS, i));
   return head(greet(), longDate(t), `<button class="btn pri" data-act="coach" data-m="week">✨ Bilan IA</button><button class="btn" data-act="palette">${ic('search')}<span class="kbd">⌘K</span></button>`) + `<div class="grid">
+  ${reportCard()}
   <div class="card c7 hero" style="display:flex;justify-content:space-between;gap:16px;align-items:center"><div><h3>Ta semaine</h3><div class="big">Tu es à <em>${Math.round(avg * 100)} %</em> de suivi cette semaine</div><p>${wk.n}/${c.sportTarget} séances · ${worked} jour${worked > 1 ? 's' : ''} travaillé${worked > 1 ? 's' : ''} ce mois</p><button class="btn" style="background:rgba(255,255,255,.95);color:#0b4a44" data-act="go" data-to="today">Remplir aujourd’hui →</button></div>${ring('week', avg, Math.round(avg * 100) + '%', { size: 138, sw: 13 })}</div>
   <div class="card c5"><h3>${ic('today')}À faire aujourd’hui</h3><div class="chips">${todo.map(([l, ok]) => `<button class="${ok ? 'on' : ''}" data-act="go" data-to="today">${ok ? '✓' : '○'} ${l}</button>`).join('')}</div>
     <div class="row" style="margin-top:14px"><button class="btn pri sm" data-act="set-today" data-k="sport" data-v="done">✅ Sport fait</button><button class="btn sm" data-act="set-today" data-k="work" data-v="work">💼 J’ai travaillé</button><button class="btn sm" data-act="water-today">💧 +0,25 L</button></div></div>
@@ -574,6 +576,89 @@ function verdictRows(kind) {
     row(st, '⚖️', 'Tendance du poids', `${pw > 0 ? '+' : ''}${fmt(pw, 2)} kg/sem : ${adv}.`);
   }
   return rows;
+}
+/* ---------- Rapport hebdomadaire (lundi → dimanche) ---------- */
+const lastWeek = () => addDays(weekStart(today()), -7);
+function weeklyReport(w) {
+  const c = cfg(), pl = plan(c), G = GOALS[c.goalType], want = G && G.want, ds = Array.from({ length: 7 }, (_, i) => addDays(w, i)), pds = ds.map(d => addDays(d, -7));
+  const items = [], add = (k, icon, label, state, value, tip) => items.push({ k, icon, label, state, value, tip: state === 'bad' ? tip : '' });
+  const nums = (arr, f) => arr.map(f).filter(v => typeof v === 'number'), plural = (n, a, b) => n > 1 ? b : a;
+  const wts = nums(ds, d => day(d).weight), pw = nums(pds, d => day(d).weight);
+  add('weigh', '⚖️', 'Pesées', wts.length >= 3 ? 'ok' : 'bad', `${wts.length} pesée(s) sur 7 jours`, 'Pèse-toi 3 fois par semaine, à la même heure et dans les mêmes conditions (idéalement à jeun) : la tendance devient fiable.');
+  if (wts.length && pw.length) {
+    const dl = meanA(wts) - meanA(pw), v = `${dl > 0 ? '+' : ''}${fmt(dl, 2)} kg vs semaine précédente`;
+    if (want === 'deficit') add('trend', '📉', 'Évolution du poids', dl <= -0.1 && dl >= -1 ? 'ok' : 'bad', v, dl > -0.1 ? 'Ton poids ne baisse pas : vérifie les portions et les grignotages, puis retire environ 150 kcal par jour (une portion de féculents ou de matières grasses en moins).' : 'La perte est rapide : remonte un peu les calories et garde tes protéines hautes pour protéger ton muscle.');
+    else if (want === 'surplus') add('trend', '📈', 'Évolution du poids', dl >= 0.05 && dl <= 0.6 ? 'ok' : 'bad', v, dl < 0.05 ? 'Tu ne prends pas assez : ajoute environ 200 kcal par jour (collation protéinée, féculents, huile d’olive).' : 'La prise est rapide (risque de gras) : réduis le surplus d’environ 150 kcal par jour.');
+    else if (want === 'balance') add('trend', '⚖️', 'Stabilité du poids', Math.abs(dl) <= 0.4 ? 'ok' : 'bad', v, 'Ton poids varie plus que prévu : garde des repas réguliers et évite les gros écarts du week-end.');
+    else add('trend', '⚖️', 'Évolution du poids', 'na', v, '');
+  }
+  const done = ds.filter(d => day(d).sport === 'done'), n = done.length, muscu = done.filter(d => day(d).sportType === 'Muscu').length;
+  add('sport', '🏋️', 'Séances de sport', n >= c.sportTarget ? 'ok' : 'bad', `${n} / ${c.sportTarget} séance(s)`, `Il te manque ${c.sportTarget - n} séance(s) : planifie-les à l’avance dans ton agenda, même 20 minutes valent mieux que rien.`);
+  const need = c.goalType ? { cut: 2, bulk: 3, recomp: 3, maintain: 0, gain: 3 }[c.goalType] : 0;
+  if (need) add('muscu', '💪', 'Musculation', muscu >= need ? 'ok' : 'bad', `${muscu} séance(s) (recommandé : ${need}+)`, `Ajoute une séance de musculation avec des mouvements polyarticulaires (squat, développé, tirage) pour ${want === 'deficit' ? 'conserver ton muscle' : 'progresser'}.`);
+  const kd = ds.filter(d => kcalOf(d) > 0);
+  add('log', '🍽️', 'Repas notés', kd.length >= 5 ? 'ok' : 'bad', `${kd.length} jour(s) sur 7`, 'Note tes repas juste après les avoir mangés : ça prend 10 secondes et rend le suivi fiable.');
+  if (kd.length >= 3) {
+    const inn = meanA(kd.map(kcalOf)), tg = meanA(kd.map(d => goalKcal(d, c))), r = inn / tg, gap = Math.round(Math.abs(inn - tg));
+    add('kcal', '🔥', 'Calories', r >= .9 && r <= 1.1 ? 'ok' : 'bad', `${fmt(inn, 0)} kcal/j pour une cible de ${fmt(tg, 0)}`, r > 1.1 ? `Tu dépasses ta cible de ${gap} kcal par jour : surveille les boissons sucrées, l’huile de cuisson et les grignotages du soir.` : `Tu manges ${gap} kcal sous ta cible : risque de fatigue et de perte de muscle, ajoute une collation (yaourt grec, fruit, oléagineux).`);
+    const md = kd.filter(d => (day(d).meals || []).some(m => m.p != null));
+    if (md.length >= 3) { const pv = meanA(md.map(d => macrosOf(d).p)), pt = meanA(md.map(d => macroGoals(d).p)); add('prot', '🥩', 'Protéines', pv >= pt * .9 ? 'ok' : 'bad', `${fmt(pv, 0)} g/j pour une cible de ${fmt(pt, 0)} g`, 'Ajoute une source de protéines à chaque repas : œufs, poulet, thon, skyr, fromage blanc ou légumineuses.'); }
+  }
+  const wm = ds.filter(d => (waterOf(d) || 0) >= waterGoal(c)).length;
+  add('water', '💧', 'Hydratation', wm >= 5 ? 'ok' : 'bad', `Objectif atteint ${wm} jour(s) sur 7`, 'Garde une bouteille à portée, bois un grand verre au réveil et un autre avant chaque repas.');
+  const sl = nums(ds, d => day(d).sleep);
+  if (sl.length >= 3) { const m = meanA(sl); add('sleep', '😴', 'Sommeil', m >= 7 ? 'ok' : 'bad', `${fmt(m, 1)} h en moyenne`, 'Fixe une heure de coucher régulière et coupe les écrans 30 minutes avant : le sommeil pèse sur le poids, l’énergie et la récupération.'); }
+  const mo = nums(ds, d => day(d).mood);
+  if (mo.length >= 3) { const m = meanA(mo); add('mood', '🙂', 'Humeur', m >= 3.2 ? 'ok' : 'bad', `${fmt(m, 1)} / 5 en moyenne`, 'Humeur en baisse : planifie une activité qui te fait du bien (marche, sortie, ami) et protège ton sommeil.'); }
+  const wh = ds.reduce((a, d) => a + workedHours(d, c), 0), wc = weeklyHours(c);
+  if (wc && wh > 0) add('work', '💼', 'Heures de travail', wh <= wc * 1.15 ? 'ok' : 'bad', `${fmt(wh, 1)} h pour ${fmt(wc, 1)} h prévues`, `Tu as dépassé de ${fmt(wh - wc, 1)} h : prévois une vraie coupure et une soirée sans travail pour récupérer.`);
+  const lim = Object.values(c.budgets || {}).reduce((a, v) => a + (Number(v) || 0), 0);
+  if (lim > 0) { const sp = sumA(txs().filter(t => t.type !== 'inc' && ds.includes(t.date))), wl = lim * 7 / 30; add('budget', '💶', 'Dépenses', sp <= wl ? 'ok' : 'bad', `${eur(sp)} pour une enveloppe d’environ ${eur(wl)}`, 'Repère dans Budget la catégorie qui dérape, fixe-lui une limite et reporte les achats non urgents à la semaine suivante.'); }
+  const act = ds.filter(d => { const x = day(d); return x.weight != null || x.sport || kcalOf(d) > 0 || x.water != null || x.waterL != null || x.sleep != null || x.mood != null; }).length;
+  add('track', '📝', 'Régularité du suivi', act >= 5 ? 'ok' : 'bad', `${act} jour(s) renseigné(s) sur 7`, 'Active les rappels (onglet Rappels) et remplis ta journée en 1 minute le soir : la régularité fait toute la différence.');
+  const ok = items.filter(i => i.state === 'ok').length, bad = items.filter(i => i.state === 'bad').length;
+  return { w, items, ok, bad, score: ok + bad ? Math.round(ok / (ok + bad) * 100) : 0 };
+}
+function reportCard() {
+  const w = lastWeek(), r = weeklyReport(w), bads = r.items.filter(i => i.state === 'bad').slice(0, 2), isMon = new Date().getDay() === 1;
+  return `<div class="card c12"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><h3 style="margin:0">📋 Rapport de la semaine du ${shortDate(w)} au ${shortDate(addDays(w, 6))} ${isMon ? '<span class="chip up">Nouveau</span>' : ''}</h3><button class="btn sm" data-act="go" data-to="report">Voir le rapport complet →</button></div>
+  <div class="row" style="margin:12px 0 4px"><span class="chip up"><i class="rdot g"></i> ${r.ok} réussi(s)</span><span class="chip down"><i class="rdot r"></i> ${r.bad} à améliorer</span><span class="sub">Score ${r.score} %</span></div>
+  ${bads.length ? `<div class="list" style="margin-top:10px">${bads.map(i => `<div class="item"><i class="rdot r"></i><div class="grow"><div class="t">${i.icon} ${i.label} · ${esc(i.value)}</div><div class="s">${esc(i.tip)}</div></div></div>`).join('')}</div>` : '<p class="sub" style="margin:8px 0 0">Aucun point rouge cette semaine, bravo 🎉</p>'}</div>`;
+}
+function vReport() {
+  const w = ui.repWeek || lastWeek(), r = weeklyReport(w), ok = r.items.filter(i => i.state === 'ok'), bad = r.items.filter(i => i.state === 'bad'), na = r.items.filter(i => i.state === 'na');
+  const row = i => `<div class="item"><i class="rdot ${i.state === 'ok' ? 'g' : i.state === 'bad' ? 'r' : ''}"></i><div class="grow"><div class="t">${i.icon} ${i.label}</div><div class="s">${esc(i.value)}</div>${i.tip ? `<div class="tipline">💡 ${esc(i.tip)}</div>` : ''}</div></div>`;
+  return head('Rapport hebdomadaire', `Semaine du ${shortDate(w)} au ${shortDate(addDays(w, 6))}`, `<div class="datebar"><button data-act="repweek" data-n="-1" aria-label="Semaine précédente">${ic('l')}</button><span class="d">Semaine</span><button data-act="repweek" data-n="1" aria-label="Semaine suivante">${ic('r')}</button></div>`) + `<div class="grid">
+  <div class="card c12 hero" style="display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap"><div><h3>Bilan de la semaine</h3><div class="big">${r.score} <em>%</em> de points réussis</div><p>${r.ok} en vert · ${r.bad} en rouge</p><div class="row"><button class="btn" style="background:rgba(255,255,255,.95);color:#0b4a44" data-act="reportpdf">⬇️ Télécharger (PDF)</button><button class="btn" style="background:rgba(255,255,255,.2);color:#fff" data-act="coach" data-m="report">✨ Résumé IA</button></div></div>${ring('rep', r.score / 100, r.score + '%', { size: 120 })}</div>
+  <div class="card c6"><h3><i class="rdot g"></i> Réussites (${ok.length})</h3><div class="list">${ok.map(row).join('') || '<div class="empty">Pas encore de réussite cette semaine</div>'}</div></div>
+  <div class="card c6"><h3><i class="rdot r"></i> À améliorer (${bad.length})</h3><div class="list">${bad.map(row).join('') || '<div class="empty">Rien à rattraper 🎉</div>'}</div></div>
+  ${na.length ? `<div class="card c12"><h3>Pour information</h3><div class="list">${na.map(row).join('')}</div></div>` : ''}</div>`;
+}
+async function reportPdf() {
+  const w = ui.repWeek || lastWeek(), r = weeklyReport(w);
+  if (!window.jspdf) await new Promise((ok, ko) => { const el = document.createElement('script'); el.src = '/vendor/jspdf.min.js'; el.onload = ok; el.onerror = () => ko(); document.head.appendChild(el); }).catch(() => toast('Chargement du PDF impossible'));
+  if (!window.jspdf) return;
+  const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' }), M = 15, W = 210, H = 297; let y = 20;
+  const cl = x => String(x == null ? '' : x).replace(/[\u202F\u00A0]/g, ' '); // espaces insécables → espaces simples (police PDF)
+  doc.setFont('helvetica', 'bold').setFontSize(20).setTextColor(0, 168, 150); doc.text('Rapport hebdomadaire', M, y); y += 7;
+  doc.setFont('helvetica', 'normal').setFontSize(10).setTextColor(90); doc.text(`Semaine du ${shortDate(w)} au ${shortDate(addDays(w, 6))}${cfg().name ? '  ·  ' + cfg().name : ''}`, M, y); y += 8;
+  doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(30); doc.text(`Score : ${r.score} %   ·   ${r.ok} réussi(s)   ·   ${r.bad} à améliorer`, M, y); y += 9;
+  const section = (title, list, color) => {
+    if (!list.length) return; doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(...color); doc.text(title, M, y); y += 6;
+    for (const i of list) {
+      const tip = i.tip ? doc.splitTextToSize(cl('Conseil : ' + i.tip), W - 2 * M - 8) : [], h = 5 + tip.length * 4.2 + 3;
+      if (y + h > H - 18) { doc.addPage(); y = 20; }
+      doc.setFillColor(...color).circle(M + 2, y - 1.2, 1.7, 'F');
+      doc.setFont('helvetica', 'bold').setFontSize(10).setTextColor(30); doc.text(i.label, M + 7, y);
+      doc.setFont('helvetica', 'normal').setFontSize(9.5).setTextColor(80); doc.text(cl(i.value), W - M, y, { align: 'right' }); y += 5;
+      doc.setFontSize(9).setTextColor(70); tip.forEach(l => { doc.text(l, M + 7, y); y += 4.2; }); y += 3;
+    } y += 3;
+  };
+  section('Réussites', r.items.filter(i => i.state === 'ok'), [34, 160, 90]);
+  section('À améliorer', r.items.filter(i => i.state === 'bad'), [214, 60, 60]);
+  section('Pour information', r.items.filter(i => i.state === 'na'), [120, 120, 120]);
+  doc.setFontSize(8).setTextColor(140); doc.text('Généré par Ma Vie — conseils indicatifs, pas un avis médical.', M, H - 10);
+  doc.save(`Rapport-semaine-${w}.pdf`);
 }
 function verdictCard(kind) {
   const c = cfg(); if (!c.goalType) return '';
@@ -699,6 +784,7 @@ const REMS = [
   { k: 'sleep', i: '😴', t: 'Coucher', d: 'Pour tenir ton objectif de sommeil', def: { time: '22:30' }, f: [['time', 'time', 'Heure']] },
   { k: 'evening', i: '📝', t: 'Bilan du soir', d: 'Compléter ta journée (sommeil, humeur)', def: { time: '21:00' }, f: [['time', 'time', 'Heure']] },
   { k: 'budget', i: '💶', t: 'Dépenses du jour', d: 'Noter tes dépenses', def: { time: '20:30' }, f: [['time', 'time', 'Heure']] },
+  { k: 'report', i: '📋', t: 'Rapport hebdomadaire', d: 'Chaque lundi matin : réussites en vert, points à rattraper en rouge (actif par défaut)', def: { day: 0, time: '08:00' }, f: [['day', 'weekday', 'Jour'], ['time', 'time', 'Heure']] },
   { k: 'week', i: '📊', t: 'Bilan de la semaine', d: 'Lancer le bilan IA', def: { day: 6, time: '19:00' }, f: [['day', 'weekday', 'Jour'], ['time', 'time', 'Heure']] }
 ];
 function remField(k, r, [fk, type, label]) {
@@ -711,7 +797,7 @@ function remField(k, r, [fk, type, label]) {
 function vReminders() {
   const rem = val('rem'), st = ui.push || 'unknown';
   const msg = { unsupported: 'Ce navigateur ne gère pas les notifications. Sur iPhone : installe d’abord l’app (Partager → Sur l’écran d’accueil) puis ouvre-la depuis l’icône.', denied: 'Notifications bloquées : autorise-les dans les réglages du navigateur pour ce site.', on: 'Activées sur cet appareil ✓', off: 'Désactivées sur cet appareil.', unknown: 'Vérification…' }[st];
-  const cards = REMS.map(R => { const r = { ...R.def, ...(rem[R.k] || {}) }, on = !!(rem[R.k] && rem[R.k].on);
+  const cards = REMS.map(R => { const r = { ...R.def, ...(rem[R.k] || {}) }, on = R.k === 'report' ? !(rem.report && rem.report.on === false) : !!(rem[R.k] && rem[R.k].on);
     const body = !on ? '' : R.special === 'bills' ? `<div class="list" style="margin-top:12px">${(r.items || []).map(b => `<div class="item"><div class="grow"><div class="t">${esc(b.name)}</div><div class="s">le ${b.day} du mois · prévenir ${b.lead} j avant${b.amount ? ' · ' + eur(b.amount) : ''}</div></div><button class="x" data-act="delbill" data-id="${b.id}" aria-label="Supprimer">${ic('x')}</button></div>`).join('') || '<div class="empty">Aucune charge ajoutée</div>'}</div>
       <form data-form="bill" style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><input class="field" name="name" placeholder="Nom (ex. Internet)" required style="grid-column:1/-1"><input class="field" name="day" type="number" min="1" max="31" placeholder="Jour" required><input class="field" name="lead" type="number" min="0" max="14" placeholder="Jours avant" value="1"><input class="field" name="amount" type="number" step="0.01" placeholder="€"><button class="btn pri sm" style="grid-column:1/-1;justify-content:center">${ic('plus')}Ajouter</button></form><div style="margin-top:10px">${remField(R.k, r, ['time', 'time', 'Heure du rappel'])}</div>`
       : `<div class="f2" style="margin-top:12px;gap:10px">${R.f.map(f => remField(R.k, r, f)).join('')}</div>`;
@@ -757,7 +843,7 @@ function vBilling() { // module chargé à la demande, uniquement pour le propri
   }
   return head('Facturation', 'Réservé au propriétaire') + '<div class="card c12">Chargement…</div>';
 }
-const VIEWS = { billing: vBilling, reminders: vReminders, budget: vBudget, home: vHome, today: vToday, weight: vWeight, sport: vSport, food: vFood, work: vWork, credit: vCredit, settings: vSettings };
+const VIEWS = { report: vReport, billing: vBilling, reminders: vReminders, budget: vBudget, home: vHome, today: vToday, weight: vWeight, sport: vSport, food: vFood, work: vWork, credit: vCredit, settings: vSettings };
 
 /* ============================== rendu ============================== */
 function vLogin(initialized, err = '') {
@@ -778,7 +864,7 @@ function render(local = false) {
   requestAnimationFrame(() => {
     renderQ = false; ui.dirty = false;
     const y = window.scrollY; if (ui.tab === 'billing' && !ui.owner) ui.tab = 'home';
-    const nav = TABS.filter(t => t[0] !== 'billing' || ui.owner).map(([k, l]) => `<a data-act="go" data-to="${k}" class="${ui.tab === k ? 'on' : ''}">${ic(k)}<span>${l}</span></a>`).join('');
+    const nav = TABS.filter(t => t[0] !== 'report' && (t[0] !== 'billing' || ui.owner)).map(([k, l]) => `<a data-act="go" data-to="${k}" class="${ui.tab === k ? 'on' : ''}">${ic(k)}<span>${l}</span></a>`).join('');
     $('#app').innerHTML = `<div class="shell"><aside class="side"><div class="brand"><b>${ic('logo')}</b>Ma Vie</div><nav class="nav">${nav}</nav><div class="grow"></div>
       <a class="nav" style="display:flex"><button class="btn ghost" data-act="palette" style="width:100%;justify-content:space-between">${ic('search')}Rechercher<span class="kbd">⌘K</span></button></a><div class="sync" data-sync>${syncHtml()}</div></aside>
       <main>${VIEWS[ui.tab]()}</main></div><nav class="bottom">${nav}</nav>`;
@@ -824,7 +910,7 @@ const ACTS = {
   bmonth: el => { ui.bmonth = el.dataset.m; render(true); },
   delrinc: el => { put('rinc:' + el.dataset.id, { del: true }); toast('Revenu récurrent arrêté'); },
   deltx: el => { put('tx:' + el.dataset.id, { del: true }); toast('Opération supprimée'); },
-  remtoggle: el => { const k = el.dataset.k, R = REMS.find(x => x.k === k), cur = val('rem')[k]; put('rem', { [k]: { ...R.def, ...(cur || {}), on: !(cur && cur.on) } }); },
+  remtoggle: el => { const k = el.dataset.k, R = REMS.find(x => x.k === k), cur = val('rem')[k], curOn = k === 'report' ? !(cur && cur.on === false) : !!(cur && cur.on); put('rem', { [k]: { ...R.def, ...(cur || {}), on: !curOn } }); },
   remday: el => { const k = el.dataset.k, i = Number(el.dataset.i), R = REMS.find(x => x.k === k), r = { ...R.def, ...(val('rem')[k] || {}) }, d = new Set(r.days || []); d.has(i) ? d.delete(i) : d.add(i); put('rem', { [k]: { ...r, days: [...d].sort() } }); },
   remfast: el => { const k = el.dataset.k, R = REMS.find(x => x.k === k); put('rem', { [k]: { ...R.def, ...(val('rem')[k] || {}), fasting: el.dataset.v === '1' } }); },
   delbill: el => { const r = { ...REMS[6].def, ...(val('rem').bills || {}) }; put('rem', { bills: { ...r, items: r.items.filter(b => b.id !== el.dataset.id) } }); },
@@ -859,6 +945,8 @@ const ACTS = {
   cfgset: el => { if (el.dataset.k === 'goalType') ui.goalEdit = true; const k = el.dataset.k, cur = cfg()[k]; put('cfg', { [k]: cur === el.dataset.v && k === 'goalType' ? cur : el.dataset.v }); },
   goaledit: () => { ui.goalEdit = true; render(true); },
   goaldone: () => { ui.goalEdit = false; render(true); },
+  repweek: el => { const cur = ui.repWeek || lastWeek(), nx = addDays(cur, 7 * Number(el.dataset.n)); ui.repWeek = nx > lastWeek() ? lastWeek() : nx; render(true); },
+  reportpdf: () => reportPdf(),
   coach: el => coach(el.dataset.m),
   addpay: () => payModal(),
   delpay: el => { if (confirm('Supprimer ce versement ?')) put('pay:' + el.dataset.id, { del: true }); },
@@ -925,7 +1013,7 @@ async function estimate(text) {
   return j;
 }
 async function coach(mode) {
-  const o = openModal(`<h2>${{ week: '✨ Bilan de ma semaine', finance: '✨ Conseils financiers', nutrition: '✨ Conseils nutrition', budget: '✨ Conseils budget' }[mode]}</h2><div id="coach" class="sub" style="white-space:pre-wrap;margin-top:12px;line-height:1.6;font-size:15px;color:var(--text)">Analyse en cours…</div><div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('ov').remove()">Fermer</button></div>`, 'wide');
+  const o = openModal(`<h2>${{ week: '✨ Bilan de ma semaine', finance: '✨ Conseils financiers', nutrition: '✨ Conseils nutrition', report: '✨ Résumé du rapport', budget: '✨ Conseils budget' }[mode]}</h2><div id="coach" class="sub" style="white-space:pre-wrap;margin-top:12px;line-height:1.6;font-size:15px;color:var(--text)">Analyse en cours…</div><div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('ov').remove()">Fermer</button></div>`, 'wide');
   const box = $('#coach', o);
   try {
     const { data } = await sb.auth.getSession();
@@ -976,6 +1064,7 @@ function palette() {
     { l: 'J’ai travaillé aujourd’hui', h: 'action', i: 'work', f: () => ACTS['set-today']({ dataset: { k: 'work', v: 'work' } }) },
     { l: 'Ajouter 0,25 L d’eau', h: 'action', i: 'today', f: () => ACTS['water-today']() },
     { l: 'Entrer mon poids', h: 'action', i: 'weight', f: () => { ui.date = today(); go('weight'); setTimeout(() => $('[data-day=weight]')?.focus(), 150); } },
+    { l: 'Rapport hebdomadaire', h: 'navigation', i: 'today', f: () => go('report') },
     { l: 'Ajouter une dépense', h: 'action', i: 'budget', f: () => { go('budget'); setTimeout(() => $('form[data-form=tx] [name=amount]')?.focus(), 200); } },
     { l: 'Ajouter un remboursement', h: 'action', i: 'credit', f: payModal },
     { l: 'Thème clair / sombre', h: 'action', i: 'settings', f: () => { const v = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'; LS.set('ld_theme', v); put('cfg', { theme: v }); } },

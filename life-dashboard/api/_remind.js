@@ -49,6 +49,8 @@ function computeDue({ rem = {}, cfg = {}, credit = {}, day = {}, local }) {
   if (on('sleep') && due(rem.sleep.time, now)) push('sleep', '😴 Coucher', "Il est bientôt l'heure de dormir : un bon sommeil aide ton poids et ton humeur.", '/#/today');
   if (on('evening') && due(rem.evening.time, now) && (day.sleep == null || day.mood == null)) push('evening', '📝 Bilan du soir', 'Prends 1 minute pour compléter ta journée (repas, eau, humeur).', '/#/today');
   if (on('budget') && due(rem.budget.time, now)) push('budget', '💶 Dépenses du jour', 'As-tu noté tes dépenses du jour ?', '/#/budget');
+  { const rr = { day: 0, time: '08:00', ...(rem.report || {}) }; // rapport hebdomadaire : actif par défaut, chaque lundi
+    if (!(rem.report && rem.report.on === false) && Number(rr.day) === local.wd && due(rr.time, now)) push('report', '📋 Rapport hebdomadaire', 'Ton rapport de la semaine est prêt : réussites en vert, points à rattraper en rouge.', '/#/report'); }
   if (on('week') && Number(rem.week.day) === local.wd && due(rem.week.time, now)) push('week', '📊 Bilan de la semaine', "Ton bilan hebdo est prêt : lance le bilan IA dans l'onglet Poids.", '/#/weight');
   return out;
 }
