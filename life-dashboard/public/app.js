@@ -194,14 +194,15 @@ function monthDays(m) { // m = 'YYYY-MM'
 }
 const kcalOf = d => (day(d).meals || []).reduce((s, m) => s + (Number(m.kcal) || 0), 0);
 function creditStats() {
-  const c = credit(), pays = payments();
+  const c = credit(), all = payments(), t = today();
+  const pays = all.filter(p => p.date <= t), planned = all.filter(p => p.date > t).sort((a, b) => a.date.localeCompare(b.date));
   const paid = pays.reduce((s, p) => s + Number(p.amount), 0);
   const remaining = Math.max(c.total - paid, 0);
   const pct = c.total > 0 ? Math.min(paid / c.total, 1) : 0;
   const monthsLeft = c.monthly > 0 ? Math.ceil(remaining / c.monthly) : null;
   let end = null;
   if (monthsLeft != null) { const d = new Date(); d.setMonth(d.getMonth() + monthsLeft); end = d; }
-  return { c, pays, paid, remaining, pct, monthsLeft, end };
+  return { c, pays, planned, paid, remaining, pct, monthsLeft, end };
 }
 
 const frDate = d => d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
@@ -519,7 +520,8 @@ function vCredit() {
   <div class="card c4"><h3>Mon crédit</h3><div class="list" style="gap:10px"><div><label class="l">Nom</label><input class="field" data-cr="name" value="${esc(c.name)}"></div><div><label class="l">Montant total à rembourser (€)</label><input class="field" data-cr="total" data-num type="number" inputmode="decimal" value="${c.total || ''}"></div><div><label class="l">Mensualité (€)</label><input class="field" data-cr="monthly" data-num type="number" inputmode="decimal" value="${c.monthly || ''}"></div><div><label class="l">Taux annuel (%) — optionnel</label><input class="field" data-cr="rate" data-num type="number" step="0.01" inputmode="decimal" value="${c.rate ?? ''}"></div><div><label class="l">Date de début</label><input class="field" data-cr="start" type="date" value="${c.start || ''}"></div></div></div>
   <div class="card c6"><h3>🔮 Si j’augmente ma mensualité</h3>${creditScenarios().length ? `<table class="table"><tr><th>Mensualité</th><th>Fin</th><th>Gain</th></tr>${creditScenarios().map(r => `<tr><td>${eur(c.monthly + r.extra)}${r.extra ? ` <span class="chip">+${r.extra} €</span>` : ''}</td><td>${frDate(r.end)}</td><td>${r.saved ? `<span class="chip up">−${r.saved} mois</span>` : '—'}</td></tr>`).join('')}</table>` : '<div class="empty">Renseigne total et mensualité</div>'}</div>
   <div class="card c6"><h3>💡 Stratégie financière (IA)</h3><div class="f2" style="gap:10px"><div><label class="l">Salaire net / mois (€)</label><input class="field" data-cfg="netSalary" data-num type="number" inputmode="decimal" value="${cfg().netSalary ?? ''}"></div><div><label class="l">Dépenses / mois (€)</label><input class="field" data-cfg="expenses" data-num type="number" inputmode="decimal" value="${cfg().expenses ?? ''}"></div><div style="grid-column:span 2"><label class="l">Épargne disponible (€)</label><input class="field" data-cfg="savings" data-num type="number" inputmode="decimal" value="${cfg().savings ?? ''}"></div></div><button class="btn pri sm" style="margin-top:12px" data-act="coach" data-m="finance">✨ Me conseiller</button></div>
-  <div class="card c12"><h3>Versements</h3>${s.pays.length ? `<table class="table"><tr><th>Date</th><th>Montant</th><th>Note</th><th></th></tr>${s.pays.map(p => `<tr><td>${longDate(p.date)}</td><td><b>${eur(p.amount)}</b></td><td>${esc(p.note || '')}</td><td style="text-align:right"><button class="x" data-act="delpay" data-id="${p.id}" aria-label="Supprimer">${ic('x')}</button></td></tr>`).join('')}</table>` : '<div class="empty">Aucun remboursement enregistré</div>'}</div></div>`;
+  ${s.planned.length ? `<div class="card c12"><h3>📅 À venir (${s.planned.length}) · ${eur(s.planned.reduce((a, p) => a + Number(p.amount), 0))}</h3><table class="table"><tr><th>Date</th><th>Nom</th><th>Montant</th><th></th></tr>${s.planned.slice(0, 12).map(p => `<tr><td>${longDate(p.date)} <span class="chip">à venir</span></td><td>${esc(p.name || p.note || '')}</td><td><b>${eur(p.amount)}</b></td><td style="text-align:right"><button class="x" data-act="delpay" data-id="${p.id}" aria-label="Supprimer">${ic('x')}</button></td></tr>`).join('')}</table>${s.planned.length > 12 ? `<p class="sub">+ ${s.planned.length - 12} autres…</p>` : ''}</div>` : ''}
+  <div class="card c12"><h3>Versements</h3>${s.pays.length ? `<table class="table"><tr><th>Date</th><th>Montant</th><th>Nom</th><th></th></tr>${s.pays.map(p => `<tr><td>${longDate(p.date)}</td><td><b>${eur(p.amount)}</b></td><td>${esc(p.name || p.note || '')}</td><td style="text-align:right"><button class="x" data-act="delpay" data-id="${p.id}" aria-label="Supprimer">${ic('x')}</button></td></tr>`).join('')}</table>` : '<div class="empty">Aucun remboursement enregistré</div>'}</div></div>`;
 }
 
 const CATS = [['Logement', '🏠'], ['Courses', '🛒'], ['Transport', '🚗'], ['Restaurants', '🍽️'], ['Loisirs', '🎬'], ['Santé', '💊'], ['Abonnements', '📱'], ['Shopping', '🛍️'], ['Épargne', '🏦'], ['Autre', '📦']];
@@ -667,7 +669,13 @@ document.addEventListener('submit', async e => {
     put('tx:' + uid(), { date: fd.date || today(), amount: Number(fd.amount), cat: fd.cat, type: fd.type, note: fd.note?.trim() || null }); toast(fd.type === 'inc' ? 'Revenu ajouté ✓' : 'Dépense ajoutée ✓');
   } else if (f.dataset.form === 'pay') {
     if (!fd.amount || Number(fd.amount) <= 0) return;
-    put('pay:' + uid(), { date: fd.date || today(), amount: Number(fd.amount), note: fd.note || null }); closeModal(); toast('Remboursement ajouté ✓');
+    const start = fd.date || today(), n = fd.repeat === 'monthly' ? Math.min(Math.max(parseInt(fd.count) || 12, 2), 120) : 1, name = (fd.name || '').trim() || null;
+    const [y, m, d0] = start.split('-').map(Number);
+    for (let i = 0; i < n; i++) { // chaque mois à la même date (ramenée au dernier jour si le mois est plus court)
+      const last = new Date(y, m - 1 + i + 1, 0).getDate(), dt = new Date(y, m - 1 + i, Math.min(d0, last));
+      put('pay:' + uid(), { date: ymd(dt), amount: Number(fd.amount), name: name ? (n > 1 ? `${name} (${i + 1}/${n})` : name) : null });
+    }
+    closeModal(); toast(n > 1 ? `${n} remboursements planifiés ✓` : start > today() ? 'Remboursement planifié ✓' : 'Remboursement ajouté ✓');
   }
 });
 async function estimate(text) {
@@ -715,8 +723,12 @@ function openModal(html, cls = '') {
 }
 const closeModal = () => $('#ov')?.remove();
 function payModal() {
-  const o = openModal(`<form data-form="pay"><h2 style="margin-bottom:14px">Nouveau remboursement</h2><div class="f2"><div><label class="l">Date</label><input class="field" type="date" name="date" value="${today()}"></div><div><label class="l">Montant (€)</label><input class="field" type="number" step="0.01" name="amount" inputmode="decimal" value="${credit().monthly || ''}" required></div></div>
-  <label class="l" style="margin-top:12px">Note</label><input class="field" name="note" placeholder="optionnel"><div class="row" style="margin-top:16px;justify-content:flex-end"><button type="button" class="btn" onclick="document.getElementById('ov').remove()">Annuler</button><button class="btn pri">Ajouter</button></div></form>`);
+  const o = openModal(`<form data-form="pay"><h2 style="margin-bottom:14px">Nouveau remboursement</h2>
+  <label class="l">Nom</label><input class="field" name="name" placeholder="ex. Mensualité, Remboursement anticipé…" maxlength="60">
+  <div class="f2" style="margin-top:12px"><div><label class="l">Date (ou date de début)</label><input class="field" type="date" name="date" value="${today()}"></div><div><label class="l">Montant (€)</label><input class="field" type="number" step="0.01" name="amount" inputmode="decimal" value="${credit().monthly || ''}" required></div></div>
+  <div class="f2" style="margin-top:12px"><div><label class="l">Répétition</label><select class="field" name="repeat" onchange="document.getElementById('cnt').style.display=this.value==='monthly'?'block':'none'"><option value="once">Une seule fois</option><option value="monthly">Chaque mois</option></select></div><div id="cnt" style="display:none"><label class="l">Nombre de mensualités</label><input class="field" type="number" name="count" min="2" max="120" value="12" inputmode="numeric"></div></div>
+  <p class="sub" style="margin:10px 0 0">Une date future crée un remboursement « à venir » : il ne compte comme remboursé qu’à partir de sa date.</p>
+  <div class="row" style="margin-top:16px;justify-content:flex-end"><button type="button" class="btn" onclick="document.getElementById('ov').remove()">Annuler</button><button class="btn pri">Ajouter</button></div></form>`);
   $('input[name=amount]', o).focus();
 }
 function palette() {
