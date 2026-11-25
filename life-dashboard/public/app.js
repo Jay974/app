@@ -48,7 +48,7 @@ const MOODS = ['😞', '😕', '😐', '🙂', '😄'];
 /* ============================== store + sync ============================== */
 // Chaque document est { champ: {v, t} } : la fusion se fait champ par champ, le plus récent gagne.
 const S = { docs: LS.get('ld_docs', {}), pending: LS.get('ld_pending', {}), seq: LS.get('ld_seq', 0), token: LS.get('ld_token', null), offset: LS.get('ld_off', 0) };
-let status = 'busy'; // ok | off | busy
+let status = 'busy', lastErr = ''; // ok | off | busy
 const persist = () => { LS.set('ld_docs', S.docs); LS.set('ld_pending', S.pending); LS.set('ld_seq', S.seq); LS.set('ld_off', S.offset); };
 const nowT = () => Date.now();
 
@@ -83,7 +83,7 @@ async function flush() {
     for (const id in snap) for (const k in snap[id]) if (S.pending[id]?.[k]?.t === snap[id][k].t) delete S.pending[id][k];
     for (const id in S.pending) if (!Object.keys(S.pending[id]).length) delete S.pending[id];
     persist(); setStatus('ok');
-  } catch (e) { setStatus('off'); }
+  } catch (e) { setStatus('off', e); }
   flushing = false;
   if (Object.keys(S.pending).length && status === 'ok') flushSoon();
 }
@@ -103,7 +103,7 @@ async function pull() {
     }
     S.seq = since; persist(); setStatus('ok');
     if (changed) render(false);
-  } catch (e) { setStatus('off'); }
+  } catch (e) { setStatus('off', e); }
 }
 function connect() {
   if (!S.token) return;
@@ -111,12 +111,13 @@ function connect() {
   chan = sb.channel('fields-sync').on('postgres_changes', { event: '*', schema: 'public', table: 'fields' }, () => pull())
     .subscribe(st => { if (st === 'SUBSCRIBED') { setStatus('ok'); flush(); pull(); }  }); // si le temps réel échoue, la synchro continue par interrogation régulière (ci-dessous)
 }
-function setStatus(s) {
-  if (status === s) return;
-  status = s;
+function setStatus(s, err) {
+  const msg = s === 'ok' ? '' : (err && (err.message || err.details || String(err))) || lastErr;
+  if (status === s && msg === lastErr) return;
+  status = s; lastErr = msg;
   $$('[data-sync]').forEach(el => { el.innerHTML = syncHtml(); });
 }
-const syncHtml = () => `<i class="dot ${status === 'ok' ? 'ok' : status === 'off' ? 'off' : ''}"></i>${status === 'ok' ? (Object.keys(S.pending).length ? 'Envoi…' : 'Synchronisé') : status === 'busy' ? 'Synchronisation…' : 'Hors-ligne — sera synchronisé'}`;
+const syncHtml = () => `<i class="dot ${status === 'ok' ? 'ok' : status === 'off' ? 'off' : ''}"></i>${status === 'ok' ? (Object.keys(S.pending).length ? 'Envoi…' : 'Synchronisé') : status === 'busy' ? 'Synchronisation…' : (navigator.onLine ? 'Erreur de synchro' + (lastErr ? ' : ' + esc(lastErr) : '') : 'Hors-ligne — sera synchronisé')}`;
 window.addEventListener('online', () => { flush(); pull(); connect(); });
 sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT' && S.token) localLogout(); });
 window.addEventListener('offline', () => setStatus('off'));
@@ -311,11 +312,11 @@ const ui = { tab: (location.hash.slice(2) || 'home'), date: today(), range: 30, 
 if (!TABS.some(t => t[0] === ui.tab)) ui.tab = 'home';
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
-const theme = () => cfg().theme || LS.get('ld_theme', 'dark'); // sombre par défaut ; réglage synchronisé
+const theme = () => cfg().theme || 'dark'; // sombre par défaut ; seul le réglage synchronisé compte
 function applyTheme() {
   const c = cfg(), t = theme();
   const light = t === 'light' || (t === 'auto' && matchMedia('(prefers-color-scheme: light)').matches);
-  document.documentElement.dataset.theme = light ? 'light' : 'dark';
+  document.documentElement.dataset.theme = light ? 'light' : 'dark'; LS.set('ld_theme_applied', light ? 'light' : 'dark');
   const rgb = ACCENTS[c.accent] || ACCENTS.Jade;
   document.documentElement.style.setProperty('--acc-rgb', rgb);
   document.documentElement.style.setProperty('--acc', `rgb(${rgb})`);
