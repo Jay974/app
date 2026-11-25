@@ -26,13 +26,13 @@ async function userFromReq(req) { // vérifie le jeton Supabase de l'utilisateur
   if (!r || !r.ok) return null;
   return (await r.json()).id || null;
 }
-async function sendTo(db, sub, payload) { // false si l'abonnement est mort (supprimé)
+async function sendTo(db, sub, payload) { // null si envoyé, sinon { code, msg } (abonnement mort = supprimé)
   try {
     await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, JSON.stringify(payload), { TTL: 3600 });
-    return true;
+    return null;
   } catch (e) {
     if (e.statusCode === 404 || e.statusCode === 410) await db.from('push_subs').delete().eq('endpoint', sub.endpoint);
-    return false;
+    return { code: e.statusCode || 0, msg: String(e.body || e.message || '').slice(0, 120) };
   }
 }
 module.exports = { vapid, setup, admin, userFromReq, sendTo };

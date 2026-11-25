@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
         // une seule notification par rappel et par jour (même si le déclencheur passe 2 fois)
         const { error: dup } = await db.from('push_sent').insert({ uid, key: it.key, day: local.date });
         if (dup) continue;
-        for (const s of list) if (await sendTo(db, s, { title: it.title, body: it.body, url: it.url, tag: it.key })) sent++;
+        for (const s of list) if ((await sendTo(db, s, { title: it.title, body: it.body, url: it.url, tag: it.key })) === null) sent++;
       }
     }
     await db.from('push_sent').delete().lt('day', new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10));
