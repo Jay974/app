@@ -22,6 +22,6 @@ module.exports = async (req, res) => {
     });
     const j = await r.json();
     if (!r.ok) return res.status(502).json({ error: j.error?.message || 'Erreur IA' });
-    return res.status(200).json({ text: j.content?.[0]?.text || '' });
+    return res.status(200).json({ text: (j.content || []).filter(b => b.type === 'text').map(b => b.text).join('') });
   } catch (e) { return res.status(502).json({ error: 'Analyse impossible' }); }
 };

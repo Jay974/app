@@ -16,16 +16,21 @@ module.exports = async (req, res) => {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: process.env.KCAL_MODEL || 'claude-haiku-5-5', max_tokens: 600, system: SYSTEM, messages: [{ role: 'user', content: text }] })
+      body: JSON.stringify({ model: process.env.KCAL_MODEL || 'claude-haiku-5-5', max_tokens: 1200, system: SYSTEM, messages: [{ role: 'user', content: text }] })
     });
     const j = await r.json();
     if (!r.ok) return res.status(502).json({ error: j.error?.message || 'Erreur IA' });
-    const m = (j.content?.[0]?.text || '').match(/\{[\s\S]*\}/);
-    const out = JSON.parse(m[0]);
+    // on assemble tous les blocs texte (la réponse peut commencer par un autre type de bloc)
+    const raw = (j.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (!m) return res.status(502).json({ error: 'Réponse IA illisible : ' + (raw.slice(0, 80) || j.stop_reason || 'vide') });
+    let out;
+    try { out = JSON.parse(m[0]); } catch (e) { return res.status(502).json({ error: 'JSON IA invalide (' + j.stop_reason + ') : ' + raw.slice(0, 80) }); }
     const T = out.total || {}, sum = key => Math.round(Number(T[key]) || (out.items || []).reduce((s, i) => s + (Number(i[key]) || 0), 0));
     const total = sum('kcal'), p = sum('p'), c = sum('c'), f = sum('f');
     return res.status(200).json({ total, p, c, f, items: out.items || [] });
   } catch (e) {
-    return res.status(502).json({ error: 'Estimation impossible' });
+    console.error('kcal', e);
+    return res.status(502).json({ error: 'Estimation impossible : ' + (e.message || e).toString().slice(0, 120) });
   }
 };
