@@ -20,3 +20,7 @@ Rappels : eau, exercice, repas, pesée (à jeun ou non), mensualité de crédit,
 1. **Vercel → Settings → Environment Variables** : ajoute `SUPABASE_SERVICE_ROLE_KEY` (la *secret key* de Supabase) et `CRON_SECRET` (un texte aléatoire long de ton choix), puis redéploie.
 2. **Supabase → SQL Editor** : colle `supabase/push.sql` en remplaçant `VOTRE_CRON_SECRET` par la valeur de `CRON_SECRET`, puis Run. (Le serveur est appelé chaque minute par `pg_cron`.)
 3. Dans l'app : **Rappels → Activer les notifications** sur chaque appareil, puis *Envoyer un test*. Sur iPhone, installe d'abord l'app sur l'écran d'accueil (iOS 16.4+).
+
+## IA : Claude + secours Gemini (gratuit)
+Les fonctions `api/kcal.js` (calories/macros) et `api/coach.js` (bilans, conseils) passent par `api/_ai.js` : Claude d'abord, puis **Gemini** si Claude échoue (crédit épuisé, panne) ou n'est pas configuré.
+Variables Vercel : `ANTHROPIC_API_KEY` (optionnelle), `GEMINI_API_KEY` (gratuite sur https://aistudio.google.com/apikey), `AI_PROVIDER` = `auto` (défaut) | `claude` | `gemini`, `GEMINI_MODEL` (optionnelle).

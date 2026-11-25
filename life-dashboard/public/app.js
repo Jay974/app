@@ -134,15 +134,35 @@ function localLogout() {
 }
 
 /* ============================== domaine ============================== */
-const DEF = { goalWeight: null, startWeight: null, height: null, kcalGoal: 2200, burnShare: 50, waterGoal: 8, waterGoalL: null, sportTarget: 3, weekHours: null, netSalary: null, salaryMode: 'fixed', name: '', accent: 'Jade', income: null, expenses: null, savings: null, budgets: null, protGoal: null, carbGoal: null, fatGoal: null };
+const DEF = { goalWeight: null, startWeight: null, height: null, kcalGoal: 2200, burnShare: 50, goalType: null, sex: null, age: null, activity: '1.375', pace: 'mid', kcalMode: 'auto', waterGoal: 8, waterGoalL: null, sportTarget: 3, weekHours: null, netSalary: null, salaryMode: 'fixed', name: '', accent: 'Jade', income: null, expenses: null, savings: null, budgets: null, protGoal: null, carbGoal: null, fatGoal: null };
 const cfg = () => { const c = { ...DEF, ...val('cfg') }; if (c.netSalary == null && c.income != null) c.netSalary = c.income; return c; };
 const goalBonus = (d, c = cfg()) => Math.round((c.burnShare ?? 50) / 100 * burned(d)); // part des kcal brûlées ajoutée à l'objectif du jour
-const goalKcal = (d, c = cfg()) => c.kcalGoal + goalBonus(d, c);
+const GOALS = {
+  cut: { t: 'Perte de poids', i: '📉', want: 'deficit', d: 'Perdre du gras en gardant le muscle' },
+  bulk: { t: 'Prise de muscle', i: '💪', want: 'surplus', d: 'Prise de masse propre, léger surplus' },
+  recomp: { t: 'Recomposition', i: '🔄', want: 'balance', d: 'Perdre du gras et gagner du muscle' },
+  maintain: { t: 'Équilibre', i: '⚖️', want: 'balance', d: 'Garder son poids et sa forme' },
+  gain: { t: 'Prise de poids', i: '📈', want: 'surplus', d: 'Prendre du poids (muscle et réserves)' }
+};
+const ACTIVITY = [['1.2', 'Peu actif (bureau, peu de marche)'], ['1.375', 'Actif (debout, marche régulière)'], ['1.55', 'Très actif (travail physique)']]; // hors séances de sport (comptées à part)
+const meanA = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+function plan(c = cfg()) { // besoins estimés (Mifflin-St Jeor) + cible calorique et macros selon l'objectif
+  const w = [...weights()].pop()?.w ?? c.startWeight;
+  if (!c.goalType || !GOALS[c.goalType] || !w || !c.height || !c.age || !c.sex) return null;
+  const bmr = 10 * w + 6.25 * c.height - 5 * c.age + (c.sex === 'f' ? -161 : 5), tdee = bmr * (Number(c.activity) || 1.375), pace = c.pace || 'mid';
+  const adj = { cut: -{ soft: .15, mid: .2, fast: .25 }[pace], bulk: { soft: .05, mid: .1, fast: .15 }[pace], gain: { soft: .1, mid: .15, fast: .2 }[pace], recomp: -.05, maintain: 0 }[c.goalType] * tdee;
+  const floor = c.sex === 'f' ? 1200 : 1500, target = Math.round(Math.max(tdee + adj, floor) / 10) * 10;
+  const [pk, fk] = { cut: [2.1, .8], bulk: [1.8, 1], recomp: [2.2, .9], maintain: [1.6, .9], gain: [1.6, 1] }[c.goalType];
+  const p = Math.round(pk * w), f = Math.max(Math.round(fk * w), Math.round(target * .2 / 9));
+  return { w, bmr: Math.round(bmr), tdee: Math.round(tdee), target, p, f, c: Math.max(0, Math.round((target - p * 4 - f * 9) / 4)), kgWeek: (target - tdee) * 7 / 7700, floorHit: tdee + adj < floor, want: GOALS[c.goalType].want };
+}
+const kcalBase = (c = cfg()) => { if (c.goalType && c.kcalMode !== 'manual') { const pl = plan(c); if (pl) return pl.target; } return c.kcalGoal; };
+const goalKcal = (d, c = cfg()) => kcalBase(c) + goalBonus(d, c);
 function macroGoals(d) { // objectifs perso, sinon calculés : prot 1,8 g/kg, lipides 30 % des kcal, glucides = le reste
   const c = cfg(), w = weights().slice(-1)[0]?.w;
-  const k = d ? goalKcal(d, c) : c.kcalGoal;
-  const p = c.protGoal ?? (w ? Math.round(1.8 * w) : Math.round(k * .25 / 4));
-  const f = c.fatGoal ?? Math.round(k * .30 / 9);
+  const k = d ? goalKcal(d, c) : kcalBase(c), pl = plan(c);
+  const p = c.protGoal ?? (pl ? pl.p : w ? Math.round(1.8 * w) : Math.round(k * .25 / 4));
+  const f = c.fatGoal ?? (pl ? pl.f : Math.round(k * .30 / 9));
   return { p, f, c: c.carbGoal ?? Math.max(0, Math.round((k - p * 4 - f * 9) / 4)) };
 }
 const macrosOf = d => (day(d).meals || []).reduce((a, m) => ({ p: a.p + (Number(m.p) || 0), c: a.c + (Number(m.c) || 0), f: a.f + (Number(m.f) || 0), missing: a.missing + (m.p == null ? 1 : 0) }), { p: 0, c: 0, f: 0, missing: 0 });
@@ -263,12 +283,12 @@ function coachData(mode) {
   if (mode === 'week') {
     const days = Array.from({ length: 14 }, (_, i) => addDays(t, i - 13)).map(d => { const x = day(d); return { date: d, poids: x.weight, sport: x.sport, sportType: x.sportType, minutes: x.sportMin, travail: x.work, kcal: kcalOf(d) || undefined, eauLitres: waterOf(d), sommeil: x.sleep, humeur: x.mood, kcalBrulees: burned(d) || undefined }; });
     const f = weightForecast();
-    return { jours: days, objectifs: { poidsCible: c.goalWeight, kcal: c.kcalGoal, eauLitres: waterGoal(c), seancesParSemaine: c.sportTarget, tailleCm: c.height }, tendancePoidsKgParSemaine: f.ok ? Number(f.perWeek.toFixed(2)) : null };
+    return { jours: days, objectifs: { poidsCible: c.goalWeight, kcal: kcalBase(c), objectif: profileData(), eauLitres: waterGoal(c), seancesParSemaine: c.sportTarget, tailleCm: c.height }, tendancePoidsKgParSemaine: f.ok ? Number(f.perWeek.toFixed(2)) : null };
   }
   if (mode === 'nutrition') {
     const g = macroGoals(), days = Array.from({ length: 7 }, (_, i) => addDays(t, -i)).map(d => { const m = macrosOf(d); return { date: d, kcal: kcalOf(d), objectifKcalDuJour: goalKcal(d), kcalBruleesSport: burned(d), proteinesG: Math.round(m.p), glucidesG: Math.round(m.c), lipidesG: Math.round(m.f), repas: (day(d).meals || []).map(x => x.name) }; });
     const f = weightForecast();
-    return { aujourdhui: days[0], sept_derniers_jours: days, objectifs: { kcalDeBase: c.kcalGoal, partKcalSportAjouteeAuObjectifPct: c.burnShare ?? 50, proteinesG: g.p, glucidesG: g.c, lipidesG: g.f }, poidsActuel: weights().slice(-1)[0]?.w, poidsCible: c.goalWeight, tendancePoidsKgParSemaine: f.ok ? Number(f.perWeek.toFixed(2)) : null, seancesSportSemaine: weekStats(t).n };
+    return { aujourdhui: days[0], sept_derniers_jours: days, objectif: profileData(), objectifs: { kcalDeBase: kcalBase(c), partKcalSportAjouteeAuObjectifPct: c.burnShare ?? 50, proteinesG: g.p, glucidesG: g.c, lipidesG: g.f }, poidsActuel: weights().slice(-1)[0]?.w, poidsCible: c.goalWeight, tendancePoidsKgParSemaine: f.ok ? Number(f.perWeek.toFixed(2)) : null, seancesSportSemaine: weekStats(t).n };
   }
   if (mode === 'budget') {
     const m = ui.bmonth, b = budgetStats(m), pm = (() => { const d = parse(m + '-01'); d.setMonth(d.getMonth() - 1); return budgetStats(ymd(d).slice(0, 7)); })();
@@ -482,6 +502,7 @@ function vSport() {
   const tmax = Math.max(1, ...Object.values(types));
   const recent = dayIds().filter(d => day(d).sport === 'done').reverse().slice(0, 8);
   return head('Sport', 'Coche tes séances, garde la série', dateBar()) + `<div class="grid">
+  ${goalCard()}${verdictCard('sport')}
   <div class="card c4 hero" style="display:flex;align-items:center;justify-content:space-between"><div><h3>Cette semaine</h3><div class="big">${wk.n} / ${c.sportTarget}</div><p>${wk.n >= c.sportTarget ? 'Objectif atteint 🔥' : `Encore ${c.sportTarget - wk.n} séance(s)`}</p></div>${ring('sportw', wk.n / c.sportTarget, Math.round(Math.min(wk.n / c.sportTarget, 1) * 100) + '%', { size: 110 })}</div>
   <div class="card c4"><h3>Ce mois-ci</h3><div class="val">${mCount}<small>séances</small></div><div class="sub">${mMin} min · 🔥 ${fmt(mBurn, 0)} kcal brûlées</div></div>
   <div class="card c4"><h3>Série</h3><div class="val">${streak}<small>semaine(s) d’objectif</small></div><div class="sub">Objectif : ${c.sportTarget} séances / semaine</div></div>
@@ -492,13 +513,79 @@ function vSport() {
   <div class="card c6"><h3>Dernières séances</h3><div class="list">${recent.map(d => `<div class="item"><div class="grow"><div class="t">${esc(day(d).sportType || 'Séance')}</div><div class="s">${longDate(d)}</div></div><b>${day(d).sportMin ? day(d).sportMin + ' min' : ''}</b></div>`).join('') || '<div class="empty">—</div>'}</div></div></div>`;
 }
 
+function profileData() {
+  const c = cfg(), pl = plan(c); if (!c.goalType) return null;
+  return { objectif: GOALS[c.goalType]?.t, sexe: c.sex === 'f' ? 'femme' : c.sex === 'h' ? 'homme' : null, age: c.age, tailleCm: c.height, rythme: c.pace, besoinsEstimesKcalHorsSport: pl && pl.tdee, cibleKcalDeBase: pl && pl.target, cibleMacrosG: pl && { p: pl.p, g: pl.c, l: pl.f } };
+}
+/* ---------- Objectif (formulaire) + verdicts ---------- */
+function goalCard() {
+  const c = cfg(), pl = plan(c), G = GOALS[c.goalType], edit = ui.goalEdit || !c.goalType;
+  if (!edit) return `<div class="card c12" style="display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div><h3 style="margin-bottom:6px">🎯 Mon objectif</h3><div class="t" style="font-size:17px;font-weight:700">${G.i} ${G.t}</div><div class="sub">${pl ? `Cible ${fmt(kcalBase(c), 0)} kcal/j · P ${pl.p} g · G ${pl.c} g · L ${pl.f} g${c.kcalMode === 'manual' ? ' (calories manuelles)' : ''}` : 'Complète ton profil pour calculer tes cibles'}</div></div><button class="btn" data-act="goaledit">Modifier</button></div>`;
+  const seg = (k, opts) => `<div class="seg">${opts.map(([v, l]) => `<button type="button" class="${c[k] === v ? 'on' : ''}" data-act="cfgset" data-k="${k}" data-v="${v}">${l}</button>`).join('')}</div>`;
+  return `<div class="card c12"><h3>🎯 Mon objectif ${c.goalType ? '' : '· 2 minutes pour des conseils sur mesure'}</h3>
+  <div class="chips" style="margin-bottom:14px">${Object.entries(GOALS).map(([k, g]) => `<button type="button" class="${c.goalType === k ? 'on' : ''}" data-act="cfgset" data-k="goalType" data-v="${k}" title="${g.d}">${g.i} ${g.t}</button>`).join('')}</div>
+  ${G ? `<p class="sub" style="margin:-4px 0 12px">${G.d}.</p>` : ''}
+  <div class="f2" style="gap:12px"><div><label class="l">Sexe</label>${seg('sex', [['h', 'Homme'], ['f', 'Femme']])}</div><div><label class="l">Rythme</label>${seg('pace', [['soft', 'Doux'], ['mid', 'Modéré'], ['fast', 'Rapide']])}</div>
+  <div><label class="l">Âge</label><input class="field" data-cfg="age" data-num type="number" inputmode="numeric" value="${c.age ?? ''}"></div><div><label class="l">Taille (cm)</label><input class="field" data-cfg="height" data-num type="number" inputmode="numeric" value="${c.height ?? ''}"></div>
+  <div style="grid-column:span 2"><label class="l">Activité quotidienne (hors séances de sport)</label><select class="field" data-cfg="activity">${ACTIVITY.map(([v, l]) => `<option value="${v}" ${String(c.activity) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+  <div style="grid-column:span 2"><label class="l">Objectif calorique</label>${seg('kcalMode', [['auto', 'Calculé automatiquement'], ['manual', 'Manuel (Réglages)']])}</div></div>
+  <div class="list" style="margin-top:14px">${pl ? `<div class="item"><div class="grow">Métabolisme de base · dépense/jour</div><b>${fmt(pl.bmr, 0)} · ${fmt(pl.tdee, 0)} kcal</b></div><div class="item"><div class="grow">Cible calorique de base</div><b>${fmt(pl.target, 0)} kcal ${pl.kgWeek ? `(≈ ${pl.kgWeek > 0 ? '+' : ''}${fmt(pl.kgWeek, 2)} kg/sem)` : ''}</b></div><div class="item"><div class="grow">Cibles protéines · glucides · lipides</div><b>${pl.p} · ${pl.c} · ${pl.f} g</b></div>${pl.floorHit ? '<div class="sub">⚠️ Cible relevée au minimum de sécurité (1 200 kcal femme / 1 500 homme).</div>' : ''}` : `<div class="empty">Choisis ton objectif, ton sexe, ton âge, ta taille et ${weights().length || c.startWeight ? 'ton rythme' : 'enregistre ton poids (onglet Poids)'} pour calculer tes cibles.</div>`}</div>
+  <p class="sub" style="margin:10px 0 0">Estimations indicatives (formule Mifflin-St Jeor), pas un avis médical.</p>
+  <div class="row" style="margin-top:12px;justify-content:flex-end"><button class="btn pri" data-act="goaldone">Terminé</button></div></div>`;
+}
+function verdictRows(kind) {
+  const c = cfg(), pl = plan(c), G = GOALS[c.goalType], t = today(), rows = [], row = (state, icon, label, text) => rows.push({ state, icon, label, text });
+  const past = Array.from({ length: 6 }, (_, i) => addDays(t, -i - 1)), want = G.want, f = weightForecast();
+  if (kind === 'food') {
+    const dd = past.filter(d => kcalOf(d) > 0);
+    if (!pl) row('warn', '🧮', 'Besoins estimés', 'Complète sexe, âge, taille et poids pour calculer tes besoins.');
+    else if (!dd.length) row('warn', '🍽️', 'Calories', 'Note quelques repas complets (hors aujourd’hui) pour obtenir un verdict.');
+    else {
+      const inn = meanA(dd.map(kcalOf)), exp = pl.tdee + meanA(dd.map(burned)), bal = Math.round(inn - exp), lab = bal < -150 ? 'déficit' : bal > 150 ? 'surplus' : 'équilibre';
+      let st = 'ok', adv = 'conforme à ton objectif';
+      if (want === 'deficit') { if (bal > -150) { st = 'warn'; adv = 'déficit insuffisant pour perdre du poids'; } else if (bal < -700) { st = 'bad'; adv = 'déficit trop agressif : risque de perdre du muscle'; } }
+      else if (want === 'surplus') { if (bal < 100) { st = 'warn'; adv = 'surplus insuffisant pour prendre'; } else if (bal > 500) { st = 'warn'; adv = 'surplus trop fort : prise de gras probable'; } }
+      else if (Math.abs(bal) > 200) { st = 'warn'; adv = `pas à l’équilibre (${lab})`; }
+      row(st, '🔥', 'Bilan énergétique', `Moyenne ${fmt(inn, 0)} kcal vs dépense estimée ${fmt(exp, 0)} → ${bal > 0 ? '+' : ''}${bal} kcal/j (${lab}) : ${adv}.`);
+      const dm = dd.filter(d => (day(d).meals || []).some(m => m.p != null));
+      for (const [k, name, ic] of [['p', 'Protéines', '🥩'], ['c', 'Glucides', '🍚'], ['f', 'Lipides', '🥑']]) {
+        if (!dm.length) break;
+        const v = meanA(dm.map(d => macrosOf(d)[k])), tg = Math.round(meanA(dm.map(d => macroGoals(d)[k]))), r = tg ? v / tg : 1; let st2 = 'ok', msg = 'dans la cible';
+        if (r < .85) { st2 = 'warn'; msg = 'insuffisant' + ({ p: want === 'deficit' ? ' : risque de perdre du muscle' : ' : freine le gain de muscle', c: ' : énergie et récupération réduites', f: ' : hormones et vitamines liposolubles' }[k]); }
+        else if (r > 1.2) { st2 = 'warn'; msg = 'en excès' + ({ p: ' : inutile au-delà de la cible', c: want === 'deficit' ? ' : compromet le déficit' : '', f: ' : très calorique, surveille le total' }[k]); }
+        row(st2, ic, name, `${fmt(v, 0)} g/j vs cible ${tg} g : ${msg}.`);
+      }
+    }
+  } else {
+    const l7 = Array.from({ length: 7 }, (_, i) => addDays(t, -i)), done = l7.filter(d => day(d).sport === 'done'), muscu = done.filter(d => day(d).sportType === 'Muscu').length;
+    const need = { cut: 2, bulk: 3, recomp: 3, maintain: 0, gain: 3 }[c.goalType];
+    if (need) row(muscu >= need ? 'ok' : 'warn', '🏋️', 'Musculation', `${muscu} séance(s) sur 7 jours (recommandé : ${need}+)${muscu < need ? ' : ajoute-en pour ' + (want === 'deficit' ? 'conserver ton muscle' : 'stimuler la prise de muscle') : ''}.`);
+    if (c.goalType === 'cut') { const cardio = done.length - muscu; row(cardio >= 1 ? 'ok' : 'warn', '🏃', 'Cardio / activité', `${cardio} séance(s) hors musculation sur 7 jours${cardio < 1 ? ' : 1 à 2 séances de cardio ou de marche soutiennent le déficit' : ''}.`); }
+    if (!need && c.goalType === 'maintain') row(done.length >= c.sportTarget ? 'ok' : 'warn', '✅', 'Régularité', `${done.length} séance(s) sur 7 jours (objectif ${c.sportTarget}/semaine).`);
+    const sl = l7.map(d => day(d).sleep).filter(v => v != null);
+    if (sl.length) { const m = meanA(sl); row(m >= 7 ? 'ok' : 'warn', '😴', 'Sommeil', `${fmt(m, 1)} h en moyenne${m < 7 ? ' : sous 7 h, la récupération et la prise de muscle en pâtissent' : ' : bonne récupération'}.`); }
+  }
+  if (f.ok) {
+    const pw = f.perWeek; let st = 'ok', adv = 'en phase avec ton objectif';
+    if (want === 'deficit') { if (pw > -0.1) { st = 'warn'; adv = 'tu ne perds pas encore : ajuste le déficit'; } else if (pw < -1) { st = 'bad'; adv = 'perte trop rapide'; } }
+    else if (want === 'surplus') { if (pw < 0.05) { st = 'warn'; adv = 'tu ne prends pas : augmente les calories'; } else if (pw > 0.6) { st = 'warn'; adv = 'prise trop rapide (gras)'; } }
+    else if (Math.abs(pw) > 0.3) { st = 'warn'; adv = 'poids instable pour un objectif d’équilibre'; }
+    row(st, '⚖️', 'Tendance du poids', `${pw > 0 ? '+' : ''}${fmt(pw, 2)} kg/sem : ${adv}.`);
+  }
+  return rows;
+}
+function verdictCard(kind) {
+  const c = cfg(); if (!c.goalType) return '';
+  const chip = s => s === 'ok' ? '<span class="chip up">OK</span>' : s === 'bad' ? '<span class="chip down">À corriger</span>' : '<span class="chip" style="background:rgba(251,191,36,.18);color:var(--warn)">À ajuster</span>';
+  return `<div class="card c12"><h3>📋 Verdict selon ton objectif · ${GOALS[c.goalType].t}</h3><div class="list">${verdictRows(kind).map(r => `<div class="item"><span style="font-size:20px">${r.icon}</span><div class="grow"><div class="t">${r.label}</div><div class="s">${r.text}</div></div>${chip(r.state)}</div>`).join('') || '<div class="empty">Pas assez de données</div>'}</div></div>`;
+}
 function nutritionCard() {
   const t = today(), c = cfg();
   const ds = Array.from({ length: 6 }, (_, i) => addDays(t, -i - 1)).filter(d => (day(d).meals || []).some(m => m.p != null)); // jours complets (hors aujourd’hui)
   const avg = k => ds.length ? ds.reduce((a, d) => a + macrosOf(d)[k], 0) / ds.length : null;
   const st = (v, goal) => v == null ? '' : v / goal < .85 ? '<span class="chip down">Insuffisant</span>' : v / goal > 1.15 ? '<span class="chip down">Excès</span>' : '<span class="chip up">OK</span>';
   const gAvg = k => ds.length ? ds.reduce((a, d) => a + macroGoals(d)[k], 0) / ds.length : macroGoals()[k];
-  const kAvg = ds.length ? ds.reduce((a, d) => a + goalKcal(d, c), 0) / ds.length : c.kcalGoal;
+  const kAvg = ds.length ? ds.reduce((a, d) => a + goalKcal(d, c), 0) / ds.length : kcalBase(c);
   const kc = ds.length ? ds.reduce((a, d) => a + kcalOf(d), 0) / ds.length : null;
   return `<div class="card c6"><h3>🥗 Macros · moyenne des ${ds.length} derniers jours</h3><div class="list">${[['Protéines', 'p'], ['Glucides', 'c'], ['Lipides', 'f']].map(([l, k]) => `<div class="item"><div class="grow">${l}</div><b>${fmt(avg(k), 0)} g</b><span class="sub">/ ${Math.round(gAvg(k))} g</span>${st(avg(k), gAvg(k))}</div>`).join('')}<div class="item"><div class="grow">Calories</div><b>${fmt(kc, 0)}</b><span class="sub">/ ${Math.round(kAvg)}</span>${st(kc, kAvg)}</div></div>
   <p class="sub">Objectifs ${c.protGoal != null ? 'personnalisés' : 'calculés (protéines 1,8 g/kg, lipides 30 %)'} — modifiables dans Réglages.</p><button class="btn pri sm" data-act="coach" data-m="nutrition">✨ Conseils nutrition IA</button></div>`;
@@ -508,8 +595,9 @@ function vFood() {
   const days = Array.from({ length: 14 }, (_, i) => addDays(t, i - 13));
   const k = days.map(d => kcalOf(d)), logged = k.filter(v => v > 0), avg = logged.length ? logged.reduce((s, v) => s + v, 0) / logged.length : null;
   return head('Repas', 'Note ce que tu manges, suis tes calories', dateBar()) + `<div class="grid">
+  ${goalCard()}${verdictCard('food')}
   <div class="card c4 hero" style="display:flex;align-items:center;justify-content:space-between"><div><h3>${ui.date === t ? 'Aujourd’hui' : shortDate(ui.date)}</h3><div class="big">${fmt(kcalOf(ui.date), 0)} <em>kcal</em></div><p>sur ${fmt(goalKcal(ui.date, c), 0)} visées${goalBonus(ui.date, c) ? ` (${fmt(c.kcalGoal, 0)} + ${goalBonus(ui.date, c)} 🔥 sport)` : ''}</p></div>${ring('kcal', kcalOf(ui.date) / goalKcal(ui.date, c), Math.round(kcalOf(ui.date) / goalKcal(ui.date, c) * 100) + '%', { size: 108 })}</div>
-  <div class="card c8"><h3>14 derniers jours · moyenne ${fmt(avg, 0)} kcal</h3>${bars('kc', days.map((d, i) => ({ label: parse(d).getDate(), v: k[i] })), { goal: c.kcalGoal, unit: ' kcal' })}</div>
+  <div class="card c8"><h3>14 derniers jours · moyenne ${fmt(avg, 0)} kcal</h3>${bars('kc', days.map((d, i) => ({ label: parse(d).getDate(), v: k[i] })), { goal: kcalBase(c), unit: ' kcal' })}</div>
   ${mealsCard(ui.date)}
   ${nutritionCard()}
   <div class="card c6"><h3>Journal alimentaire</h3><div class="list">${days.slice().reverse().filter(d => (day(d).meals || []).length).slice(0, 7).map(d => `<div class="item" style="align-items:flex-start;flex-direction:column;gap:2px"><div class="row" style="width:100%;justify-content:space-between"><b style="text-transform:capitalize">${longDate(d)}</b><span class="chip">${fmt(kcalOf(d), 0)} kcal</span></div><div class="s">${day(d).meals.map(m => esc(m.name)).join(' · ')}</div></div>`).join('') || '<div class="empty">Rien pour l’instant</div>'}</div></div></div>`;
@@ -646,7 +734,7 @@ function vSettings() {
   const c = cfg(), th = theme(), n = (k, l, step = '1', ph = '') => `<div><label class="l">${l}</label><input class="field" data-cfg="${k}" data-num type="number" step="${step}" inputmode="decimal" placeholder="${ph}" value="${c[k] ?? ''}"></div>`;
   return head('Réglages', 'Objectifs, apparence et synchronisation') + `<div class="grid">
   <div class="card c6"><h3>Profil & objectifs</h3><div class="f2" style="gap:12px"><div style="grid-column:span 2"><label class="l">Prénom</label><input class="field" data-cfg="name" value="${esc(c.name)}"></div>
-    ${n('goalWeight', 'Poids objectif (kg)', '0.1')}${n('startWeight', 'Poids de départ (kg)', '0.1', 'auto')}${n('height', 'Taille (cm)')}${n('kcalGoal', 'Objectif calories / jour (de base)')}${n('burnShare', 'Part des kcal sport ajoutée (%)', '5', '50')}${n('waterGoalL', 'Eau (litres / jour)', '0.1', '2')}${n('sportTarget', 'Séances / semaine')}${n('protGoal', 'Protéines (g/jour)', '1', 'auto')}${n('carbGoal', 'Glucides (g/jour)', '1', 'auto')}${n('fatGoal', 'Lipides (g/jour)', '1', 'auto')}${n('weekHours', 'Horaires hebdomadaires (h)', '0.25', 'ex. 35')}<div style="grid-column:span 2"><label class="l">Salaire</label><div class="seg"><button class="${c.salaryMode !== 'monthly' ? 'on' : ''}" data-act="salmode" data-v="fixed">Fixe</button><button class="${c.salaryMode === 'monthly' ? 'on' : ''}" data-act="salmode" data-v="monthly">Variable (chaque mois)</button></div><p class="sub" style="margin:6px 0 0">${c.salaryMode === 'monthly' ? 'Saisis ton salaire du mois dans Budget ou Travail. Si tu l\'oublies, le dernier mois renseigné est repris.' : 'Le même salaire chaque mois.'}</p></div>${n('netSalary', c.salaryMode === 'monthly' ? 'Salaire par défaut (€)' : 'Salaire net / mois (€)', '1')}</div><button class="btn pri" style="margin-top:16px;width:100%;justify-content:center" data-act="savecfg">💾 Enregistrer et synchroniser</button></div>
+    ${n('goalWeight', 'Poids objectif (kg)', '0.1')}${n('startWeight', 'Poids de départ (kg)', '0.1', 'auto')}${n('height', 'Taille (cm)')}${n('kcalGoal', 'Objectif calories / jour (manuel)')}${n('burnShare', 'Part des kcal sport ajoutée (%)', '5', '50')}${n('waterGoalL', 'Eau (litres / jour)', '0.1', '2')}${n('sportTarget', 'Séances / semaine')}${n('protGoal', 'Protéines (g/jour)', '1', 'auto')}${n('carbGoal', 'Glucides (g/jour)', '1', 'auto')}${n('fatGoal', 'Lipides (g/jour)', '1', 'auto')}${n('weekHours', 'Horaires hebdomadaires (h)', '0.25', 'ex. 35')}<div style="grid-column:span 2"><label class="l">Salaire</label><div class="seg"><button class="${c.salaryMode !== 'monthly' ? 'on' : ''}" data-act="salmode" data-v="fixed">Fixe</button><button class="${c.salaryMode === 'monthly' ? 'on' : ''}" data-act="salmode" data-v="monthly">Variable (chaque mois)</button></div><p class="sub" style="margin:6px 0 0">${c.salaryMode === 'monthly' ? 'Saisis ton salaire du mois dans Budget ou Travail. Si tu l\'oublies, le dernier mois renseigné est repris.' : 'Le même salaire chaque mois.'}</p></div>${n('netSalary', c.salaryMode === 'monthly' ? 'Salaire par défaut (€)' : 'Salaire net / mois (€)', '1')}</div><button class="btn pri" style="margin-top:16px;width:100%;justify-content:center" data-act="savecfg">💾 Enregistrer et synchroniser</button></div>
   <div class="card c6"><h3>Apparence</h3><label class="l">Couleur (synchronisée)</label><div class="swatches">${Object.entries(ACCENTS).map(([k, v]) => `<button class="${c.accent === k ? 'on' : ''}" style="background:rgb(${v})" data-act="accent" data-v="${k}" aria-label="${k}"></button>`).join('')}</div>
     <label class="l" style="margin-top:18px">Thème (synchronisé)</label><div class="seg">${[['dark', 'Sombre'], ['light', 'Clair']].map(([k, l]) => `<button class="${th === k ? 'on' : ''}" data-act="theme" data-v="${k}">${l}</button>`).join('')}</div>
     <h3 style="margin-top:24px">Synchronisation</h3><p class="sub" data-sync>${syncHtml()}</p><p class="sub">Tout ce que tu saisis est enregistré sur ton appareil puis envoyé au serveur ; tes autres appareils se mettent à jour en direct.</p>
@@ -751,6 +839,9 @@ const ACTS = {
     toast(r && r.ok && j.sent ? `Test envoyé à ${j.sent}/${j.total} appareil(s)` : (j.error || 'Test impossible'));
   },
   salmode: el => put('cfg', { salaryMode: el.dataset.v }),
+  cfgset: el => { if (el.dataset.k === 'goalType') ui.goalEdit = true; const k = el.dataset.k, cur = cfg()[k]; put('cfg', { [k]: cur === el.dataset.v && k === 'goalType' ? cur : el.dataset.v }); },
+  goaledit: () => { ui.goalEdit = true; render(true); },
+  goaldone: () => { ui.goalEdit = false; render(true); },
   coach: el => coach(el.dataset.m),
   addpay: () => payModal(),
   delpay: el => { if (confirm('Supprimer ce versement ?')) put('pay:' + el.dataset.id, { del: true }); },
@@ -811,14 +902,14 @@ async function estimate(text) {
   return j;
 }
 async function coach(mode) {
-  const o = openModal(`<h2>${{ week: '✨ Bilan de ma semaine', finance: '✨ Conseils financiers', nutrition: '✨ Conseils nutrition', budget: '✨ Conseils budget' }[mode]}</h2><div id="coach" class="sub" style="white-space:pre-wrap;margin-top:12px;max-height:60vh;overflow:auto;line-height:1.55;font-size:15px;color:var(--text)">Analyse en cours…</div><div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('ov').remove()">Fermer</button></div>`);
+  const o = openModal(`<h2>${{ week: '✨ Bilan de ma semaine', finance: '✨ Conseils financiers', nutrition: '✨ Conseils nutrition', budget: '✨ Conseils budget' }[mode]}</h2><div id="coach" class="sub" style="white-space:pre-wrap;margin-top:12px;line-height:1.6;font-size:15px;color:var(--text)">Analyse en cours…</div><div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('ov').remove()">Fermer</button></div>`, 'wide');
   const box = $('#coach', o);
   try {
     const { data } = await sb.auth.getSession();
     const r = await fetch('/api/coach', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (data.session?.access_token || '') }, body: JSON.stringify({ mode, data: coachData(mode) }) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || 'Analyse indisponible');
-    box.innerHTML = esc(j.text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+    box.innerHTML = esc(j.text + (j.truncated ? '\n\n… (réponse coupée : relance pour une version plus courte)' : '')).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
   } catch (e) { box.textContent = e.message === 'Failed to fetch' ? 'Hors-ligne : réessaie avec du réseau.' : e.message; }
 }
 async function auth(fd, signup) {

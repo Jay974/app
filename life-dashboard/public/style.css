@@ -203,3 +203,7 @@ svg text{font-family:var(--font)}
 :root{color-scheme:dark}
 :root[data-theme=light]{color-scheme:light}
 select.field option,select.field optgroup{background:var(--bg);color:var(--text)}
+
+.modal{max-height:86vh;overflow:auto}
+.modal.wide{width:min(680px,100%)}
+.overlay{align-items:start}
