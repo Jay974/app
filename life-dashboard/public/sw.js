@@ -1,5 +1,5 @@
 // Service worker : l'app s'ouvre même hors-ligne ; les données passent par /api (jamais mises en cache).
-const CACHE = 'life-v20';
+const CACHE = 'life-v21';
 const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/config.js', '/vendor/supabase.js', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
