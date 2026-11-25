@@ -292,7 +292,7 @@ function coachData(mode) {
   }
   if (mode === 'budget') {
     const m = ui.bmonth, b = budgetStats(m), pm = (() => { const d = parse(m + '-01'); d.setMonth(d.getMonth() - 1); return budgetStats(ymd(d).slice(0, 7)); })();
-    return { mois: m, revenuNetMensuel: salaryFor(m, c), revenusDuMois: b.income, mensualiteCredit: b.creditM, depensesDuMois: Math.round(b.spent), soldeRestant: Math.round(b.left), joursEcoules: b.elapsed, joursDuMois: b.dim, projectionDepensesFinDeMois: b.proj && Math.round(b.proj), depensesParCategorie: Object.entries(b.byCat).map(([cat, v]) => ({ cat, depense: Math.round(v), limite: b.bud[cat] || null })), limitesSansDepense: CATS.filter(([n]) => b.bud[n] && !b.byCat[n]).map(x => x[0]), moisPrecedent: { depenses: Math.round(pm.spent), parCategorie: pm.byCat }, epargneDisponible: c.savings, depensesFixesDeclarees: c.expenses };
+    return { mois: m, revenuNetMensuel: salaryFor(m, c), revenusSupplementaires: [...b.rec.map(r => ({ nom: r.name, montant: r.amount, recurrent: true })), ...b.inc.map(t => ({ nom: t.note, montant: t.amount, date: t.date }))], revenusDuMois: b.income, mensualiteCredit: b.creditM, depensesDuMois: Math.round(b.spent), soldeRestant: Math.round(b.left), joursEcoules: b.elapsed, joursDuMois: b.dim, projectionDepensesFinDeMois: b.proj && Math.round(b.proj), depensesParCategorie: Object.entries(b.byCat).map(([cat, v]) => ({ cat, depense: Math.round(v), limite: b.bud[cat] || null })), limitesSansDepense: CATS.filter(([n]) => b.bud[n] && !b.byCat[n]).map(x => x[0]), moisPrecedent: { depenses: Math.round(pm.spent), parCategorie: pm.byCat }, epargneDisponible: c.savings, depensesFixesDeclarees: c.expenses };
   }
   const ms = monthDays(t.slice(0, 7)), worked = ms.filter(d => day(d).work === 'work').length;
   return { credit: { nom: cr.c.name, total: cr.c.total, mensualite: cr.c.monthly, tauxAnnuelPct: cr.c.rate, rembourse: cr.paid, reste: cr.remaining, mensualitesRestantes: cr.monthsLeft, dureeTotaleMois: cr.c.months, finPrevue: cr.end && cr.end.toISOString().slice(0, 10), debut: cr.c.start, derniersVersements: cr.pays.slice(0, 6).map(p => ({ date: p.date, montant: p.amount })) }, salaireNetMensuel: salaryFor(t.slice(0, 7), c), heuresHebdo: weeklyHours(c), emploiDuTemps: c.sched || null, heuresTravailleesCeMois: Math.round(ms.reduce((a, d) => a + workedHours(d, c), 0)), objectifHeuresMois: monthTarget(c) && Math.round(monthTarget(c)), tauxHoraireNet: salaryFor(t.slice(0, 7), c) && monthTarget(c) ? Number((salaryFor(t.slice(0, 7), c) / monthTarget(c)).toFixed(2)) : null, partMensualiteSurSalairePct: salaryFor(t.slice(0, 7), c) && cr.c.monthly ? Number((cr.c.monthly / salaryFor(t.slice(0, 7), c) * 100).toFixed(1)) : null, depensesMensuelles: c.expenses, epargne: c.savings, joursTravaillesCeMois: worked };
@@ -649,18 +649,20 @@ function vCredit() {
 const CATS = [['Logement', '🏠'], ['Courses', '🛒'], ['Transport', '🚗'], ['Restaurants', '🍽️'], ['Loisirs', '🎬'], ['Santé', '💊'], ['Abonnements', '📱'], ['Shopping', '🛍️'], ['Épargne', '🏦'], ['Autre', '📦']];
 const catIcon = c => (CATS.find(x => x[0] === c) || [0, '📦'])[1];
 const txs = () => ids('tx:').map(id => ({ id: id.slice(3), ...val(id) })).filter(t => !t.del && t.amount != null);
+const recurring = () => ids('rinc:').map(id => ({ id: id.slice(5), ...val(id) })).filter(r => !r.del && r.amount != null); // revenus récurrents (chaque mois)
 const sumA = a => a.reduce((s, t) => s + Number(t.amount || 0), 0);
 function budgetStats(m) {
   const c = cfg(), cr = credit(), tx = txs().filter(t => (t.date || '').startsWith(m)).sort((a, b) => b.date.localeCompare(a.date));
   const exp = tx.filter(t => t.type !== 'inc'), inc = tx.filter(t => t.type === 'inc');
   const paid = cr.total ? payments().filter(p => (p.date || '').startsWith(m)) : [];
   const creditM = paid.length ? sumA(paid) : (cr.monthly || 0); // versement réel du mois, sinon la mensualité
-  const income = (salaryFor(m, c) || 0) + sumA(inc), spent = sumA(exp), byCat = {};
+  const rec = recurring().filter(r => (r.from || '') <= m), salary = salaryFor(m, c) || 0, extra = sumA(inc) + sumA(rec);
+  const income = salary + extra, spent = sumA(exp), byCat = {};
   exp.forEach(t => { byCat[t.cat || 'Autre'] = (byCat[t.cat || 'Autre'] || 0) + Number(t.amount); });
   const bud = c.budgets || {}, limit = Object.values(bud).reduce((a, v) => a + (Number(v) || 0), 0);
   const [y, mo] = m.split('-').map(Number), dim = new Date(y, mo, 0).getDate(), cur = today().slice(0, 7);
   const elapsed = m === cur ? new Date().getDate() : m < cur ? dim : 0;
-  return { tx, income, spent, byCat, bud, limit, creditM, dim, elapsed, proj: m === cur && elapsed ? spent / elapsed * dim : null, left: income - creditM - spent };
+  return { tx, inc, rec, salary, extra, income, spent, byCat, bud, limit, creditM, dim, elapsed, proj: m === cur && elapsed ? spent / elapsed * dim : null, left: income - creditM - spent };
 }
 function vBudget() {
   const m = ui.bmonth, s = budgetStats(m), c = cfg(), cur = today().slice(0, 7);
@@ -672,7 +674,12 @@ function vBudget() {
   <div class="card c7"><h3>${ic('plus')}Ajouter</h3><form data-form="tx"><div class="f2" style="gap:10px"><div><label class="l">Montant (€)</label><input class="field" name="amount" type="number" step="0.01" inputmode="decimal" required></div><div><label class="l">Type</label><select class="field" name="type"><option value="exp">Dépense</option><option value="inc">Revenu</option></select></div>
   <div><label class="l">Catégorie</label><select class="field" name="cat">${CATS.map(([n, e]) => `<option>${n}</option>`).join('')}</select></div><div><label class="l">Date</label><input class="field" name="date" type="date" value="${m === cur ? today() : m + '-01'}"></div></div>
   <div class="row" style="margin-top:10px;flex-wrap:nowrap"><input class="field" name="note" placeholder="Note (ex. Carrefour)" maxlength="60"><button class="btn pri">${ic('plus')}Ajouter</button></div></form></div>
-  <div class="card c12" style="padding:14px 18px">${salaryInput(m)}</div>
+  <div class="card c12"><h3>💰 Revenus de ${monthName(m)} · ${eur(s.income)}</h3>
+    <div class="grid" style="gap:14px"><div class="c6"><div style="margin-bottom:14px">${salaryInput(m)}</div><div class="list"><div class="item"><div class="grow">💼 Salaire net</div><b>${eur(s.salary)}</b></div>
+    ${s.rec.map(r => `<div class="item"><div class="grow"><div class="t">🔁 ${esc(r.name || 'Revenu mensuel')}</div><div class="s">chaque mois depuis ${monthName(r.from)}</div></div><b style="color:var(--ok)">+${eur(r.amount)}</b><button class="x" data-act="delrinc" data-id="${r.id}" aria-label="Arrêter">${ic('x')}</button></div>`).join('')}
+    ${s.inc.map(t => `<div class="item"><div class="grow"><div class="t">💰 ${esc(t.note || 'Revenu')}</div><div class="s">${longDate(t.date)}</div></div><b style="color:var(--ok)">+${eur(t.amount)}</b><button class="x" data-act="deltx" data-id="${t.id}" aria-label="Supprimer">${ic('x')}</button></div>`).join('')}
+    <div class="item" style="background:rgba(var(--acc-rgb),.14)"><div class="grow"><b>Total des revenus</b></div><b>${eur(s.income)}</b></div></div></div>
+    <form class="c6" data-form="inc"><label class="l">Ajouter un revenu supplémentaire</label><div class="f2" style="gap:10px"><div style="grid-column:span 2"><input class="field" name="name" placeholder="Nom (ex. Prime, Freelance, Aide…)" maxlength="60"></div><div><input class="field" name="amount" type="number" step="0.01" inputmode="decimal" placeholder="Montant (€)" required></div><div><input class="field" name="date" type="date" value="${m === cur ? today() : m + '-01'}"></div><div style="grid-column:span 2"><select class="field" name="freq"><option value="once">Ponctuel (ce mois uniquement)</option><option value="monthly">Chaque mois (récurrent)</option></select></div></div><button class="btn pri" style="margin-top:10px;width:100%;justify-content:center">${ic('plus')}Ajouter au revenu mensuel</button></form></div></div>
   <div class="card c7"><h3>Budget par catégorie</h3><div class="list" style="gap:12px">${CATS.map(([n, e]) => { const sp = s.byCat[n] || 0, lim = Number(s.bud[n]) || 0, over = lim && sp > lim; return `<div><div class="row" style="justify-content:space-between;flex-wrap:nowrap;font-size:13px"><span>${e} ${n}${over ? ' <span class="chip down">dépassé</span>' : ''}</span><span style="white-space:nowrap"><b>${eur(sp)}</b> / <input class="field" style="width:88px;padding:4px 8px;display:inline-block" data-bud="${n}" data-num type="number" inputmode="decimal" placeholder="limite" value="${lim || ''}"></span></div><div class="bar" style="height:8px;margin-top:6px"><i style="width:${lim ? Math.min(sp / lim * 100, 100) : sp ? 100 : 0}%;${over ? 'background:var(--bad)' : lim ? '' : 'background:var(--faint)'}"></i></div></div>`; }).join('')}</div>
   <div class="row" style="margin-top:14px;justify-content:space-between"><span class="sub">Total des limites : <b>${eur(s.limit)}</b></span><button class="btn pri sm" data-act="coach" data-m="budget">✨ Conseils budget IA</button></div></div>
   <div class="card c5"><h3>Dépenses par jour</h3>${bars('bd', perDay, { unit: ' €' })}${s.proj != null ? `<p class="sub" style="margin-top:10px">À ce rythme : <b>${eur(s.proj)}</b> de dépenses fin de mois ${s.income && s.proj + s.creditM > s.income ? '<span class="chip down">au-dessus de tes revenus</span>' : '<span class="chip up">OK</span>'}</p>` : ''}</div>
@@ -806,6 +813,7 @@ const ACTS = {
   copymon: () => { const m = cfg().sched?.[0]; if (!m) return toast('Renseigne d’abord le lundi'); const sc = { ...(cfg().sched) }; for (let i = 1; i < 5; i++) sc[i] = { ...m }; put('cfg', { sched: sc }); toast('Lundi copié sur lun–ven'); },
   clearsched: () => { if (confirm('Effacer l’emploi du temps type ?')) put('cfg', { sched: null }); },
   bmonth: el => { ui.bmonth = el.dataset.m; render(true); },
+  delrinc: el => { put('rinc:' + el.dataset.id, { del: true }); toast('Revenu récurrent arrêté'); },
   deltx: el => { put('tx:' + el.dataset.id, { del: true }); toast('Opération supprimée'); },
   remtoggle: el => { const k = el.dataset.k, R = REMS.find(x => x.k === k), cur = val('rem')[k]; put('rem', { [k]: { ...R.def, ...(cur || {}), on: !(cur && cur.on) } }); },
   remday: el => { const k = el.dataset.k, i = Number(el.dataset.i), R = REMS.find(x => x.k === k), r = { ...R.def, ...(val('rem')[k] || {}) }, d = new Set(r.days || []); d.has(i) ? d.delete(i) : d.add(i); put('rem', { [k]: { ...r, days: [...d].sort() } }); },
@@ -879,6 +887,12 @@ document.addEventListener('submit', async e => {
   } else if (f.dataset.form === 'bill') {
     const r = { ...REMS[6].def, ...(val('rem').bills || {}), on: true };
     put('rem', { bills: { ...r, items: [...(r.items || []), { id: uid(), name: fd.name.trim(), day: Number(fd.day), lead: Number(fd.lead) || 0, amount: Number(fd.amount) || null }] } }); toast('Charge ajoutée ✓');
+  } else if (f.dataset.form === 'inc') {
+    if (!(Number(fd.amount) > 0)) return;
+    const d = fd.date || today();
+    if (fd.freq === 'monthly') put('rinc:' + uid(), { name: fd.name?.trim() || null, amount: Number(fd.amount), from: d.slice(0, 7) });
+    else put('tx:' + uid(), { date: d, amount: Number(fd.amount), cat: 'Autre', type: 'inc', note: fd.name?.trim() || 'Revenu' });
+    toast(fd.freq === 'monthly' ? 'Revenu mensuel ajouté ✓' : 'Revenu ajouté ✓');
   } else if (f.dataset.form === 'tx') {
     if (!(Number(fd.amount) > 0)) return;
     put('tx:' + uid(), { date: fd.date || today(), amount: Number(fd.amount), cat: fd.cat, type: fd.type, note: fd.note?.trim() || null }); toast(fd.type === 'inc' ? 'Revenu ajouté ✓' : 'Dépense ajoutée ✓');
