@@ -12,12 +12,19 @@ drop policy if exists "own subs" on public.push_subs;
 create policy "own subs" on public.push_subs for all using (uid = auth.uid()) with check (uid = auth.uid());
 grant select, insert, update, delete on public.push_subs to authenticated;
 
+-- Droits du serveur (clé secrète = rôle service_role)
+grant usage on schema public to service_role;
+grant all on public.push_subs to service_role;
+
 -- Historique anti-doublon (accessible uniquement par le serveur)
 create table if not exists public.push_sent (
   uid uuid not null, key text not null, day text not null,
   primary key (uid, key, day)
 );
 alter table public.push_sent enable row level security;
+grant all on public.push_sent to service_role;
+grant all on public.fields to service_role;
+grant usage, select on sequence public.fields_seq to service_role;
 
 -- Déclencheur : appelle le serveur chaque minute
 create extension if not exists pg_cron;
