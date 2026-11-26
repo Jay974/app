@@ -239,7 +239,7 @@ table.table .field{width:100%;min-width:76px;padding:8px 6px;font-size:14px}
 @media (max-width:480px){
   .f2{grid-template-columns:1fr}
   .f2>[style*="span 2"],.f2>[style*="1/-1"]{grid-column:auto!important}
-  .seg button{padding:8px 6px;font-size:14px;white-space:normal}
+  .seg button{padding:8px 10px;font-size:14px}
   .row{min-width:0}
 }
 
@@ -261,3 +261,8 @@ table.table .field{width:100%;min-width:76px;padding:8px 6px;font-size:14px}
 .rdot.g{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.2)}
 .rdot.r{background:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.2)}
 .tipline{margin-top:6px;font-size:13px;color:var(--text);opacity:.9;line-height:1.45}
+
+/* segments : libellés jamais tronqués (le groupe défile si trop large) */
+.seg button{flex:1 1 auto;white-space:nowrap}
+.top .row{justify-content:flex-start}
+.hero .big{overflow-wrap:anywhere}
