@@ -211,7 +211,8 @@ const day = d => val('day:' + d);
 const r2 = n => Math.round(n * 100) / 100;
 const waterOf = d => { const x = day(d); return x.waterL ?? (x.water != null ? x.water * 0.25 : null); }; // anciens « verres » = 0,25 L
 const waterGoal = c => c.waterGoalL ?? (c.waterGoal ? c.waterGoal * 0.25 : 2);
-const payments = () => ids('pay:').map(id => ({ id: id.slice(4), ...val(id) })).filter(p => !p.del && p.amount != null).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+const allPays = () => ids('pay:').map(id => ({ id: id.slice(4), ...val(id) })).filter(p => !p.del && p.amount != null);
+const payments = () => allPays().filter(p => !p.debt).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 const dayIds = () => ids('day:').map(k => k.slice(4)).sort();
 
 function weights() { // [{date, w}] triés
@@ -242,6 +243,13 @@ function monthDays(m) { // m = 'YYYY-MM'
   return out;
 }
 const kcalOf = d => (day(d).meals || []).reduce((s, m) => s + (Number(m.kcal) || 0), 0);
+function availableForDebts(m = curMonth()) { // revenus − crédit − dépenses (déclarées ou constatées), avant remboursement des dettes
+  const c = cfg(), b = budgetStats(m), typical = Math.max(Number(c.expenses) || 0, b.spent);
+  return { avail: Math.max(0, Math.round(b.income - b.creditM - typical)), income: b.income, creditM: b.creditM, typical };
+}
+function pickDebt(list) { // priorité : taux le plus élevé, sinon le plus petit solde (se libérer plus vite)
+  return [...list].sort((a, b) => (Number(b.rate) || 0) - (Number(a.rate) || 0) || debtState(a).rest - debtState(b).rest)[0];
+}
 function creditStats() {
   const c = credit(), all = payments(), t = today();
   const pays = all.filter(p => p.date <= t), planned = all.filter(p => p.date > t).sort((a, b) => a.date.localeCompare(b.date));
@@ -294,6 +302,7 @@ function coachData(mode) {
   }
   if (mode === 'report' && ui.repMode === 'day') { const r = dailyReport(ui.repDay || today()); return { jour: r.d, scorePct: r.score, objectif: profileData(), reussites: r.items.filter(i => i.state === 'ok').map(i => ({ indicateur: i.label, valeur: i.value })), aAmeliorer: r.items.filter(i => i.state === 'bad').map(i => ({ indicateur: i.label, valeur: i.value })) }; }
   if (mode === 'report') { const r = weeklyReport(ui.repWeek || lastWeek()); return { semaineDu: r.w, scorePct: r.score, objectif: profileData(), reussites: r.items.filter(i => i.state === 'ok').map(i => ({ indicateur: i.label, valeur: i.value })), aAmeliorer: r.items.filter(i => i.state === 'bad').map(i => ({ indicateur: i.label, valeur: i.value })) }; }
+  if (mode === 'debts') { const av = availableForDebts(curMonth()); return { disponibleCeMoisEur: av.avail, revenusDuMois: av.income, mensualiteCredit: av.creditM, depensesRetenues: av.typical, dettes: debts().filter(d => d.status !== 'paid').map(d => { const st = debtState(d); return { nom: d.name, creancier: d.creditor, montantInitial: d.amount, resteDu: st.rest, tauxPct: d.rate, statut: st.status, versementsAVenir: st.planned.length }; }) }; }
   if (mode === 'budget') {
     const m = ui.bmonth, b = budgetStats(m), pm = (() => { const d = parse(m + '-01'); d.setMonth(d.getMonth() - 1); return budgetStats(ymd(d).slice(0, 7)); })();
     return { mois: m, revenuNetMensuel: salaryFor(m, c), revenusSupplementaires: [...b.rec.map(r => ({ nom: r.name, montant: r.amount, recurrent: true })), ...b.inc.map(t => ({ nom: t.note, montant: t.amount, date: t.date }))], revenusDuMois: b.income, mensualiteCredit: b.creditM, depensesDuMois: Math.round(b.spent), soldeRestant: Math.round(b.left), joursEcoules: b.elapsed, joursDuMois: b.dim, projectionDepensesFinDeMois: b.proj && Math.round(b.proj), depensesParCategorie: Object.entries(b.byCat).map(([cat, v]) => ({ cat, depense: Math.round(v), limite: b.bud[cat] || null })), limitesSansDepense: CATS.filter(([n]) => b.bud[n] && !b.byCat[n]).map(x => x[0]), moisPrecedent: { depenses: Math.round(pm.spent), parCategorie: pm.byCat }, epargneDisponible: c.savings, depensesFixesDeclarees: c.expenses };
@@ -749,6 +758,25 @@ function vWork() {
   ${schedCard(c)}</div>`;
 }
 
+function debtsCard() {
+  const ds = debts().map(d => ({ d, st: debtState(d) })), pend = ds.filter(x => x.st.status === 'pending'), m = curMonth(), av = availableForDebts(m), pick = pend.length ? pickDebt(pend.map(x => x.d)) : null, ps = pick && debtState(pick);
+  const sugg = pick ? Math.min(ps.rest, Math.max(0, Math.floor(av.avail * 0.8 / 10) * 10)) : 0;
+  const chip = x => x.st.status === 'paid' ? '<span class="chip up">Remboursée</span>' : x.st.status === 'scheduled' ? '<span class="chip">Programmée</span>' : '<span class="chip" style="background:rgba(251,191,36,.18);color:var(--warn)">En attente</span>';
+  return `<div class="card c12"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><h3 style="margin:0">🕓 Dettes en attente · ${eur(pend.reduce((a, x) => a + x.st.rest, 0))}</h3>${ds.length ? '<button class="btn sm" data-act="coach" data-m="debts">✨ Stratégie IA</button>' : ''}</div>
+  <p class="sub" style="margin:8px 0 12px">Note ce que tu dois sans date de remboursement : tu la programmeras quand tu te sentiras prêt.</p>
+  ${pick ? `<div class="item" style="background:rgba(var(--acc-rgb),.14);margin-bottom:12px"><div class="grow">💡 Ce mois-ci, environ <b>${eur(av.avail)}</b> sont disponibles${sugg >= 10 ? ` : tu peux commencer à rembourser <b>« ${esc(pick.name)} »</b> avec ~${eur(sugg)}.` : ' (insuffisant pour commencer, on garde une marge).'}</div>${sugg >= 10 ? `<button class="btn pri sm" data-act="debtsched" data-id="${pick.id}" data-amt="${sugg}">Programmer</button>` : ''}</div>` : ''}
+  <div class="list">${ds.map(x => `<div class="item" style="flex-wrap:wrap;gap:8px"><div class="grow"><div class="t">${esc(x.d.name)} ${chip(x)}</div><div class="s">${x.d.creditor ? esc(x.d.creditor) + ' · ' : ''}Dû ${eur(x.d.amount)} · Reste <b>${eur(x.st.rest)}</b>${x.d.rate ? ' · ' + fmt(x.d.rate, 2) + ' %' : ''}${x.st.planned.length ? ` · ${x.st.planned.length} versement(s) à venir (prochain ${shortDate(x.st.planned[0].date)})` : ''}${x.d.note ? '<br>' + esc(x.d.note) : ''}</div></div>${x.st.status !== 'paid' ? `<button class="btn sm" data-act="debtsched" data-id="${x.d.id}">${x.st.status === 'scheduled' ? 'Reprogrammer' : 'Programmer'}</button><button class="btn sm" data-act="debtpaid" data-id="${x.d.id}">Soldée ✓</button>` : ''}<button class="x" data-act="debtdel" data-id="${x.d.id}" aria-label="Supprimer">${ic('x')}</button></div>`).join('') || '<div class="empty">Aucune dette notée</div>'}</div>
+  <form data-form="debt" style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px"><input class="field" name="name" placeholder="Nom (ex. Prêt Paul)" required maxlength="60" style="grid-column:1/-1"><input class="field" name="creditor" placeholder="À qui (optionnel)"><input class="field" name="amount" type="number" step="0.01" inputmode="decimal" placeholder="Montant dû (€)" required><input class="field" name="rate" type="number" step="0.01" inputmode="decimal" placeholder="Taux % (optionnel)"><input class="field" name="note" placeholder="Note (optionnel)"><button class="btn pri" style="grid-column:1/-1;justify-content:center">${ic('plus')}Ajouter la dette</button></form></div>`;
+}
+function debtModal(id, amt) {
+  const d = debts().find(x => x.id === id), st = debtState(d), nm = new Date(); nm.setMonth(nm.getMonth() + 1, 1);
+  const o = openModal(`<form data-form="debtsched"><input type="hidden" name="id" value="${id}"><h2 style="margin-bottom:6px">Programmer « ${esc(d.name)} »</h2><p class="sub" style="margin:0 0 12px">Reste à rembourser : <b>${eur(st.rest)}</b></p>
+  <div class="f2"><div><label class="l">Montant par versement (€)</label><input class="field" type="number" step="0.01" name="amount" inputmode="decimal" value="${amt || ''}" required></div><div><label class="l">Premier versement</label><input class="field" type="date" name="date" value="${ymd(nm)}"></div></div>
+  <label class="l" style="margin-top:12px">Répétition</label><select class="field" name="repeat"><option value="monthly">Chaque mois jusqu'à la fin de la dette</option><option value="once">Un seul versement</option></select>
+  <p class="sub" style="margin:10px 0 0">Les versements apparaissent dans Budget (dettes du mois) et « à venir » ici. Le calendrier à venir de cette dette est remplacé.</p>
+  <div class="row" style="margin-top:16px;justify-content:flex-end"><button type="button" class="btn" onclick="document.getElementById('ov').remove()">Annuler</button><button class="btn pri">Programmer</button></div></form>`);
+  $('input[name=amount]', o).focus();
+}
 function vCredit() {
   const s = creditStats(), c = s.c, t = today();
   // solde restant par mois depuis le début
@@ -768,6 +796,7 @@ function vCredit() {
   <div class="card c4"><h3>Mon crédit</h3><div class="list" style="gap:10px"><div><label class="l">Nom</label><input class="field" data-cr="name" value="${esc(c.name)}"></div><div><label class="l">Montant total à rembourser (€)</label><input class="field" data-cr="total" data-num type="number" inputmode="decimal" value="${c.total || ''}"></div><div><label class="l">Mensualité (€)${c.monthlyAuto ? ' — calculée' : ''}</label><input class="field" data-cr="monthly" data-num type="number" inputmode="decimal" placeholder="${c.monthlyAuto ? fmt(c.monthly, 2) + ' (total ÷ durée)' : ''}" value="${val('credit').monthly || ''}"></div><div><label class="l">Durée totale (mois)</label><input class="field" data-cr="months" data-num type="number" inputmode="numeric" min="1" placeholder="ex. 60" value="${c.months || ''}"></div><div><label class="l">Taux annuel (%) — optionnel</label><input class="field" data-cr="rate" data-num type="number" step="0.01" inputmode="decimal" value="${c.rate ?? ''}"></div><div><label class="l">Date de début</label><input class="field" data-cr="start" type="date" value="${c.start || ''}"></div></div></div>
   <div class="card c6"><h3>🔮 Si j’augmente ma mensualité</h3>${creditScenarios().length ? `<table class="table"><tr><th>Mensualité</th><th>Fin</th><th>Gain</th></tr>${creditScenarios().map(r => `<tr><td>${eur(c.monthly + r.extra)}${r.extra ? ` <span class="chip">+${r.extra} €</span>` : ''}</td><td>${frDate(r.end)}</td><td>${r.saved ? `<span class="chip up">−${r.saved} mois</span>` : '—'}</td></tr>`).join('')}</table>` : '<div class="empty">Renseigne total et mensualité</div>'}</div>
   <div class="card c6"><h3>💡 Stratégie financière (IA)</h3><div class="f2" style="gap:10px"><div><label class="l">${cfg().salaryMode === 'monthly' ? 'Salaire par défaut (€)' : 'Salaire net / mois (€)'}</label><input class="field" data-cfg="netSalary" data-num type="number" inputmode="decimal" value="${cfg().netSalary ?? ''}"></div><div><label class="l">Dépenses / mois (€)</label><input class="field" data-cfg="expenses" data-num type="number" inputmode="decimal" value="${cfg().expenses ?? ''}"></div><div style="grid-column:span 2"><label class="l">Épargne disponible (€)</label><input class="field" data-cfg="savings" data-num type="number" inputmode="decimal" value="${cfg().savings ?? ''}"></div></div><button class="btn pri sm" style="margin-top:12px" data-act="coach" data-m="finance">✨ Me conseiller</button></div>
+  ${debtsCard()}
   ${s.planned.length ? `<div class="card c12"><h3>📅 À venir (${s.planned.length}) · ${eur(s.planned.reduce((a, p) => a + Number(p.amount), 0))}</h3><table class="table"><tr><th>Date</th><th>Nom</th><th>Montant</th><th></th></tr>${s.planned.slice(0, 12).map(p => `<tr><td>${longDate(p.date)} <span class="chip">à venir</span></td><td>${esc(p.name || p.note || '')}</td><td><b>${eur(p.amount)}</b></td><td style="text-align:right"><button class="x" data-act="delpay" data-id="${p.id}" aria-label="Supprimer">${ic('x')}</button></td></tr>`).join('')}</table>${s.planned.length > 12 ? `<p class="sub">+ ${s.planned.length - 12} autres…</p>` : ''}</div>` : ''}
   <div class="card c12"><h3>Versements</h3>${s.pays.length ? `<table class="table"><tr><th>Date</th><th>Montant</th><th>Nom</th><th></th></tr>${s.pays.map(p => `<tr><td>${longDate(p.date)}</td><td><b>${eur(p.amount)}</b></td><td>${esc(p.name || p.note || '')}</td><td style="text-align:right"><button class="x" data-act="delpay" data-id="${p.id}" aria-label="Supprimer">${ic('x')}</button></td></tr>`).join('')}</table>` : '<div class="empty">Aucun remboursement enregistré</div>'}</div></div>`;
 }
@@ -776,6 +805,13 @@ const CATS = [['Logement', '🏠'], ['Courses', '🛒'], ['Transport', '🚗'], 
 const catIcon = c => (CATS.find(x => x[0] === c) || [0, '📦'])[1];
 const txs = () => ids('tx:').map(id => ({ id: id.slice(3), ...val(id) })).filter(t => !t.del && t.amount != null);
 const recurring = () => ids('rinc:').map(id => ({ id: id.slice(5), ...val(id) })).filter(r => !r.del && r.amount != null); // revenus récurrents (chaque mois)
+const debts = () => ids('debt:').map(id => ({ id: id.slice(5), ...val(id) })).filter(d => !d.del && d.amount != null);
+const debtPays = id => allPays().filter(p => p.debt === id).sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+function debtState(d) { // restant dû (versements échus déduits) + statut
+  const ps = debtPays(d.id), t = today(), paid = ps.filter(p => p.date <= t).reduce((a, p) => a + Number(p.amount), 0), rest = Math.max(Number(d.amount) - paid, 0), planned = ps.filter(p => p.date > t);
+  const status = d.status === 'paid' || (paid > 0 && rest <= 0) ? 'paid' : (planned.length || d.status === 'scheduled') ? 'scheduled' : 'pending';
+  return { rest, paid, planned, status };
+}
 const sumA = a => a.reduce((s, t) => s + Number(t.amount || 0), 0);
 function budgetStats(m) {
   const c = cfg(), cr = credit(), tx = txs().filter(t => (t.date || '').startsWith(m)).sort((a, b) => b.date.localeCompare(a.date));
@@ -788,15 +824,16 @@ function budgetStats(m) {
   const bud = c.budgets || {}, limit = Object.values(bud).reduce((a, v) => a + (Number(v) || 0), 0);
   const [y, mo] = m.split('-').map(Number), dim = new Date(y, mo, 0).getDate(), cur = today().slice(0, 7);
   const elapsed = m === cur ? new Date().getDate() : m < cur ? dim : 0;
-  return { tx, inc, rec, salary, extra, income, spent, byCat, bud, limit, creditM, dim, elapsed, proj: m === cur && elapsed ? spent / elapsed * dim : null, left: income - creditM - spent };
+  const debtM = sumA(allPays().filter(p => p.debt && (p.date || '').startsWith(m)));
+  return { tx, inc, rec, salary, extra, income, spent, byCat, bud, limit, creditM, debtM, dim, elapsed, proj: m === cur && elapsed ? spent / elapsed * dim : null, left: income - creditM - debtM - spent };
 }
 function vBudget() {
   const m = ui.bmonth, s = budgetStats(m), c = cfg(), cur = today().slice(0, 7);
   const shift = n => { const d = parse(m + '-01'); d.setMonth(d.getMonth() + n); return ymd(d).slice(0, 7); };
-  const days = monthDays(m), pct = s.income ? (s.spent + s.creditM) / s.income : 0;
+  const days = monthDays(m), pct = s.income ? (s.spent + s.creditM + s.debtM) / s.income : 0;
   const perDay = days.map(d => ({ label: parse(d).getDate(), v: sumA(s.tx.filter(t => t.date === d && t.type !== 'inc')) }));
   return head('Budget', 'Revenus, dépenses et limites par catégorie', `<div class="datebar"><button data-act="bmonth" data-m="${shift(-1)}">${ic('l')}</button><span class="d">${monthName(m)}</span><button data-act="bmonth" data-m="${shift(1)}">${ic('r')}</button></div>`) + `<div class="grid">
-  <div class="card c5 hero" style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div><h3>Reste du mois</h3><div class="big">${eur(s.left)}</div><p>Revenus ${eur(s.income)}<br>Crédit ${eur(s.creditM)} · Dépenses ${eur(s.spent)}</p></div>${ring('bud', pct, Math.round(pct * 100) + '%', { size: 112 })}</div>
+  <div class="card c5 hero" style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div><h3>Reste du mois</h3><div class="big">${eur(s.left)}</div><p>Revenus ${eur(s.income)}<br>Crédit ${eur(s.creditM)}${s.debtM ? ` · Dettes ${eur(s.debtM)}` : ''} · Dépenses ${eur(s.spent)}</p></div>${ring('bud', pct, Math.round(pct * 100) + '%', { size: 112 })}</div>
   <div class="card c7"><h3>${ic('plus')}Ajouter</h3><form data-form="tx"><div class="f2" style="gap:10px"><div><label class="l">Montant (€)</label><input class="field" name="amount" type="number" step="0.01" inputmode="decimal" required></div><div><label class="l">Type</label><select class="field" name="type"><option value="exp">Dépense</option><option value="inc">Revenu</option></select></div>
   <div><label class="l">Catégorie</label><select class="field" name="cat">${CATS.map(([n, e]) => `<option>${n}</option>`).join('')}</select></div><div><label class="l">Date</label><input class="field" name="date" type="date" value="${m === cur ? today() : m + '-01'}"></div></div>
   <div class="row" style="margin-top:10px;flex-wrap:nowrap"><input class="field" name="note" placeholder="Note (ex. Carrefour)" maxlength="60"><button class="btn pri">${ic('plus')}Ajouter</button></div></form></div>
@@ -824,6 +861,7 @@ const REMS = [
   { k: 'sleep', i: '😴', t: 'Coucher', d: 'Pour tenir ton objectif de sommeil', def: { time: '22:30' }, f: [['time', 'time', 'Heure']] },
   { k: 'evening', i: '📝', t: 'Bilan du soir', d: 'Compléter ta journée (sommeil, humeur)', def: { time: '21:00' }, f: [['time', 'time', 'Heure']] },
   { k: 'budget', i: '💶', t: 'Dépenses du jour', d: 'Noter tes dépenses', def: { time: '20:30' }, f: [['time', 'time', 'Heure']] },
+  { k: 'debts', i: '🕓', t: 'Capacité de remboursement', d: 'Chaque mois : combien tu peux consacrer à une dette en attente (actif par défaut)', def: { day: 1, time: '09:00', minAvail: 50, margin: 20 }, f: [['day', 'number', 'Jour du mois'], ['time', 'time', 'Heure'], ['minAvail', 'number', 'Disponible minimum (€)'], ['margin', 'number', 'Marge de sécurité (%)']] },
   { k: 'report', i: '📋', t: 'Rapport hebdomadaire', d: 'Chaque lundi matin : réussites en vert, points à rattraper en rouge (actif par défaut)', def: { day: 0, time: '08:00' }, f: [['day', 'weekday', 'Jour'], ['time', 'time', 'Heure']] },
   { k: 'week', i: '📊', t: 'Bilan de la semaine', d: 'Lancer le bilan IA', def: { day: 6, time: '19:00' }, f: [['day', 'weekday', 'Jour'], ['time', 'time', 'Heure']] }
 ];
@@ -837,7 +875,7 @@ function remField(k, r, [fk, type, label]) {
 function vReminders() {
   const rem = val('rem'), st = ui.push || 'unknown';
   const msg = { unsupported: 'Ce navigateur ne gère pas les notifications. Sur iPhone : installe d’abord l’app (Partager → Sur l’écran d’accueil) puis ouvre-la depuis l’icône.', denied: 'Notifications bloquées : autorise-les dans les réglages du navigateur pour ce site.', on: 'Activées sur cet appareil ✓', off: 'Désactivées sur cet appareil.', unknown: 'Vérification…' }[st];
-  const cards = REMS.map(R => { const r = { ...R.def, ...(rem[R.k] || {}) }, on = R.k === 'report' ? !(rem.report && rem.report.on === false) : !!(rem[R.k] && rem[R.k].on);
+  const cards = REMS.map(R => { const r = { ...R.def, ...(rem[R.k] || {}) }, on = R.k === 'report' || R.k === 'debts' ? !(rem[R.k] && rem[R.k].on === false) : !!(rem[R.k] && rem[R.k].on);
     const body = !on ? '' : R.special === 'bills' ? `<div class="list" style="margin-top:12px">${(r.items || []).map(b => `<div class="item"><div class="grow"><div class="t">${esc(b.name)}</div><div class="s">le ${b.day} du mois · prévenir ${b.lead} j avant${b.amount ? ' · ' + eur(b.amount) : ''}</div></div><button class="x" data-act="delbill" data-id="${b.id}" aria-label="Supprimer">${ic('x')}</button></div>`).join('') || '<div class="empty">Aucune charge ajoutée</div>'}</div>
       <form data-form="bill" style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><input class="field" name="name" placeholder="Nom (ex. Internet)" required style="grid-column:1/-1"><input class="field" name="day" type="number" min="1" max="31" placeholder="Jour" required><input class="field" name="lead" type="number" min="0" max="14" placeholder="Jours avant" value="1"><input class="field" name="amount" type="number" step="0.01" placeholder="€"><button class="btn pri sm" style="grid-column:1/-1;justify-content:center">${ic('plus')}Ajouter</button></form><div style="margin-top:10px">${remField(R.k, r, ['time', 'time', 'Heure du rappel'])}</div>`
       : `<div class="f2" style="margin-top:12px;gap:10px">${R.f.map(f => remField(R.k, r, f)).join('')}</div>`;
@@ -951,7 +989,7 @@ const ACTS = {
   bmonth: el => { ui.bmonth = el.dataset.m; render(true); },
   delrinc: el => { put('rinc:' + el.dataset.id, { del: true }); toast('Revenu récurrent arrêté'); },
   deltx: el => { put('tx:' + el.dataset.id, { del: true }); toast('Opération supprimée'); },
-  remtoggle: el => { const k = el.dataset.k, R = REMS.find(x => x.k === k), cur = val('rem')[k], curOn = k === 'report' ? !(cur && cur.on === false) : !!(cur && cur.on); put('rem', { [k]: { ...R.def, ...(cur || {}), on: !curOn } }); },
+  remtoggle: el => { const k = el.dataset.k, R = REMS.find(x => x.k === k), cur = val('rem')[k], curOn = k === 'report' || k === 'debts' ? !(cur && cur.on === false) : !!(cur && cur.on); put('rem', { [k]: { ...R.def, ...(cur || {}), on: !curOn } }); },
   remday: el => { const k = el.dataset.k, i = Number(el.dataset.i), R = REMS.find(x => x.k === k), r = { ...R.def, ...(val('rem')[k] || {}) }, d = new Set(r.days || []); d.has(i) ? d.delete(i) : d.add(i); put('rem', { [k]: { ...r, days: [...d].sort() } }); },
   remfast: el => { const k = el.dataset.k, R = REMS.find(x => x.k === k); put('rem', { [k]: { ...R.def, ...(val('rem')[k] || {}), fasting: el.dataset.v === '1' } }); },
   delbill: el => { const r = { ...REMS[6].def, ...(val('rem').bills || {}) }; put('rem', { bills: { ...r, items: r.items.filter(b => b.id !== el.dataset.id) } }); },
@@ -993,6 +1031,9 @@ const ACTS = {
   reportpdf: () => reportPdf(),
   coach: el => coach(el.dataset.m),
   addpay: () => payModal(),
+  debtsched: el => debtModal(el.dataset.id, el.dataset.amt),
+  debtpaid: el => { if (confirm('Marquer cette dette comme soldée ?')) put('debt:' + el.dataset.id, { status: 'paid' }); },
+  debtdel: el => { if (confirm('Supprimer cette dette et ses versements prévus ?')) { debtPays(el.dataset.id).forEach(p => put('pay:' + p.id, { del: true })); put('debt:' + el.dataset.id, { del: true }); } },
   delpay: el => { if (confirm('Supprimer ce versement ?')) put('pay:' + el.dataset.id, { del: true }); },
   accent: el => { put('cfg', { accent: el.dataset.v }); },
   theme: el => { LS.set('ld_theme', el.dataset.v); put('cfg', { theme: el.dataset.v }); },
@@ -1028,6 +1069,15 @@ document.addEventListener('submit', async e => {
   } else if (f.dataset.form === 'bill') {
     const r = { ...REMS[6].def, ...(val('rem').bills || {}), on: true };
     put('rem', { bills: { ...r, items: [...(r.items || []), { id: uid(), name: fd.name.trim(), day: Number(fd.day), lead: Number(fd.lead) || 0, amount: Number(fd.amount) || null }] } }); toast('Charge ajoutée ✓');
+  } else if (f.dataset.form === 'debt') {
+    if (!(Number(fd.amount) > 0)) return;
+    put('debt:' + uid(), { name: fd.name.trim(), creditor: fd.creditor?.trim() || null, amount: Number(fd.amount), rate: Number(fd.rate) || null, note: fd.note?.trim() || null, status: 'pending', created: today() }); toast('Dette ajoutée (en attente) ✓');
+  } else if (f.dataset.form === 'debtsched') {
+    const d = debts().find(x => x.id === fd.id), amt = Number(fd.amount); if (!d || !(amt > 0)) return;
+    debtPays(d.id).filter(p => p.date > today()).forEach(p => put('pay:' + p.id, { del: true })); // remplace le calendrier à venir
+    const rest = debtState(d).rest, n = fd.repeat === 'once' ? 1 : Math.min(Math.ceil(rest / amt), 120), [y, m, d0] = fd.date.split('-').map(Number); let left = rest;
+    for (let i = 0; i < n; i++) { const last = new Date(y, m - 1 + i + 1, 0).getDate(), dt = new Date(y, m - 1 + i, Math.min(d0, last)), a = fd.repeat === 'once' ? amt : Math.min(amt, left); left -= a; put('pay:' + uid(), { date: ymd(dt), amount: Math.round(a * 100) / 100, name: `${d.name} (${i + 1}/${n})`, debt: d.id }); }
+    put('debt:' + d.id, { status: 'scheduled' }); closeModal(); toast(`${n} versement(s) programmé(s) ✓`);
   } else if (f.dataset.form === 'inc') {
     if (!(Number(fd.amount) > 0)) return;
     const d = fd.date || today();
@@ -1057,7 +1107,7 @@ async function estimate(text) {
   return j;
 }
 async function coach(mode) {
-  const o = openModal(`<h2>${{ week: '✨ Bilan de ma semaine', finance: '✨ Conseils financiers', nutrition: '✨ Conseils nutrition', report: '✨ Résumé du rapport', budget: '✨ Conseils budget' }[mode]}</h2><div id="coach" class="sub" style="white-space:pre-wrap;margin-top:12px;line-height:1.6;font-size:15px;color:var(--text)">Analyse en cours…</div><div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('ov').remove()">Fermer</button></div>`, 'wide');
+  const o = openModal(`<h2>${{ week: '✨ Bilan de ma semaine', finance: '✨ Conseils financiers', nutrition: '✨ Conseils nutrition', report: '✨ Résumé du rapport', debts: '✨ Stratégie de remboursement', budget: '✨ Conseils budget' }[mode]}</h2><div id="coach" class="sub" style="white-space:pre-wrap;margin-top:12px;line-height:1.6;font-size:15px;color:var(--text)">Analyse en cours…</div><div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn" onclick="document.getElementById('ov').remove()">Fermer</button></div>`, 'wide');
   const box = $('#coach', o);
   try {
     const { data } = await sb.auth.getSession();

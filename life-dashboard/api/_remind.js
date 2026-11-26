@@ -54,4 +54,37 @@ function computeDue({ rem = {}, cfg = {}, credit = {}, day = {}, local }) {
   if (on('week') && Number(rem.week.day) === local.wd && due(rem.week.time, now)) push('week', '📊 Bilan de la semaine', "Ton bilan hebdo est prêt : lance le bilan IA dans l'onglet Poids.", '/#/weight');
   return out;
 }
-module.exports = { computeDue, localParts, monthlyLead };
+/* ---- Capacité de remboursement des dettes en attente (notification mensuelle) ---- */
+const sumBy = (arr, f) => arr.reduce((s, x) => s + (Number(f(x)) || 0), 0);
+function availForMonth(docs, m) { // même formule que l'app : revenus − crédit − dépenses (déclarées ou constatées)
+  const cfg = docs.cfg || {}, credit = docs.credit || {}, keys = p => Object.keys(docs).filter(k => k.startsWith(p)), get = p => keys(p).map(k => ({ id: k.slice(p.length), ...docs[k] }));
+  let salary = cfg.netSalary ?? null;
+  if (cfg.salaryMode === 'monthly') {
+    const own = (docs['sal:' + m] || {}).amount;
+    if (own != null) salary = own; else { const prev = keys('sal:').map(k => k.slice(4)).filter(k => k < m && (docs['sal:' + k] || {}).amount != null).sort().pop(); salary = prev ? docs['sal:' + prev].amount : (cfg.netSalary ?? null); }
+  }
+  const tx = get('tx:').filter(t => !t.del && t.amount != null && (t.date || '').startsWith(m));
+  const extra = sumBy(get('rinc:').filter(r => !r.del && r.amount != null && (r.from || '') <= m), r => r.amount) + sumBy(tx.filter(t => t.type === 'inc'), t => t.amount);
+  const spent = sumBy(tx.filter(t => t.type !== 'inc'), t => t.amount);
+  const monthly = credit.monthly || (credit.months && credit.total ? credit.total / credit.months : 0);
+  const paid = credit.total ? get('pay:').filter(p => !p.del && p.amount != null && !p.debt && (p.date || '').startsWith(m)) : [];
+  const creditM = paid.length ? sumBy(paid, p => p.amount) : monthly;
+  return Math.max(0, Math.round((salary || 0) + extra - creditM - Math.max(Number(cfg.expenses) || 0, spent)));
+}
+function debtNotice(docs, local, rem = {}) {
+  const r = { minAvail: 50, margin: 20, ...(rem.debts || {}) }, m = local.date.slice(0, 7), pays = Object.keys(docs).filter(k => k.startsWith('pay:')).map(k => docs[k]).filter(p => !p.del && p.amount != null && p.debt);
+  const pending = Object.keys(docs).filter(k => k.startsWith('debt:')).map(k => ({ id: k.slice(5), ...docs[k] })).filter(d => !d.del && d.amount != null && d.status !== 'paid' && d.status !== 'scheduled').map(d => {
+    const mine = pays.filter(p => p.debt === d.id), paid = sumBy(mine.filter(p => (p.date || '') <= local.date), p => p.amount);
+    return { ...d, rest: Math.max(Number(d.amount) - paid, 0), planned: mine.some(p => (p.date || '') > local.date) };
+  }).filter(d => d.rest > 0 && !d.planned);
+  if (!pending.length) return null;
+  const avail = availForMonth(docs, m); if (avail < Number(r.minAvail)) return null;
+  const pick = [...pending].sort((a, b) => (Number(b.rate) || 0) - (Number(a.rate) || 0) || a.rest - b.rest)[0];
+  const sug = Math.min(pick.rest, Math.floor(avail * (1 - Number(r.margin) / 100) / 10) * 10); if (sug < 10) return null;
+  return { key: 'debts:' + m, title: '🕓 Capacité de remboursement', body: `Ce mois-ci, environ ${eur(avail)} sont disponibles : tu peux commencer à rembourser « ${pick.name} » (${eur(pick.rest)} en attente) avec ~${eur(sug)}.${pending.length > 1 ? ` ${pending.length - 1} autre(s) dette(s) en attente.` : ''}`, url: '/#/credit' };
+}
+function debtsDue(rem, local) { // actif par défaut, le jour du mois choisi (1er par défaut)
+  const r = { day: 1, time: '09:00', ...(rem.debts || {}) };
+  return !(rem.debts && rem.debts.on === false) && monthlyLead(local.date, r.day, 0) === 0 && due(r.time, local.min);
+}
+module.exports = { computeDue, localParts, monthlyLead, debtNotice, debtsDue, availForMonth };

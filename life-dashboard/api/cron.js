@@ -1,6 +1,6 @@
 // Appelé chaque minute (pg_cron côté Supabase). Protégé par CRON_SECRET.
 const { setup, admin, sendTo } = require('./_lib');
-const { computeDue, localParts } = require('./_remind');
+const { computeDue, localParts, debtNotice, debtsDue } = require('./_remind');
 module.exports = async (req, res) => {
   const secret = process.env.CRON_SECRET;
   if (!secret || req.headers.authorization !== 'Bearer ' + secret) return res.status(401).json({ error: 'unauthorized' });
@@ -15,6 +15,11 @@ module.exports = async (req, res) => {
       const { data: rows } = await db.from('fields').select('doc,field,v').eq('uid', uid).in('doc', ['rem', 'cfg', 'credit', 'day:' + local.date]);
       const docs = {}; (rows || []).forEach(r => { (docs[r.doc] = docs[r.doc] || {})[r.field] = r.v; });
       const items = computeDue({ rem: docs.rem || {}, cfg: docs.cfg || {}, credit: docs.credit || {}, day: docs['day:' + local.date] || {}, local });
+      if (debtsDue(docs.rem || {}, local)) { // charge l'historique seulement ce jour-là (1×/mois), pas chaque minute
+        const { data: more } = await db.from('fields').select('doc,field,v').eq('uid', uid).or('doc.like.sal:*,doc.like.rinc:*,doc.like.tx:*,doc.like.pay:*,doc.like.debt:*').limit(5000);
+        const all = { ...docs }; (more || []).forEach(r => { (all[r.doc] = all[r.doc] || {})[r.field] = r.v; });
+        const n = debtNotice(all, local, docs.rem || {}); if (n) items.push(n);
+      }
       for (const it of items) {
         // une seule notification par rappel et par jour (même si le déclencheur passe 2 fois)
         const { error: dup } = await db.from('push_sent').insert({ uid, key: it.key, day: local.date });
