@@ -38,65 +38,65 @@ function nextNumber(kind) {
 const newDoc = kind => ({ id: null, kind, d: { status: 'draft', number: null, clientId: '', date: today(), due: addDays(today(), 30), lines: [{ d: '', q: 1, u: '', p: 0 }], notes: '', conditions: settings().conditions || '' } });
 
 /* ---------- PDF ---------- */
-function pdf(r) {
+async function pdf(r) {
   const s = settings(), d = { ...r.data }, cl = (rowsOf('client').find(c => c.id === d.clientId) || {}).data || {}, isInv = r.kind === 'invoice', t = totals(d, s);
   if (!(d.conditions || '').trim() && d.status === 'draft') d.conditions = s.conditions || ''; // brouillon : reprend les conditions de « Mon entreprise »
-  const { jsPDF } = window.jspdf, doc = new jsPDF({ unit: 'mm', format: 'a4' }), W = 210, M = 15, ACC = [0, 168, 150], H = 297;
+  const doc = await window.PdfKit.create(), F = doc.__font, cln = window.PdfKit.clean, W = 210, M = 15, ACC = [0, 168, 150], H = 297;
   let y = M, left = M;
   doc.setTextColor(30);
   if (s.logo) { try { const p = doc.getImageProperties(s.logo), h = Math.min(20, 40 * p.height / p.width), w = h * p.width / p.height; doc.addImage(s.logo, p.fileType || 'PNG', M, y, w, h); y += h + 4; } catch { /* logo illisible */ } } else y += 2;
-  const lines = (txt, x, w, size = 9, lh = 4.2, color = 60) => { doc.setFontSize(size).setTextColor(color).setFont('helvetica', 'normal'); const arr = doc.splitTextToSize(String(txt || ''), w); arr.forEach((l, i) => doc.text(l, x, y + i * lh)); y += arr.length * lh; };
-  doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(20); doc.text(s.name || 'Mon entreprise', M, y); y += 5;
+  const lines = (txt, x, w, size = 9, lh = 4.2, color = 60) => { doc.setFontSize(size).setTextColor(color).setFont(F, 'normal'); const arr = doc.splitTextToSize(cln(txt), w); arr.forEach((l, i) => doc.text(l, x, y + i * lh)); y += arr.length * lh; };
+  doc.setFont(F, 'bold').setFontSize(12).setTextColor(20); doc.text(s.name || 'Mon entreprise', M, y); y += 5;
   if (s.legal) lines(s.legal, M, 85, 9, 4.2, 80);
   lines(s.address, M, 85); if (s.siren) lines('SIREN ' + fmtSiren(s.siren) + (s.siret ? '  ·  SIRET ' + fmtSiret(s.siret) : ''), M, 85);
   if (s.activityNote) lines(s.activityNote, M, 85, 8.5);
   if (s.email) lines(s.email, M, 85); if (s.phone) lines(fmtPhone(s.phone), M, 85);
   const leftEnd = y;
   // titre + références à droite
-  doc.setFont('helvetica', 'bold').setFontSize(22).setTextColor(...ACC); doc.text(isInv ? 'FACTURE' : 'DEVIS', W - M, M + 8, { align: 'right' });
+  doc.setFont(F, 'bold').setFontSize(22).setTextColor(...ACC); doc.text(isInv ? 'FACTURE' : 'DEVIS', W - M, M + 8, { align: 'right' });
   doc.setFontSize(10).setTextColor(30); doc.text(d.number ? 'N° ' + d.number : 'BROUILLON', W - M, M + 15, { align: 'right' });
-  doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(80);
+  doc.setFont(F, 'normal').setFontSize(9).setTextColor(80);
   doc.text('Date : ' + fdate(d.date), W - M, M + 21, { align: 'right' });
   doc.text((isInv ? 'Échéance : ' : 'Valable jusqu\'au : ') + fdate(d.due), W - M, M + 26, { align: 'right' });
   if (d.fromQuote) doc.text('Réf. devis ' + d.fromQuote, W - M, M + 31, { align: 'right' });
   // destinataire
   y = Math.max(M + 36, 0); let cy = y;
   doc.setDrawColor(210).setFillColor(247, 250, 250).roundedRect(115, cy, W - M - 115, 32, 2, 2, 'FD');
-  doc.setFont('helvetica', 'bold').setFontSize(8).setTextColor(...ACC); doc.text('DESTINATAIRE', 119, cy + 5);
-  y = cy + 10; doc.setFont('helvetica', 'bold').setFontSize(10).setTextColor(20); doc.text(cl.name || '—', 119, y); y += 4.8;
+  doc.setFont(F, 'bold').setFontSize(8).setTextColor(...ACC); doc.text('DESTINATAIRE', 119, cy + 5);
+  y = cy + 10; doc.setFont(F, 'bold').setFontSize(10).setTextColor(20); doc.text(cl.name || '—', 119, y); y += 4.8;
   lines(cl.address, 119, 72, 9, 4.2, 70); if (cl.siret) lines('SIRET ' + fmtSiret(cl.siret), 119, 72, 8.5); if (cl.email) lines(cl.email, 119, 72, 8.5);
   y = Math.max(leftEnd, cy + 32) + 8;
   // conditions / mentions (bloc éditable) — au-dessus du cadre principal
   if ((d.conditions || '').trim()) {
-    doc.setFontSize(8.5); const arr = doc.splitTextToSize(d.conditions.trim(), W - 2 * M - 8), h = arr.length * 3.9 + 9;
+    doc.setFontSize(8.5); const arr = doc.splitTextToSize(cln(d.conditions.trim()), W - 2 * M - 8), h = arr.length * 3.9 + 9;
     doc.setDrawColor(210).setFillColor(250, 250, 250).roundedRect(M, y, W - 2 * M, h, 2, 2, 'FD');
-    doc.setFont('helvetica', 'bold').setFontSize(8).setTextColor(...ACC); doc.text('CONDITIONS ET MENTIONS', M + 4, y + 5);
-    doc.setFont('helvetica', 'normal').setFontSize(8.5).setTextColor(70); arr.forEach((l, i) => doc.text(l, M + 4, y + 10 + i * 3.9)); y += h + 6;
+    doc.setFont(F, 'bold').setFontSize(8).setTextColor(...ACC); doc.text('CONDITIONS ET MENTIONS', M + 4, y + 5);
+    doc.setFont(F, 'normal').setFontSize(8.5).setTextColor(70); arr.forEach((l, i) => doc.text(l, M + 4, y + 10 + i * 3.9)); y += h + 6;
   }
   // lignes
   doc.autoTable({
     startY: y, margin: { left: M, right: M, bottom: 25 }, theme: 'grid',
     head: [['Description', 'Qté', 'Unité', 'Prix unitaire', 'Total']],
-    body: (d.lines || []).filter(l => l.d || Number(l.p)).map(l => [l.d || '', Number.isInteger(Number(l.q)) ? String(Number(l.q)) : nb(l.q), l.u || '', eur(l.p), eur((Number(l.q) || 0) * (Number(l.p) || 0))]),
-    headStyles: { fillColor: ACC, textColor: 255, fontSize: 9, halign: 'left' }, styles: { fontSize: 9, cellPadding: 2.5, lineColor: [215, 220, 220], textColor: 40 },
+    body: (d.lines || []).filter(l => l.d || Number(l.p)).map(l => [cln(l.d), Number.isInteger(Number(l.q)) ? String(Number(l.q)) : nb(l.q), l.u || '', eur(l.p), eur((Number(l.q) || 0) * (Number(l.p) || 0))]),
+    headStyles: { fillColor: ACC, textColor: 255, fontSize: 9, halign: 'left', font: F }, styles: { font: F, fontSize: 9, cellPadding: 2.5, lineColor: [215, 220, 220], textColor: 40 },
     columnStyles: { 0: { cellWidth: 'auto' }, 1: { halign: 'right', cellWidth: 18 }, 2: { cellWidth: 20 }, 3: { halign: 'right', cellWidth: 32 }, 4: { halign: 'right', cellWidth: 32 } }
   });
   y = doc.lastAutoTable.finalY + 7;
   const ensure = h => { if (y + h > H - 22) { doc.addPage(); y = M; } };
   // totaux
-  ensure(40); const bx = 120; doc.setFont('helvetica', 'normal').setFontSize(10).setTextColor(60);
+  ensure(40); const bx = 120; doc.setFont(F, 'normal').setFontSize(10).setTextColor(60);
   doc.text('Total HT', bx, y); doc.text(eur(t.ht), W - M, y, { align: 'right' }); y += 6;
   if (t.rate) { doc.text(`TVA ${nb(t.rate)} %`, bx, y); doc.text(eur(t.tva), W - M, y, { align: 'right' }); y += 6; }
   doc.setDrawColor(...ACC).setLineWidth(0.5).line(bx, y - 2, W - M, y - 2);
-  doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(20); doc.text(isInv ? 'Net à payer' : 'Total TTC', bx, y + 4); doc.text(eur(t.ttc), W - M, y + 4, { align: 'right' }); y += 10;
-  if (!t.rate && s.vatNote) { doc.setFont('helvetica', 'italic').setFontSize(8.5).setTextColor(90); doc.text(s.vatNote, W - M, y, { align: 'right' }); y += 6; }
+  doc.setFont(F, 'bold').setFontSize(12).setTextColor(20); doc.text(isInv ? 'Net à payer' : 'Total TTC', bx, y + 4); doc.text(eur(t.ttc), W - M, y + 4, { align: 'right' }); y += 10;
+  if (!t.rate && s.vatNote) { doc.setFont(F, 'italic').setFontSize(8.5).setTextColor(90); doc.text(s.vatNote, W - M, y, { align: 'right' }); y += 6; }
   y += 4;
-  if (d.notes) { ensure(20); doc.setFont('helvetica', 'bold').setFontSize(8).setTextColor(...ACC); doc.text('NOTES', M, y); y += 4; doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(70); doc.splitTextToSize(d.notes, W - 2 * M).forEach(l => { ensure(5); doc.text(l, M, y); y += 4.2; }); y += 3; }
-  if (isInv && (s.iban || s.bic)) { ensure(20); doc.setFont('helvetica', 'bold').setFontSize(8).setTextColor(...ACC); doc.text('RÈGLEMENT PAR VIREMENT', M, y); y += 4.5; doc.setFont('helvetica', 'normal').setFontSize(9).setTextColor(60); if (s.iban) { doc.text('IBAN : ' + fmtIban(s.iban), M, y); y += 4.5; } if (s.bic) { doc.text('BIC : ' + s.bic, M, y); y += 4.5; } }
-  if (!isInv) { ensure(30); y += 3; doc.setDrawColor(190).setLineWidth(0.3).roundedRect(115, y, W - M - 115, 24, 2, 2); doc.setFont('helvetica', 'normal').setFontSize(8.5).setTextColor(80); doc.text('Bon pour accord — date et signature', 119, y + 5); }
+  if (d.notes) { ensure(20); doc.setFont(F, 'bold').setFontSize(8).setTextColor(...ACC); doc.text('NOTES', M, y); y += 4; doc.setFont(F, 'normal').setFontSize(9).setTextColor(70); doc.splitTextToSize(cln(d.notes), W - 2 * M).forEach(l => { ensure(5); doc.text(l, M, y); y += 4.2; }); y += 3; }
+  if (isInv && (s.iban || s.bic)) { ensure(20); doc.setFont(F, 'bold').setFontSize(8).setTextColor(...ACC); doc.text('RÈGLEMENT PAR VIREMENT', M, y); y += 4.5; doc.setFont(F, 'normal').setFontSize(9).setTextColor(60); if (s.iban) { doc.text('IBAN : ' + fmtIban(s.iban), M, y); y += 4.5; } if (s.bic) { doc.text('BIC : ' + s.bic, M, y); y += 4.5; } }
+  if (!isInv) { ensure(30); y += 3; doc.setDrawColor(190).setLineWidth(0.3).roundedRect(115, y, W - M - 115, 24, 2, 2); doc.setFont(F, 'normal').setFontSize(8.5).setTextColor(80); doc.text('Bon pour accord — date et signature', 119, y + 5); }
   // pied de page
   const n = doc.getNumberOfPages(), foot = [s.name, s.legal, s.siren ? 'SIREN ' + fmtSiren(s.siren) : '', s.siret ? 'SIRET ' + fmtSiret(s.siret) : '', (s.address || '').replace(/\n/g, ', ')].filter(Boolean).join(' — ');
-  for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(130); doc.text(doc.splitTextToSize(foot, W - 2 * M - 20), M, H - 12); doc.text(`Page ${i}/${n}`, W - M, H - 12, { align: 'right' }); }
+  for (let i = 1; i <= n; i++) { doc.setPage(i); doc.setFont(F, 'normal').setFontSize(7.5).setTextColor(130); doc.text(doc.splitTextToSize(foot, W - 2 * M - 20), M, H - 12); doc.text(`Page ${i}/${n}`, W - M, H - 12, { align: 'right' }); }
   const safe = x => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.-]+/g, '_');
   doc.save(`${isInv ? 'Facture' : 'Devis'}-${safe(d.number || 'brouillon')}-${safe(cl.name)}.pdf`);
 }

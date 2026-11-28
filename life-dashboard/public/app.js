@@ -686,20 +686,20 @@ function vReport() {
 async function reportPdf() {
   const isDay = ui.repMode === 'day', w = ui.repWeek || lastWeek(), r = isDay ? dailyReport(ui.repDay || today()) : weeklyReport(w);
   if (!window.jspdf) await new Promise((ok, ko) => { const el = document.createElement('script'); el.src = '/vendor/jspdf.min.js'; el.onload = ok; el.onerror = () => ko(); document.head.appendChild(el); }).catch(() => toast('Chargement du PDF impossible'));
+  if (window.jspdf && !window.PdfKit) await new Promise(ok => { const el = document.createElement('script'); el.src = '/pdfkit.js'; el.onload = ok; el.onerror = ok; document.head.appendChild(el); });
   if (!window.jspdf) return;
-  const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' }), M = 15, W = 210, H = 297; let y = 20;
-  const cl = x => String(x == null ? '' : x).replace(/[\u202F\u00A0]/g, ' '); // espaces insécables → espaces simples (police PDF)
-  doc.setFont('helvetica', 'bold').setFontSize(20).setTextColor(0, 168, 150); doc.text(isDay ? 'Rapport journalier' : 'Rapport hebdomadaire', M, y); y += 7;
-  doc.setFont('helvetica', 'normal').setFontSize(10).setTextColor(90); doc.text(`${isDay ? longDate(r.d) : 'Semaine du ' + shortDate(w) + ' au ' + shortDate(addDays(w, 6))}${cfg().name ? '  ·  ' + cfg().name : ''}`, M, y); y += 8;
-  doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(30); doc.text(`Score : ${r.score} %   ·   ${r.ok} réussi(s)   ·   ${r.bad} à améliorer`, M, y); y += 9;
+  const doc = await window.PdfKit.create(), F = doc.__font, cl = window.PdfKit.clean, M = 15, W = 210, H = 297; let y = 20;
+  doc.setFont(F, 'bold').setFontSize(20).setTextColor(0, 168, 150); doc.text(isDay ? 'Rapport journalier' : 'Rapport hebdomadaire', M, y); y += 7;
+  doc.setFont(F, 'normal').setFontSize(10).setTextColor(90); doc.text(`${isDay ? longDate(r.d) : 'Semaine du ' + shortDate(w) + ' au ' + shortDate(addDays(w, 6))}${cfg().name ? '  ·  ' + cfg().name : ''}`, M, y); y += 8;
+  doc.setFont(F, 'bold').setFontSize(12).setTextColor(30); doc.text(`Score : ${r.score} %   ·   ${r.ok} réussi(s)   ·   ${r.bad} à améliorer`, M, y); y += 9;
   const section = (title, list, color) => {
-    if (!list.length) return; doc.setFont('helvetica', 'bold').setFontSize(12).setTextColor(...color); doc.text(title, M, y); y += 6;
+    if (!list.length) return; doc.setFont(F, 'bold').setFontSize(12).setTextColor(...color); doc.text(title, M, y); y += 6;
     for (const i of list) {
       const tip = i.tip ? doc.splitTextToSize(cl('Conseil : ' + i.tip), W - 2 * M - 8) : [], h = 5 + tip.length * 4.2 + 3;
       if (y + h > H - 18) { doc.addPage(); y = 20; }
       doc.setFillColor(...color).circle(M + 2, y - 1.2, 1.7, 'F');
-      doc.setFont('helvetica', 'bold').setFontSize(10).setTextColor(30); doc.text(i.label, M + 7, y);
-      doc.setFont('helvetica', 'normal').setFontSize(9.5).setTextColor(80); doc.text(cl(i.value), W - M, y, { align: 'right' }); y += 5;
+      doc.setFont(F, 'bold').setFontSize(10).setTextColor(30); doc.text(i.label, M + 7, y);
+      doc.setFont(F, 'normal').setFontSize(9.5).setTextColor(80); doc.text(cl(i.value), W - M, y, { align: 'right' }); y += 5;
       doc.setFontSize(9).setTextColor(70); tip.forEach(l => { doc.text(l, M + 7, y); y += 4.2; }); y += 3;
     } y += 3;
   };
@@ -917,7 +917,7 @@ function vBilling() { // module chargé à la demande, uniquement pour le propri
   if (window.Billing) return window.Billing.view();
   if (!ui.billingLoading) {
     ui.billingLoading = true;
-    (async () => { try { for (const f of ['/vendor/jspdf.min.js', '/vendor/jspdf-autotable.min.js', '/billing.js']) await new Promise((ok, ko) => { const el = document.createElement('script'); el.src = f; el.onload = ok; el.onerror = () => ko(new Error(f)); document.head.appendChild(el); }); } catch (e) { toast('Chargement impossible : ' + e.message); ui.billingLoading = false; return; } render(true); })();
+    (async () => { try { for (const f of ['/vendor/jspdf.min.js', '/vendor/jspdf-autotable.min.js', '/pdfkit.js', '/billing.js']) await new Promise((ok, ko) => { const el = document.createElement('script'); el.src = f; el.onload = ok; el.onerror = () => ko(new Error(f)); document.head.appendChild(el); }); } catch (e) { toast('Chargement impossible : ' + e.message); ui.billingLoading = false; return; } render(true); })();
   }
   return head('Facturation', 'Réservé au propriétaire') + '<div class="card c12">Chargement…</div>';
 }
